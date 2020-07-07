@@ -16,3 +16,6 @@
 # Exclude IDE and Editor files
 /.idea/
 *.sublime*
+
+/libsawtooth/target/
+/libsawtooth/Cargo.lock
