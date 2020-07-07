@@ -14,18 +14,7 @@
 
 
 crates := '\
-    libsawtooth \
-    validator \
-    adm \
-    perf/sawtooth_perf \
-    perf/smallbank_workload \
-    perf/intkey_workload \
-    perf/sawtooth_workload \
-    families/settings/sawtooth_settings \
-    families/identity/sawtooth_identity \
-    families/battleship \
-    families/block_info/sawtooth_block_info \
-    families/smallbank/smallbank_rust \
+    libsawtooth
     '
 
 features := '\
@@ -34,10 +23,6 @@ features := '\
     --features=default \
     --no-default-features \
     '
-
-docker-build-doc:
-    docker build . -f ci/sawtooth-build-docs -t sawtooth-build-docs
-    docker run --rm -v $(pwd):/project/sawtooth-core sawtooth-build-docs
 
 build:
     #!/usr/bin/env sh

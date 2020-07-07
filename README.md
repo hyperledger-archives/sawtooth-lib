@@ -1,5 +1,5 @@
 
-![Hyperledger Sawtooth](images/sawtooth_logo_light_blue-small.png)
+![Hyperledger Sawtooth](https://github.com/hyperledger/sawtooth-core/blob/master/images/sawtooth_logo_light_blue-small.png)
 
 Hyperledger Sawtooth
 -------------
