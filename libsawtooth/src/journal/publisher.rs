@@ -15,7 +15,7 @@
  * ------------------------------------------------------------------------------
  */
 
- // allow borrowed box, this is required to use PublisherState trait
+// allow borrowed box, this is required to use PublisherState trait
  #![allow(clippy::borrowed_box)]
 
 use std::collections::{HashMap, HashSet, VecDeque};

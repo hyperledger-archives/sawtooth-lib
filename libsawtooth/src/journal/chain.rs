@@ -51,9 +51,9 @@ use crate::{
         fork_cache::ForkCache,
         NULL_BLOCK_IDENTIFIER,
     },
+    protos::transaction_receipt::TransactionReceipt,
     scheduler::TxnExecutionResult,
     state::{state_pruning_manager::StatePruningManager, state_view_factory::StateViewFactory},
-    protos::transaction_receipt::TransactionReceipt,
 };
 
 pub const COMMIT_STORE: &str = "commit_store";
@@ -1047,20 +1047,8 @@ impl<'a> From<&'a TxnExecutionResult> for TransactionReceipt {
         let mut receipt = TransactionReceipt::new();
 
         receipt.set_data(protobuf::RepeatedField::from_vec(result.data.to_vec()));
-        receipt.set_state_changes(
-            result
-                .state_changes
-                .clone()
-                .into_iter()
-                .collect(),
-        );
-        receipt.set_events(
-            result
-                .events
-                .clone()
-                .into_iter()
-                .collect(),
-        );
+        receipt.set_state_changes(result.state_changes.clone().into_iter().collect());
+        receipt.set_events(result.events.clone().into_iter().collect());
         receipt.set_transaction_id(result.signature.clone());
 
         receipt
