@@ -17,7 +17,7 @@ version: '3.6'
 
 services:
 
-  lint-python:
+  lint-libsawtooth:
     build:
       context: ../
       dockerfile: ./lint
@@ -25,33 +25,13 @@ services:
         - http_proxy
         - https_proxy
         - no_proxy
-    image: lint:${ISOLATION_ID}
+    image: lint-libsawtooth:${ISOLATION_ID}
     volumes:
-      - ../../:/project/sawtooth-core
-    command: run_lint
-
-  lint-rust:
-    build:
-      context: ../
-      dockerfile: ./lint
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    image: lint:${ISOLATION_ID}
-    volumes:
-      - ../../:/project/sawtooth-core
-    command: run_lint_rust
-
-  lint-validator:
-    build:
-      context: ../
-      dockerfile: ./lint
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    image: lint:${ISOLATION_ID}
-    volumes:
-      - ../../:/project/sawtooth-core
-    command: run_lint_validator
+      - ../../libsawtooth:/project/libsawtooth
+    command: |
+      bash -c "
+        set -e
+        cd /project/libsawtooth
+        cargo fmt -- --check
+        cargo clippy -- -D clippy::all
+      "

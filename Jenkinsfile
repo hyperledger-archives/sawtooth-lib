@@ -74,6 +74,15 @@ pipeline {
                 '''
             }
         }
-    }
 
+        stage("Run lint") {
+            steps {
+                sh 'docker-compose -f docker/compose/run-lint.yaml up --build --abort-on-container-exit --exit-code-from lint-libsawtooth"'
+            }
+        }
+    }
+    post {
+    always {
+        sh 'docker-compose -f docker/compose/docker-compose.yaml down'
+    }
 }

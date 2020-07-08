@@ -90,8 +90,8 @@ docker-lint:
     docker-compose -f docker/compose/run-lint.yaml up \
         --build \
         --abort-on-container-exit \
-        --exit-code-from lint-python \
-        lint-python
+        --exit-code-from \
+        lint-libsawtooth
 
 test:
     #!/usr/bin/env sh
