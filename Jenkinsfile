@@ -83,7 +83,7 @@ pipeline {
     }
     post {
         always {
-            sh 'docker-compose -f docker/compose/docker-compose.yaml down'
+            sh 'docker-compose -f docker/compose/run-lint.yaml down'
         }
     }
 }
