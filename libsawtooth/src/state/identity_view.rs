@@ -20,7 +20,6 @@ use crate::{
     protos::identity::{Policy, PolicyList, Role, RoleList},
     state::{error::StateDatabaseError, StateReader},
 };
-use protobuf;
 use std::iter::repeat;
 
 /// The namespace for storage
