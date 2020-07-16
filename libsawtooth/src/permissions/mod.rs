@@ -21,6 +21,7 @@
 //! of activities and a policy.
 
 mod error;
+pub mod verifier;
 
 pub use error::IdentityError;
 
