@@ -30,8 +30,6 @@ pub mod database;
 #[cfg(feature = "validator-internals")]
 pub mod execution;
 #[cfg(feature = "validator-internals")]
-pub mod gossip;
-#[cfg(feature = "validator-internals")]
 pub mod hashlib;
 #[cfg(feature = "validator-internals")]
 pub mod journal;
