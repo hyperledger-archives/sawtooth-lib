@@ -20,7 +20,6 @@ use crate::{
     protos::identity::{Policy, PolicyList, Role, RoleList},
     state::{error::StateDatabaseError, StateReader},
 };
-use protobuf;
 use std::iter::repeat;
 
 /// The namespace for storage
@@ -106,16 +105,16 @@ impl IdentityView {
                     None
                 })
             })
-            .and_then(|list_opt| {
+            .map(|list_opt| {
                 if let Some(list) = list_opt {
                     for item in list.values() {
                         if item.name() == name {
-                            return Ok(Some(item.clone()));
+                            return Some(item.clone());
                         }
                     }
                 }
                 // We didn't find the item, so return None
-                Ok(None)
+                None
             })
     }
 
