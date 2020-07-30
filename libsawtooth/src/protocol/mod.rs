@@ -17,6 +17,8 @@
 
 //! Structs that cover the core protocols of the Sawtooth system.
 
+pub mod setting;
+
 use crate::protos::ProtoConversionError;
 
 /// Errors that may occur when building a protocol object
