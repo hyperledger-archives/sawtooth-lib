@@ -18,7 +18,8 @@
 use crate::{
     hashlib::sha256_digest_str,
     protos::identity::{Policy, PolicyList, Role, RoleList},
-    state::{error::StateDatabaseError, StateReader},
+    state::error::StateDatabaseError,
+    state::StateReader,
 };
 use std::iter::repeat;
 

@@ -14,12 +14,12 @@
  * limitations under the License.
  * ------------------------------------------------------------------------------
  */
-use crate::database::lmdb::LmdbDatabase;
-use crate::state::{
-    error::StateDatabaseError,
-    merkle::{DecodedMerkleStateReader, MerkleDatabase},
-    StateReader,
-};
+use transact::database::lmdb::LmdbDatabase;
+use transact::state::merkle::MerkleRadixTree;
+
+use crate::state::error::StateDatabaseError;
+use crate::state::merkle::DecodedMerkleStateReader;
+use crate::state::StateReader;
 
 /// The StateViewFactory produces StateViews for a particular merkle root.
 ///
@@ -40,8 +40,8 @@ impl StateViewFactory {
         &self,
         state_root_hash: &str,
     ) -> Result<V, StateDatabaseError> {
-        let merkle_db = DecodedMerkleStateReader::new(MerkleDatabase::new(
-            self.state_database.clone(),
+        let merkle_db = DecodedMerkleStateReader::new(MerkleRadixTree::new(
+            Box::new(self.state_database.clone()),
             Some(state_root_hash),
         )?);
         Ok(V::from(Box::new(merkle_db)))

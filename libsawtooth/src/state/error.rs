@@ -20,8 +20,8 @@ use std::fmt;
 use cbor::decoder::DecodeError;
 use cbor::encoder::EncodeError;
 use protobuf::ProtobufError;
-
-use crate::database::error::DatabaseError;
+use transact::database::error::DatabaseError;
+use transact::state::merkle::StateDatabaseError as TransactStateDatabaseError;
 
 #[derive(Debug)]
 pub enum StateDatabaseError {
@@ -34,6 +34,8 @@ pub enum StateDatabaseError {
     #[allow(dead_code)]
     InvalidChangeLogIndex(String),
     DatabaseError(DatabaseError),
+    ProtobufConversionError(Box<dyn Error>),
+    UnknownError,
 }
 
 impl fmt::Display for StateDatabaseError {
@@ -59,6 +61,10 @@ impl fmt::Display for StateDatabaseError {
             StateDatabaseError::DatabaseError(ref err) => {
                 write!(f, "A database error occurred: {}", err)
             }
+            StateDatabaseError::ProtobufConversionError(ref err) => {
+                write!(f, "A protobuf conversion error occurred: {}", err)
+            }
+            StateDatabaseError::UnknownError => write!(f, "An unknown error occurred"),
         }
     }
 }
@@ -74,6 +80,37 @@ impl Error for StateDatabaseError {
             StateDatabaseError::InvalidHash(_) => None,
             StateDatabaseError::InvalidChangeLogIndex(_) => None,
             StateDatabaseError::DatabaseError(ref err) => Some(err),
+            StateDatabaseError::ProtobufConversionError(ref err) => Some(&**err),
+            StateDatabaseError::UnknownError => None,
+        }
+    }
+}
+
+impl From<TransactStateDatabaseError> for StateDatabaseError {
+    fn from(err: TransactStateDatabaseError) -> Self {
+        match err {
+            TransactStateDatabaseError::NotFound(msg) => StateDatabaseError::NotFound(msg),
+            TransactStateDatabaseError::DeserializationError(err) => {
+                StateDatabaseError::DeserializationError(err)
+            }
+            TransactStateDatabaseError::SerializationError(err) => {
+                StateDatabaseError::SerializationError(err)
+            }
+            TransactStateDatabaseError::ChangeLogEncodingError(msg) => {
+                StateDatabaseError::ChangeLogEncodingError(msg)
+            }
+            TransactStateDatabaseError::InvalidRecord => StateDatabaseError::InvalidRecord,
+            TransactStateDatabaseError::InvalidHash(msg) => StateDatabaseError::InvalidHash(msg),
+            TransactStateDatabaseError::InvalidChangeLogIndex(msg) => {
+                StateDatabaseError::InvalidChangeLogIndex(msg)
+            }
+            TransactStateDatabaseError::DatabaseError(err) => {
+                StateDatabaseError::DatabaseError(err)
+            }
+            TransactStateDatabaseError::ProtobufConversionError(err) => {
+                StateDatabaseError::ProtobufConversionError(Box::new(err))
+            }
+            TransactStateDatabaseError::UnknownError => StateDatabaseError::UnknownError,
         }
     }
 }
