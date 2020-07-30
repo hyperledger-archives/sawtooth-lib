@@ -21,7 +21,8 @@ use std::iter::repeat;
 use std::num::ParseIntError;
 
 use crate::hashlib::sha256_digest_str;
-use crate::protos::setting::Setting;
+use crate::protocol::setting::Setting;
+use crate::protos::{FromBytes, ProtoConversionError};
 use crate::state::error::StateDatabaseError;
 use crate::state::StateReader;
 
@@ -32,7 +33,7 @@ const ADDRESS_PART_SIZE: usize = 16;
 #[derive(Debug)]
 pub enum SettingsViewError {
     StateDatabaseError(StateDatabaseError),
-    EncodingError(protobuf::ProtobufError),
+    EncodingError(ProtoConversionError),
 
     ParseIntError(ParseIntError),
 }
@@ -43,8 +44,8 @@ impl From<StateDatabaseError> for SettingsViewError {
     }
 }
 
-impl From<protobuf::ProtobufError> for SettingsViewError {
-    fn from(err: protobuf::ProtobufError) -> Self {
+impl From<ProtoConversionError> for SettingsViewError {
+    fn from(err: ProtoConversionError) -> Self {
         SettingsViewError::EncodingError(err)
     }
 }
@@ -116,19 +117,16 @@ impl SettingsView {
             Err(StateDatabaseError::NotFound(_)) => return Ok(default_value),
             Err(err) => return Err(SettingsViewError::from(err)),
         };
-        let setting_opt = if let Some(bytes) = bytes_opt {
-            Some(protobuf::parse_from_bytes::<Setting>(&bytes)?)
-        } else {
-            None
-        };
 
-        let optional_str_value: Option<String> = setting_opt.and_then(|setting| {
-            setting
-                .get_entries()
-                .iter()
-                .find(|entry| entry.key == key)
-                .map(|entry| entry.get_value().to_string())
-        });
+        let optional_str_value = bytes_opt
+            .map(|bytes| Vec::from_bytes(&bytes))
+            .transpose()?
+            .and_then(|settings: Vec<Setting>| {
+                settings
+                    .iter()
+                    .find(|setting| setting.key() == key)
+                    .map(|setting| setting.value().to_string())
+            });
 
         {
             // cache it:
@@ -172,11 +170,9 @@ fn short_hash(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::protos::setting::Setting;
-    use crate::protos::setting::Setting_Entry;
-    use protobuf;
-    use protobuf::Message;
-    use std::collections::HashMap;
+
+    use crate::protocol::setting::SettingBuilder;
+    use crate::protos::IntoBytes;
 
     #[test]
     fn addresses() {
@@ -263,17 +259,16 @@ mod tests {
     }
 
     fn setting_entry(key: &str, value: &str) -> (String, Vec<u8>) {
-        let mut setting = Setting::new();
-        let mut setting_entry = Setting_Entry::new();
-        setting_entry.set_key(key.into());
-        setting_entry.set_value(value.into());
-
-        setting.set_entries(protobuf::RepeatedField::from_vec(vec![setting_entry]));
+        let setting = SettingBuilder::new()
+            .with_key(key.into())
+            .with_value(value.into())
+            .build()
+            .expect("Unable to build setting");
 
         (
             setting_address(key),
-            setting
-                .write_to_bytes()
+            vec![setting]
+                .into_bytes()
                 .expect("Unable to serialize setting"),
         )
     }
