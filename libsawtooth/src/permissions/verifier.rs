@@ -20,10 +20,11 @@
 //! signatories.
 
 use crate::batch::Batch;
+use crate::protocol::identity::{Permission, Policy};
 use crate::transaction::Transaction;
 
 use super::error::IdentityError;
-use super::{IdentitySource, Permission, Policy};
+use super::IdentitySource;
 
 // Roles
 const ROLE_TRANSACTOR: &str = "transactor";
@@ -80,7 +81,7 @@ impl PermissionVerifier {
                     identity_source.get_role(ROLE_TRANSACTOR)
                 }
             })?
-            .map(|role| role.policy_name)
+            .map(|role| role.policy_name().to_string())
             .or_else(|| default_policy.map(ToString::to_string));
 
         let policy = if let Some(name) = policy_name {
@@ -120,7 +121,7 @@ impl PermissionVerifier {
         transactions: &[Transaction],
         default_policy: Option<&str>,
     ) -> Result<bool, IdentityError> {
-        let general_txn_policy_name: Option<String> = identity_source
+        let general_txn_policy_name = identity_source
             .get_role(ROLE_TXN_TRANSACTOR)
             .and_then(|found| {
                 if found.is_some() {
@@ -129,16 +130,16 @@ impl PermissionVerifier {
                     identity_source.get_role(ROLE_TRANSACTOR)
                 }
             })?
-            .map(|role| role.policy_name)
+            .map(|role| role.policy_name().to_string())
             .or_else(|| default_policy.map(ToString::to_string));
 
         for transaction in transactions {
-            let policy_name: Option<String> = identity_source
+            let policy_name = identity_source
                 .get_role(&format!(
                     "{}.{}",
                     ROLE_TXN_TRANSACTOR, transaction.family_name
                 ))?
-                .map(|role| role.policy_name);
+                .map(|role| role.policy_name().to_string());
 
             let policy = if let Some(name) = policy_name
                 .as_ref()
@@ -188,8 +189,7 @@ mod tests {
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
 
-    use crate::permissions::error::IdentityError;
-    use crate::permissions::{IdentitySource, Permission, Policy, Role};
+    use crate::protocol::identity::{PolicyBuilder, Role, RoleBuilder};
 
     #[test]
     /// Test that if no roles are set and no default policy is set,
@@ -221,7 +221,7 @@ mod tests {
 
         {
             let mut on_chain_identities = TestIdentitySource::default();
-            on_chain_identities.add_policy(Policy::new(
+            on_chain_identities.add_policy(create_policy(
                 "default",
                 vec![Permission::PermitKey("*".into())],
             ));
@@ -233,7 +233,7 @@ mod tests {
 
         {
             let mut on_chain_identities = TestIdentitySource::default();
-            on_chain_identities.add_policy(Policy::new(
+            on_chain_identities.add_policy(create_policy(
                 "default",
                 vec![Permission::DenyKey("*".into())],
             ));
@@ -254,11 +254,11 @@ mod tests {
 
         {
             let mut on_chain_identities = TestIdentitySource::default();
-            on_chain_identities.add_policy(Policy::new(
+            on_chain_identities.add_policy(create_policy(
                 "policy1",
                 vec![Permission::PermitKey(pub_key.clone())],
             ));
-            on_chain_identities.add_role(Role::new("transactor", "policy1"));
+            on_chain_identities.add_role(create_role("transactor", "policy1"));
 
             let permission_verifier = on_chain_verifier(on_chain_identities);
             assert!(permission_verifier
@@ -267,11 +267,11 @@ mod tests {
         }
         {
             let mut on_chain_identities = TestIdentitySource::default();
-            on_chain_identities.add_policy(Policy::new(
+            on_chain_identities.add_policy(create_policy(
                 "policy1",
                 vec![Permission::DenyKey(pub_key.clone())],
             ));
-            on_chain_identities.add_role(Role::new("transactor", "policy1"));
+            on_chain_identities.add_role(create_role("transactor", "policy1"));
 
             let permission_verifier = on_chain_verifier(on_chain_identities);
             assert!(!permission_verifier
@@ -290,11 +290,11 @@ mod tests {
 
         {
             let mut on_chain_identities = TestIdentitySource::default();
-            on_chain_identities.add_policy(Policy::new(
+            on_chain_identities.add_policy(create_policy(
                 "policy1",
                 vec![Permission::PermitKey(pub_key.clone())],
             ));
-            on_chain_identities.add_role(Role::new("transactor.batch_signer", "policy1"));
+            on_chain_identities.add_role(create_role("transactor.batch_signer", "policy1"));
 
             let permission_verifier = on_chain_verifier(on_chain_identities);
             assert!(permission_verifier
@@ -303,11 +303,11 @@ mod tests {
         }
         {
             let mut on_chain_identities = TestIdentitySource::default();
-            on_chain_identities.add_policy(Policy::new(
+            on_chain_identities.add_policy(create_policy(
                 "policy1",
                 vec![Permission::DenyKey(pub_key.clone())],
             ));
-            on_chain_identities.add_role(Role::new("transactor.batch_signer", "policy1"));
+            on_chain_identities.add_role(create_role("transactor.batch_signer", "policy1"));
 
             let permission_verifier = on_chain_verifier(on_chain_identities);
             assert!(!permission_verifier
@@ -326,11 +326,11 @@ mod tests {
 
         {
             let mut on_chain_identities = TestIdentitySource::default();
-            on_chain_identities.add_policy(Policy::new(
+            on_chain_identities.add_policy(create_policy(
                 "policy1",
                 vec![Permission::PermitKey(pub_key.clone())],
             ));
-            on_chain_identities.add_role(Role::new("transactor.transaction_signer", "policy1"));
+            on_chain_identities.add_role(create_role("transactor.transaction_signer", "policy1"));
 
             let permission_verifier = on_chain_verifier(on_chain_identities);
             assert!(permission_verifier
@@ -339,11 +339,11 @@ mod tests {
         }
         {
             let mut on_chain_identities = TestIdentitySource::default();
-            on_chain_identities.add_policy(Policy::new(
+            on_chain_identities.add_policy(create_policy(
                 "policy1",
                 vec![Permission::PermitKey("other".to_string())],
             ));
-            on_chain_identities.add_role(Role::new("transactor.transaction_signer", "policy1"));
+            on_chain_identities.add_role(create_role("transactor.transaction_signer", "policy1"));
 
             let permission_verifier = on_chain_verifier(on_chain_identities);
             assert!(!permission_verifier
@@ -362,12 +362,14 @@ mod tests {
 
         {
             let mut on_chain_identities = TestIdentitySource::default();
-            on_chain_identities.add_policy(Policy::new(
+            on_chain_identities.add_policy(create_policy(
                 "policy1",
                 vec![Permission::PermitKey(pub_key.clone())],
             ));
-            on_chain_identities
-                .add_role(Role::new("transactor.transaction_signer.intkey", "policy1"));
+            on_chain_identities.add_role(create_role(
+                "transactor.transaction_signer.intkey",
+                "policy1",
+            ));
 
             let permission_verifier = on_chain_verifier(on_chain_identities);
             assert!(permission_verifier
@@ -376,12 +378,14 @@ mod tests {
         }
         {
             let mut on_chain_identities = TestIdentitySource::default();
-            on_chain_identities.add_policy(Policy::new(
+            on_chain_identities.add_policy(create_policy(
                 "policy1",
                 vec![Permission::PermitKey("other".to_string())],
             ));
-            on_chain_identities
-                .add_role(Role::new("transactor.transaction_signer.intkey", "policy1"));
+            on_chain_identities.add_role(create_role(
+                "transactor.transaction_signer.intkey",
+                "policy1",
+            ));
 
             let permission_verifier = on_chain_verifier(on_chain_identities);
             assert!(!permission_verifier
@@ -433,6 +437,22 @@ mod tests {
             .collect()
     }
 
+    fn create_policy(name: &str, permissions: Vec<Permission>) -> Policy {
+        PolicyBuilder::new()
+            .with_name(name.into())
+            .with_permissions(permissions)
+            .build()
+            .expect("Failed to build policy")
+    }
+
+    fn create_role(name: &str, policy_name: &str) -> Role {
+        RoleBuilder::new()
+            .with_name(name.into())
+            .with_policy_name(policy_name.into())
+            .build()
+            .expect("Failed to build role")
+    }
+
     #[derive(Default)]
     struct TestIdentitySource {
         policies: HashMap<String, Policy>,
@@ -441,11 +461,11 @@ mod tests {
 
     impl TestIdentitySource {
         fn add_policy(&mut self, policy: Policy) {
-            self.policies.insert(policy.name.clone(), policy);
+            self.policies.insert(policy.name().into(), policy);
         }
 
         fn add_role(&mut self, role: Role) {
-            self.roles.insert(role.name.clone(), role);
+            self.roles.insert(role.name().into(), role);
         }
     }
 

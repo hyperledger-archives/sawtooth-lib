@@ -140,7 +140,7 @@ impl IntoBytes for Vec<Setting> {
 impl IntoNative<Vec<Setting>> for SettingProto {}
 impl IntoProto<SettingProto> for Vec<Setting> {}
 
-/// Builder for the `Setting` struct
+/// Builder for [`Setting`](struct.Setting.html)
 #[derive(Default, Clone)]
 pub struct SettingBuilder {
     key: Option<String>,

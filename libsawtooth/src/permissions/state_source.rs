@@ -15,42 +15,21 @@
  * ------------------------------------------------------------------------------
  */
 
-use crate::protos::identity::Policy_EntryType;
+use crate::protocol::identity::{Policy, Role};
 use crate::state::identity_view::IdentityView;
 
-use super::{IdentityError, IdentitySource, Permission, Policy, Role};
+use super::{IdentityError, IdentitySource};
 
 impl IdentitySource for IdentityView {
     fn get_role(&self, name: &str) -> Result<Option<Role>, IdentityError> {
-        let role = IdentityView::get_role(self, name).map_err(|err| {
+        IdentityView::get_role(self, name).map_err(|err| {
             IdentityError::ReadError(format!("unable to read role from state: {:?}", err))
-        })?;
-
-        Ok(role.map(|mut role| Role::new(role.take_name(), role.take_policy_name())))
+        })
     }
 
     fn get_policy_by_name(&self, name: &str) -> Result<Option<Policy>, IdentityError> {
-        let policy = IdentityView::get_policy(self, name).map_err(|err| {
+        IdentityView::get_policy(self, name).map_err(|err| {
             IdentityError::ReadError(format!("unable to read policy from state: {:?}", err))
-        })?;
-
-        if let Some(mut policy) = policy {
-            let permissions: Result<Vec<Permission>, IdentityError> = policy
-                .take_entries()
-                .into_iter()
-                .map(|mut entry| match entry.get_field_type() {
-                    Policy_EntryType::PERMIT_KEY => Ok(Permission::PermitKey(entry.take_key())),
-                    Policy_EntryType::DENY_KEY => Ok(Permission::DenyKey(entry.take_key())),
-                    Policy_EntryType::ENTRY_TYPE_UNSET => Err(IdentityError::ReadError(format!(
-                        "policy {} is contains invalid type",
-                        entry.get_key()
-                    ))),
-                })
-                .collect();
-
-            Ok(Some(Policy::new(policy.take_name(), permissions?)))
-        } else {
-            Ok(None)
-        }
+        })
     }
 }

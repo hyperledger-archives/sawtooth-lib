@@ -17,6 +17,7 @@
 
 //! Structs that cover the core protocols of the Sawtooth system.
 
+pub mod identity;
 pub mod setting;
 
 use crate::protos::ProtoConversionError;
