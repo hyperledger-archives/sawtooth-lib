@@ -26,8 +26,6 @@ pub mod block;
 #[cfg(feature = "validator-internals")]
 pub mod consensus;
 #[cfg(feature = "validator-internals")]
-pub mod database;
-#[cfg(feature = "validator-internals")]
 pub mod execution;
 #[cfg(feature = "validator-internals")]
 pub mod hashlib;

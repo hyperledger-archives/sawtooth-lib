@@ -17,10 +17,11 @@
 
 use protobuf::Message;
 
-use crate::database::error::DatabaseError;
-use crate::database::lmdb::DatabaseReader;
-use crate::database::lmdb::LmdbDatabase;
-use crate::database::lmdb::LmdbDatabaseWriter;
+use transact::database::error::DatabaseError;
+use transact::database::lmdb::LmdbDatabase;
+use transact::database::lmdb::LmdbDatabaseWriter;
+use transact::database::{DatabaseReader, DatabaseWriter};
+
 use crate::journal::block_store::{
     BatchIndex, BlockStore, BlockStoreError, IndexedBlockStore, TransactionIndex,
 };
@@ -45,7 +46,7 @@ impl CommitStore {
         reader: &dyn DatabaseReader,
         block_id: &[u8],
     ) -> Result<ProtoBlock, DatabaseError> {
-        let packed = reader.get(&block_id).ok_or_else(|| {
+        let packed = reader.get(&block_id)?.ok_or_else(|| {
             DatabaseError::NotFoundError(format!("Block not found: {:?}", block_id))
         })?;
         let proto_block: ProtoBlock = protobuf::parse_from_bytes(&packed).map_err(|err| {
@@ -207,7 +208,7 @@ impl CommitStore {
         for block in blocks {
             Self::put_block(&mut writer, block)?;
         }
-        writer.commit()
+        Box::new(writer).commit()
     }
 
     fn put_block(writer: &mut LmdbDatabaseWriter, block: Block) -> Result<(), DatabaseError> {
@@ -287,7 +288,7 @@ impl CommitStore {
             blocks.push(Self::delete_block_by_id(&mut writer, block_id)?);
         }
 
-        writer.commit()?;
+        Box::new(writer).commit()?;
 
         Ok(blocks)
     }
@@ -337,7 +338,7 @@ impl CommitStore {
     }
 
     pub fn contains_block(&self, block_id: &str) -> Result<bool, DatabaseError> {
-        match self.db.reader()?.get(block_id.as_bytes()) {
+        match self.db.reader()?.get(block_id.as_bytes())? {
             Some(_) => Ok(true),
             None => Ok(false),
         }

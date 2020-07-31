@@ -17,11 +17,11 @@
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 
-use crate::database::lmdb::LmdbDatabase;
-use crate::state::merkle::MerkleDatabase;
+use transact::database::lmdb::LmdbDatabase;
+use transact::state::merkle::MerkleRadixTree;
 
 /// The StatePruneManager manages a collection of state root hashes that will be
-/// prune from the MerkleDatabase at intervals.  Pruning will occur by decimating
+/// prune from the MerkleRadixTree at intervals.  Pruning will occur by decimating
 /// the state root hashes.  I.e. ten percent (rounded down) of the state roots in
 /// the queue will be pruned.  This allows state roots to remain in the queue for
 /// a period of time, on the chance that they are from a chain that has been
@@ -103,7 +103,7 @@ impl StatePruningManager {
 
         let mut total_pruned_entries: usize = 0;
         for candidate in prune_candidates {
-            match MerkleDatabase::prune(&self.state_database, &candidate.1) {
+            match MerkleRadixTree::prune(&self.state_database, &candidate.1) {
                 Ok(removed_keys) => {
                     total_pruned_entries += removed_keys.len();
 
