@@ -25,7 +25,7 @@ description = """\
 
 [dependencies]
 cbor-codec = { version = "0.7", optional = true }
-hex = { version = "0.4", optional = true }
+hex = "0.4"
 log = "0.4"
 lmdb-zero = { version = "0.4", optional = true }
 metrics = { version = "0.12", features = ["std"], optional = true }
@@ -60,7 +60,6 @@ redis-store = ["redis", "stores"]
 stores = []
 validator-internals = [
   "cbor-codec",
-  "hex",
   "lmdb-zero",
   "metrics",
   "openssl",

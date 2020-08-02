@@ -33,7 +33,7 @@ pub struct StatePruningManager {
 }
 
 #[derive(Eq, PartialEq, Debug, Ord)]
-struct PruneCandidate(u64, String);
+struct PruneCandidate(u64, Vec<u8>);
 
 impl PartialOrd for PruneCandidate {
     fn partial_cmp(&self, other: &PruneCandidate) -> Option<Ordering> {
@@ -52,7 +52,7 @@ impl StatePruningManager {
     /// Updates the pruning queue.  Abandoned roots will be added to the queue.
     /// Added roots will be removed from the queue.  This ensures that the state
     /// roots won't be removed, regardless of the chain state.
-    pub fn update_queue(&mut self, added_roots: &[&str], abandoned_roots: &[(u64, &str)]) {
+    pub fn update_queue(&mut self, added_roots: &[&[u8]], abandoned_roots: &[(u64, &[u8])]) {
         // add the roots that have been abandoned.
         for (height, state_root_hash) in abandoned_roots {
             self.add_to_queue(*height, state_root_hash);
@@ -64,10 +64,10 @@ impl StatePruningManager {
         self.state_root_prune_queue = new_queue
             .into_iter()
             .filter(|candidate| {
-                if !added_roots.contains(&candidate.1.as_str()) {
+                if !added_roots.contains(&candidate.1.as_slice()) {
                     true
                 } else {
-                    debug!("Removing {} from pruning queue", candidate.1);
+                    debug!("Removing {} from pruning queue", hex::encode(&candidate.1));
                     false
                 }
             })
@@ -75,14 +75,14 @@ impl StatePruningManager {
     }
 
     /// Add a single state root to the pruning queue.
-    pub fn add_to_queue(&mut self, height: u64, state_root_hash: &str) {
+    pub fn add_to_queue(&mut self, height: u64, state_root_hash: &[u8]) {
         let state_root_hash = state_root_hash.into();
         if !self
             .state_root_prune_queue
             .iter()
             .any(|candidate| candidate.1 == state_root_hash)
         {
-            debug!("Adding {} to pruning queue", state_root_hash);
+            debug!("Adding {} to pruning queue", hex::encode(&state_root_hash));
             self.state_root_prune_queue
                 .push(PruneCandidate(height, state_root_hash));
         }
@@ -103,7 +103,7 @@ impl StatePruningManager {
 
         let mut total_pruned_entries: usize = 0;
         for candidate in prune_candidates {
-            match MerkleRadixTree::prune(&self.state_database, &candidate.1) {
+            match MerkleRadixTree::prune(&self.state_database, &hex::encode(&candidate.1)) {
                 Ok(removed_keys) => {
                     total_pruned_entries += removed_keys.len();
 
@@ -116,7 +116,11 @@ impl StatePruningManager {
                     }
                 }
                 Err(err) => {
-                    error!("Unable to prune state root {}: {:?}", candidate.1, err);
+                    error!(
+                        "Unable to prune state root {}: {:?}",
+                        hex::encode(&candidate.1),
+                        err
+                    );
                     self.state_root_prune_queue.push(candidate);
                 }
             }

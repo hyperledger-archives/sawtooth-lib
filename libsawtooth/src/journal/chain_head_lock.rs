@@ -15,8 +15,9 @@
  * ------------------------------------------------------------------------------
  */
 
+use crate::batch::Batch;
 use crate::journal::publisher::{PublisherState, SyncPublisher};
-use crate::{batch::Batch, block::Block};
+use crate::protocol::block::BlockPair;
 
 use std::sync::RwLockWriteGuard;
 
@@ -53,7 +54,7 @@ pub struct ChainHeadGuard<'a> {
 impl<'a> ChainHeadGuard<'a> {
     pub fn notify_on_chain_updated(
         &mut self,
-        chain_head: Block,
+        chain_head: BlockPair,
         committed_batches: Vec<Batch>,
         uncommitted_batches: Vec<Batch>,
     ) {

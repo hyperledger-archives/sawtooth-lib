@@ -26,7 +26,7 @@ pub trait Scheduler: Sync + Send {
     fn add_batch(
         &mut self,
         batch: Batch,
-        expected_state_hash: Option<&str>,
+        expected_state_hash: Option<&[u8]>,
         required: bool,
     ) -> Result<(), SchedulerError>;
 
@@ -47,8 +47,8 @@ pub enum SchedulerError {
 }
 
 pub struct ExecutionResults {
-    pub beginning_state_hash: Option<String>,
-    pub ending_state_hash: Option<String>,
+    pub beginning_state_hash: Option<Vec<u8>>,
+    pub ending_state_hash: Option<Vec<u8>>,
     pub batch_results: Vec<BatchExecutionResult>,
 }
 

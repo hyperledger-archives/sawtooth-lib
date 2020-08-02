@@ -19,7 +19,7 @@ pub fn sha256_digest_str(item: &str) -> String {
     hex::encode(openssl::sha::sha256(item.as_bytes()))
 }
 
-pub fn sha256_digest_strs(strs: &[&str]) -> Vec<u8> {
+pub fn sha256_digest_strs(strs: &[String]) -> Vec<u8> {
     let mut hasher = openssl::sha::Sha256::new();
     for item in strs {
         hasher.update(item.as_bytes());

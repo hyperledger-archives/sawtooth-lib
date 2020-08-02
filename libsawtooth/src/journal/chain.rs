@@ -36,7 +36,6 @@ use std::time::Duration;
 
 use crate::{
     batch::Batch,
-    block::Block,
     consensus::{notifier::ConsensusNotifier, registry::ConsensusRegistry},
     execution::execution_platform::ExecutionPlatform,
     journal::chain_head_lock::ChainHeadLock,
@@ -50,6 +49,7 @@ use crate::{
         fork_cache::ForkCache,
         NULL_BLOCK_IDENTIFIER,
     },
+    protocol::block::BlockPair,
     protos::transaction_receipt::TransactionReceipt,
     scheduler::TxnExecutionResult,
     state::{state_pruning_manager::StatePruningManager, state_view_factory::StateViewFactory},
@@ -63,10 +63,10 @@ pub enum ChainReadError {
 }
 
 pub trait ChainReader: Send + Sync {
-    fn chain_head(&self) -> Result<Option<Block>, ChainReadError>;
+    fn chain_head(&self) -> Result<Option<BlockPair>, ChainReadError>;
     fn count_committed_transactions(&self) -> Result<usize, ChainReadError>;
-    fn get_block_by_block_num(&self, block_num: u64) -> Result<Option<Block>, ChainReadError>;
-    fn get_block_by_block_id(&self, block_id: &str) -> Result<Option<Block>, ChainReadError>;
+    fn get_block_by_block_num(&self, block_num: u64) -> Result<Option<BlockPair>, ChainReadError>;
+    fn get_block_by_block_id(&self, block_id: &str) -> Result<Option<BlockPair>, ChainReadError>;
 }
 
 const RECV_TIMEOUT_MILLIS: u64 = 100;
@@ -120,16 +120,16 @@ impl From<BlockManagerError> for ChainControllerError {
 }
 
 pub trait ChainObserver: Send + Sync {
-    fn chain_update(&mut self, block: &Block, receipts: &[TransactionReceipt]);
+    fn chain_update(&mut self, block: &BlockPair, receipts: &[TransactionReceipt]);
 }
 
 /// Holds the results of Block Validation.
 struct ForkResolutionResult<'a> {
-    pub block: &'a Block,
-    pub chain_head: Option<&'a Block>,
+    pub block: &'a BlockPair,
+    pub chain_head: Option<&'a BlockPair>,
 
-    pub new_chain: Vec<Block>,
-    pub current_chain: Vec<Block>,
+    pub new_chain: Vec<BlockPair>,
+    pub current_chain: Vec<BlockPair>,
 
     pub committed_batches: Vec<Batch>,
     pub uncommitted_batches: Vec<Batch>,
@@ -155,27 +155,33 @@ struct ChainControllerState {
 impl ChainControllerState {
     fn build_fork<'a>(
         &mut self,
-        block: &'a Block,
-        chain_head: &'a Block,
+        block: &'a BlockPair,
+        chain_head: &'a BlockPair,
     ) -> Result<ForkResolutionResult<'a>, ChainControllerError> {
         let new_block = block.clone();
 
         let new_chain = self
             .block_manager
-            .branch_diff(&new_block.header_signature, &chain_head.header_signature)?
-            .collect::<Vec<Block>>();
+            .branch_diff(
+                new_block.block().header_signature(),
+                chain_head.block().header_signature(),
+            )?
+            .collect::<Vec<_>>();
         let current_chain = self
             .block_manager
-            .branch_diff(&chain_head.header_signature, &new_block.header_signature)?
-            .collect::<Vec<Block>>();
+            .branch_diff(
+                chain_head.block().header_signature(),
+                new_block.block().header_signature(),
+            )?
+            .collect::<Vec<_>>();
 
         let committed_batches: Vec<Batch> = new_chain.iter().fold(vec![], |mut batches, block| {
-            batches.append(&mut block.batches.clone());
+            batches.append(&mut block.block().batches().to_vec());
             batches
         });
         let uncommitted_batches: Vec<Batch> =
             current_chain.iter().fold(vec![], |mut batches, block| {
-                batches.append(&mut block.batches.clone());
+                batches.append(&mut block.block().batches().to_vec());
                 batches
             });
 
@@ -196,10 +202,13 @@ impl ChainControllerState {
 
         info!(
             "Building fork resolution for chain head '{}' against new block '{}'",
-            &chain_head, &new_block
+            chain_head.block(),
+            new_block.block()
         );
         if let Some(prior_heads_successor) = result.new_chain.get(0) {
-            if prior_heads_successor.previous_block_id != chain_head.header_signature {
+            if prior_heads_successor.header().previous_block_id()
+                != chain_head.block().header_signature()
+            {
                 counter!("chain.ChainController.chain_head_moved_to_fork_count", 1);
             }
         }
@@ -209,22 +218,23 @@ impl ChainControllerState {
 
     fn check_chain_head_updated(
         &self,
-        expected_chain_head: &Block,
-        block: &Block,
+        expected_chain_head: &BlockPair,
+        block: &BlockPair,
     ) -> Result<bool, ChainControllerError> {
         let actual_chain_head = self.chain_reader.chain_head()?;
 
         let chain_head_updated = actual_chain_head.as_ref().map(|actual_chain_head| {
-            actual_chain_head.header_signature != expected_chain_head.header_signature
+            actual_chain_head.block().header_signature()
+                != expected_chain_head.block().header_signature()
         });
 
         if chain_head_updated.unwrap_or(false) {
             warn!(
                 "Chain head updated from {} to {} while resolving \
                  fork for block {}. Reprocessing resolution.",
-                expected_chain_head,
-                actual_chain_head.as_ref().unwrap(),
-                block
+                expected_chain_head.block(),
+                actual_chain_head.as_ref().unwrap().block(),
+                block.block()
             );
             return Ok(true);
         }
@@ -246,7 +256,7 @@ pub struct ChainController<TEP: ExecutionPlatform + Clone> {
 
     // Queues
     block_queue_sender: Option<Sender<String>>,
-    commit_queue_sender: Option<Sender<Block>>,
+    commit_queue_sender: Option<Sender<BlockPair>>,
     validation_result_sender: Option<Sender<BlockValidationResult>>,
 
     state_pruning_block_depth: u32,
@@ -299,7 +309,7 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
         chain_controller
     }
 
-    pub fn chain_head(&self) -> Option<Block> {
+    pub fn chain_head(&self) -> Option<BlockPair> {
         let state = self
             .state
             .read()
@@ -341,19 +351,19 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
         &self,
         state: &mut ChainControllerState,
         lock: &ChainHeadLock,
-        block: &Block,
+        block: &BlockPair,
     ) -> Result<(), ChainControllerError> {
-        if block.previous_block_id == NULL_BLOCK_IDENTIFIER {
+        if block.header().previous_block_id() == NULL_BLOCK_IDENTIFIER {
             let chain_id = state.chain_id_manager.get_block_chain_id()?;
             if chain_id
                 .as_ref()
-                .map(|block_id| block_id != &block.header_signature)
+                .map(|block_id| block_id != block.block().header_signature())
                 .unwrap_or(false)
             {
                 warn!(
                     "Block id does not match block chain id {}. Ignoring initial chain head: {}",
                     chain_id.unwrap(),
-                    block.header_signature
+                    block.block().header_signature()
                 );
             } else {
                 self.block_validator.validate_block(&block)?;
@@ -361,22 +371,25 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
                 if chain_id.is_none() {
                     state
                         .chain_id_manager
-                        .save_block_chain_id(&block.header_signature)?;
+                        .save_block_chain_id(block.block().header_signature())?;
                 }
 
                 state
                     .block_manager
-                    .persist(&block.header_signature, COMMIT_STORE)?;
+                    .persist(block.block().header_signature(), COMMIT_STORE)?;
 
                 // Create Ref-C: External reference for the chain head will be held until it is
                 // superceded by a new chain head.
                 state.chain_head = Some(
                     state
                         .block_manager
-                        .ref_block(block.header_signature.as_str())?,
+                        .ref_block(block.block().header_signature())?,
                 );
 
-                match self.block_validation_results.get(&block.header_signature) {
+                match self
+                    .block_validation_results
+                    .get(block.block().header_signature())
+                {
                     Some(validation_results) => {
                         let receipts: Vec<TransactionReceipt> = validation_results
                             .execution_results
@@ -390,7 +403,7 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
                     None => {
                         error!(
                             "While committing {}, found block missing execution results",
-                            &block,
+                            block.block(),
                         );
                     }
                 }
@@ -417,7 +430,8 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
                     if let Err(err) = self.set_genesis(&mut state, &self.chain_head_lock, &block) {
                         warn!(
                             "Unable to set chain head; genesis block {} is not valid: {:?}",
-                            &block.header_signature, err
+                            block.block().header_signature(),
+                            err
                         );
                     }
                 } else {
@@ -475,7 +489,7 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
             // point the block may be dropped if no other ext. ref's exist.
             if let Some(previous_block_id) = state
                 .fork_cache
-                .insert(&block_id, Some(&block.previous_block_id))
+                .insert(&block_id, Some(block.header().previous_block_id()))
             {
                 // Drop Ref-B: This fork was extended and so this block has an int. ref. count of
                 // at least one, so we can drop the ext. ref. placed on the block to keep the fork
@@ -509,11 +523,11 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
         Ok(())
     }
 
-    pub fn validate_block(&self, block: &Block) {
+    pub fn validate_block(&self, block: &BlockPair) {
         // If there is already a result for this block, no need to validate it
         if self
             .block_validation_results
-            .get(&block.header_signature)
+            .get(block.block().header_signature())
             .is_some()
         {
             return;
@@ -521,7 +535,7 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
 
         // Create block validation result, maked as in-validation
         self.block_validation_results.insert(BlockValidationResult {
-            block_id: block.header_signature.clone(),
+            block_id: block.block().header_signature().to_string(),
             execution_results: vec![],
             num_transactions: 0,
             status: BlockStatus::InValidation,
@@ -535,38 +549,44 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
             .submit_blocks_for_verification(&[block.clone()], &sender);
     }
 
-    pub fn ignore_block(&self, block: &Block) {
+    pub fn ignore_block(&self, block: &BlockPair) {
         let mut state = self
             .state
             .write()
             .expect("No lock holder should have poisoned the lock");
 
         // Drop Ref-C: Consensus is not interested in this block anymore
-        match state.block_references.remove(&block.header_signature) {
-            Some(_) => info!("Ignored block {}", block),
+        match state
+            .block_references
+            .remove(block.block().header_signature())
+        {
+            Some(_) => info!("Ignored block {}", block.block()),
             None => debug!(
                 "Could not ignore block {}; consensus has already decided on it",
-                &block.header_signature
+                block.block().header_signature()
             ),
         }
     }
 
-    pub fn fail_block(&self, block: &Block) {
+    pub fn fail_block(&self, block: &BlockPair) {
         let mut state = self
             .state
             .write()
             .expect("No lock holder should have poisoned the lock");
 
         // Drop Ref-C: Consensus is not interested in this block anymore
-        match state.block_references.remove(&block.header_signature) {
+        match state
+            .block_references
+            .remove(block.block().header_signature())
+        {
             Some(_) => {
                 self.block_validation_results
-                    .fail_block(&block.header_signature);
-                info!("Failed block {}", block);
+                    .fail_block(block.block().header_signature());
+                info!("Failed block {}", block.block());
             }
             None => debug!(
                 "Could not fail block {}; consensus has already decided on it",
-                &block.header_signature
+                block.block().header_signature()
             ),
         }
     }
@@ -575,7 +595,7 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
         self.block_validation_results.insert(result)
     }
 
-    fn get_block(&self, block_id: &str) -> Option<Block> {
+    fn get_block(&self, block_id: &str) -> Option<BlockPair> {
         let state = self
             .state
             .read()
@@ -584,7 +604,7 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
         state.block_manager.get(&[block_id]).next().unwrap_or(None)
     }
 
-    pub fn commit_block(&self, block: Block) {
+    pub fn commit_block(&self, block: BlockPair) {
         if let Some(sender) = self.commit_queue_sender.as_ref() {
             if let Err(err) = sender.send(block) {
                 error!("Unable to add block to block queue: {}", err);
@@ -592,12 +612,12 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
         } else {
             debug!(
                 "Attempting to commit block {} before chain controller is started; Ignoring",
-                block
+                block.block()
             );
         }
     }
 
-    fn on_block_validated(&self, block: &Block, result: &BlockValidationResult) {
+    fn on_block_validated(&self, block: &BlockPair, result: &BlockValidationResult) {
         counter!("chain.ChainController.blocks_considered_count", 1);
 
         match result.status {
@@ -607,11 +627,11 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
                 // either commit, fail, or ignore, at which time the ext. ref. will be accounted
                 // for (moved into chain head in case of commit, dropped otherwise)
                 self.consensus_notifier
-                    .notify_block_valid(&block.header_signature);
+                    .notify_block_valid(block.block().header_signature());
             }
             BlockStatus::Invalid => {
                 self.consensus_notifier
-                    .notify_block_invalid(&block.header_signature);
+                    .notify_block_invalid(block.block().header_signature());
 
                 let mut state = self
                     .state
@@ -622,28 +642,29 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
                 // interested in it. The invalid result will be cached for a period.
                 if state
                     .block_references
-                    .remove(&block.header_signature)
+                    .remove(block.block().header_signature())
                     .is_none()
                 {
                     error!(
                         "Reference not found for invalid block {}",
-                        &block.header_signature
+                        block.block().header_signature()
                     );
                 }
             }
             _ => error!(
                 "on_block_validated() called for block {}, but result was {:?}",
-                block.header_signature, result.status,
+                block.block().header_signature(),
+                result.status,
             ),
         }
 
-        match self.notify_block_validation_results_received(&block) {
+        match self.notify_block_validation_results_received(block) {
             Ok(_) => (),
             Err(err) => warn!("{:?}", err),
         }
     }
 
-    fn handle_block_commit(&mut self, block: &Block) -> Result<(), ChainControllerError> {
+    fn handle_block_commit(&mut self, block: &BlockPair) -> Result<(), ChainControllerError> {
         {
             // only hold this lock as long as the loop is active.
             let mut state = self
@@ -673,7 +694,7 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
 
                 let mut chain_head_guard = self.chain_head_lock.acquire();
                 let chain_head_updated = state
-                    .check_chain_head_updated(&chain_head, block)
+                    .check_chain_head_updated(&chain_head, &block)
                     .map_err(|err| {
                         error!(
                             "Error occured while checking if chain head updated: {:?}",
@@ -691,7 +712,7 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
                 state.chain_head = Some(
                     state
                         .block_references
-                        .remove(&block.header_signature)
+                        .remove(block.block().header_signature())
                         .ok_or_else(|| {
                             ChainControllerError::ConsensusError(
                                 "Consensus has already decided on this block".into(),
@@ -699,47 +720,41 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
                         })?,
                 );
 
-                let new_roots: Vec<String> = result
+                let new_roots = result
                     .new_chain
                     .iter()
-                    .map(|block| block.state_root_hash.clone())
-                    .collect();
-                let current_roots: Vec<(u64, String)> = result
+                    .map(|block| block.header().state_root_hash())
+                    .collect::<Vec<_>>();
+                let current_roots = result
                     .current_chain
                     .iter()
-                    .map(|block| (block.block_num, block.state_root_hash.clone()))
-                    .collect();
-                state.state_pruning_manager.update_queue(
-                    new_roots
-                        .iter()
-                        .map(|root| root.as_str())
-                        .collect::<Vec<_>>()
-                        .as_slice(),
-                    current_roots
-                        .iter()
-                        .map(|(num, root)| (*num, root.as_str()))
-                        .collect::<Vec<_>>()
-                        .as_slice(),
-                );
+                    .map(|block| (block.header().block_num(), block.header().state_root_hash()))
+                    .collect::<Vec<_>>();
+                state
+                    .state_pruning_manager
+                    .update_queue(new_roots.as_slice(), current_roots.as_slice());
 
                 state
                     .block_manager
-                    .persist(&block.header_signature, COMMIT_STORE)
+                    .persist(block.block().header_signature(), COMMIT_STORE)
                     .map_err(|err| {
                         error!("Error persisting new chain head: {:?}", err);
                         err
                     })?;
 
-                info!("Chain head updated to {}", &block);
+                info!("Chain head updated to {}", block.block());
 
                 self.consensus_notifier
-                    .notify_block_commit(&block.header_signature);
+                    .notify_block_commit(block.block().header_signature());
 
                 counter!(
                     "chain.ChainController.committed_transactions_count",
                     result.transaction_count as u64
                 );
-                gauge!("chain.ChainController.block_num", block.block_num as i64);
+                gauge!(
+                    "chain.ChainController.block_num",
+                    block.header().block_num() as i64
+                );
 
                 chain_head_guard.notify_on_chain_updated(
                     block.clone(),
@@ -747,7 +762,7 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
                     result.uncommitted_batches,
                 );
 
-                block.batches.iter().for_each(|batch| {
+                block.block().batches().iter().for_each(|batch| {
                     if batch.trace {
                         debug!(
                             "TRACE: {}: ChainController.on_block_validated",
@@ -757,7 +772,10 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
                 });
 
                 for blk in result.new_chain.iter().rev() {
-                    match self.block_validation_results.get(&blk.header_signature) {
+                    match self
+                        .block_validation_results
+                        .get(blk.block().header_signature())
+                    {
                         Some(validation_results) => {
                             let receipts: Vec<TransactionReceipt> = validation_results
                                 .execution_results
@@ -771,7 +789,8 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
                         None => {
                             error!(
                                 "While committing {}, found block {} missing execution results",
-                                &block, &blk,
+                                block.block(),
+                                blk.block(),
                             );
                         }
                     }
@@ -793,14 +812,15 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
                     total_committed_txns as i64
                 );
 
-                let chain_head_block_num = block.block_num;
+                let chain_head_block_num = block.header().block_num();
                 if chain_head_block_num + 1 > u64::from(self.state_pruning_block_depth) {
                     let prune_at =
                         chain_head_block_num - (u64::from(self.state_pruning_block_depth));
                     match state.chain_reader.get_block_by_block_num(prune_at) {
-                        Ok(Some(block)) => state
-                            .state_pruning_manager
-                            .add_to_queue(block.block_num, &block.state_root_hash),
+                        Ok(Some(block)) => state.state_pruning_manager.add_to_queue(
+                            block.header().block_num(),
+                            block.header().state_root_hash(),
+                        ),
                         Ok(None) => warn!("No block at block height {}; ignoring...", prune_at),
                         Err(err) => {
                             error!("Unable to fetch block at height {}: {:?}", prune_at, err)
@@ -842,7 +862,7 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
 
     fn notify_block_validation_results_received(
         &self,
-        block: &Block,
+        block: &BlockPair,
     ) -> Result<(), ChainControllerError> {
         let sender = self
             .validation_result_sender
@@ -883,7 +903,7 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
         if let Some(chain_head) = chain_head {
             info!(
                 "Chain controller initialized with chain head: {}",
-                &chain_head
+                chain_head.block()
             );
 
             // Create Ref-C: External reference for the chain head will be held until it is
@@ -891,13 +911,13 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
             state.chain_head = Some(
                 state
                     .block_manager
-                    .ref_block(chain_head.header_signature.as_str())
+                    .ref_block(chain_head.block().header_signature())
                     .expect("Failed to reference chain head"),
             );
 
             gauge!(
                 "chain.ChainController.block_num",
-                chain_head.block_num as i64
+                chain_head.header().block_num() as i64
             );
 
             let mut guard = self.chain_head_lock.acquire();
@@ -991,7 +1011,7 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
     fn start_commit_queue_thread(
         &self,
         commit_thread_exit: Arc<AtomicBool>,
-        commit_queue_receiver: Receiver<Block>,
+        commit_queue_receiver: Receiver<BlockPair>,
     ) {
         // Setup the Commit thread:
         let commit_thread_builder =
@@ -1020,7 +1040,8 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
                     if let Err(err) = commit_thread_controller.handle_block_commit(&block) {
                         error!(
                             "An error occurred while committing block {}: {:?}",
-                            block, err
+                            block.block(),
+                            err
                         );
                     }
                 } else {

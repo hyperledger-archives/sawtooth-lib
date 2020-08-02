@@ -25,7 +25,8 @@ use std::sync::{Arc, RwLock};
 
 use crate::journal::block_manager::BlockRef;
 use crate::journal::candidate_block::CandidateBlock;
-use crate::{batch::Batch, block::Block, execution::execution_platform::ExecutionPlatform};
+use crate::protocol::block::BlockPair;
+use crate::{batch::Batch, execution::execution_platform::ExecutionPlatform};
 
 #[derive(Debug)]
 pub enum InitializeBlockError {
@@ -48,7 +49,7 @@ pub trait PublisherState: Send + Sync {
 
     fn mut_pending_batches(&mut self) -> &mut PendingBatchesPool;
 
-    fn chain_head(&mut self, block: Option<Block>);
+    fn chain_head(&mut self, block: Option<BlockPair>);
 
     fn candidate_block(&mut self) -> &mut Option<Box<dyn CandidateBlock>>;
 
@@ -72,14 +73,14 @@ pub trait SyncPublisher: Send + Sync {
     fn on_chain_updated(
         &self,
         state: &mut Box<dyn PublisherState>,
-        chain_head: Block,
+        chain_head: BlockPair,
         committed_batches: Vec<Batch>,
         uncommitted_batches: Vec<Batch>,
     );
 
     fn on_chain_updated_internal(
         &mut self,
-        chain_head: Block,
+        chain_head: BlockPair,
         committed_batches: Vec<Batch>,
         uncommitted_batches: Vec<Batch>,
     );
@@ -91,7 +92,7 @@ pub trait SyncPublisher: Send + Sync {
     fn initialize_block(
         &self,
         state: &mut Box<dyn PublisherState>,
-        previous_block: &Block,
+        previous_block: &BlockPair,
         ref_block: bool,
     ) -> Result<(), InitializeBlockError>;
 

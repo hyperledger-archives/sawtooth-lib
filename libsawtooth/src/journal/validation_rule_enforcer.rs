@@ -37,7 +37,7 @@ use crate::{batch::Batch, state::settings_view::SettingsView, transaction::Trans
 pub fn enforce_validation_rules(
     settings_view: &SettingsView,
     expected_signer: &str,
-    batches: &[&Batch],
+    batches: &[Batch],
 ) -> bool {
     let rules = settings_view
         .get_setting_str("sawtooth.validator.block_validation_rules", None)
@@ -45,7 +45,7 @@ pub fn enforce_validation_rules(
     enforce_rules(rules, expected_signer, batches)
 }
 
-fn enforce_rules(rules: Option<String>, expected_signer: &str, batches: &[&Batch]) -> bool {
+fn enforce_rules(rules: Option<String>, expected_signer: &str, batches: &[Batch]) -> bool {
     if rules.is_none() {
         return true;
     }
@@ -236,11 +236,7 @@ mod tests {
     #[test]
     fn test_no_setting() {
         let batches = make_batches(&["intkey"], "pub_key");
-        assert!(enforce_rules(
-            None,
-            "pub_key",
-            &batches.iter().collect::<Vec<_>>()
-        ));
+        assert!(enforce_rules(None, "pub_key", &batches));
     }
 
     /// Test that if NofX Rule is set, the validation rule is checked
@@ -254,17 +250,17 @@ mod tests {
         assert!(enforce_rules(
             Some("NofX:1,intkey".to_string()),
             "pub_key",
-            &batches.iter().collect::<Vec<_>>()
+            &batches
         ));
         assert!(!enforce_rules(
             Some("NofX:0,intkey".to_string()),
             "pub_key",
-            &batches.iter().collect::<Vec<_>>()
+            &batches
         ));
         assert!(enforce_rules(
             Some("NofX:0".to_string()),
             "pub_key",
-            &batches.iter().collect::<Vec<_>>()
+            &batches
         ));
     }
 
@@ -279,17 +275,17 @@ mod tests {
         assert!(enforce_rules(
             Some("XatY:intkey,0".to_string()),
             "pub_key",
-            &batches.iter().collect::<Vec<_>>()
+            &batches
         ));
         assert!(!enforce_rules(
             Some("XatY:blockinfo,0".to_string()),
             "pub_key",
-            &batches.iter().collect::<Vec<_>>()
+            &batches
         ));
         assert!(enforce_rules(
             Some("XatY:0".to_string()),
             "pub_key",
-            &batches.iter().collect::<Vec<_>>()
+            &batches
         ));
     }
 
@@ -305,17 +301,17 @@ mod tests {
         assert!(enforce_rules(
             Some("local:0".to_string()),
             "pub_key",
-            &batches.iter().collect::<Vec<_>>()
+            &batches
         ));
         assert!(!enforce_rules(
             Some("local:0".to_string()),
             "another_pub_key",
-            &batches.iter().collect::<Vec<_>>()
+            &batches
         ));
         assert!(enforce_rules(
             Some("local".to_string()),
             "pub_key",
-            &batches.iter().collect::<Vec<_>>()
+            &batches
         ));
     }
 
@@ -327,7 +323,7 @@ mod tests {
         assert!(enforce_rules(
             Some("NofX:1,intkey;XatY:intkey,0;local:0".to_string()),
             "pub_key",
-            &batches.iter().collect::<Vec<_>>()
+            &batches
         ));
     }
 
@@ -339,7 +335,7 @@ mod tests {
         assert!(!enforce_rules(
             Some("NofX:0,intkey;XatY:intkey,0;local:0".to_string()),
             "pub_key",
-            &batches.iter().collect::<Vec<_>>()
+            &batches
         ));
     }
 
@@ -352,7 +348,7 @@ mod tests {
         assert!(!enforce_rules(
             Some("NofX:1,intkey;XatY:blockinfo,0;local:0".to_string()),
             "pub_key",
-            &batches.iter().collect::<Vec<_>>()
+            &batches
         ));
     }
 
@@ -365,7 +361,7 @@ mod tests {
         assert!(!enforce_rules(
             Some("NofX:1,intkey;XatY:intkey,0;local:0".to_string()),
             "not_same_pubkey",
-            &batches.iter().collect::<Vec<_>>()
+            &batches
         ));
     }
 

@@ -19,10 +19,7 @@ extern crate log;
 #[macro_use]
 extern crate metrics;
 
-#[cfg(feature = "validator-internals")]
 pub mod batch;
-#[cfg(feature = "validator-internals")]
-pub mod block;
 #[cfg(feature = "validator-internals")]
 pub mod consensus;
 #[cfg(feature = "validator-internals")]
@@ -42,5 +39,4 @@ pub mod signing;
 pub mod state;
 #[cfg(feature = "stores")]
 pub mod store;
-#[cfg(feature = "validator-internals")]
 pub mod transaction;
