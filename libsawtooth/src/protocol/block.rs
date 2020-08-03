@@ -241,39 +241,120 @@ impl BlockPair {
     }
 }
 
-// /// Builder for the `Block` and `BlockPair` struct
-// #[derive(Default, Clone)]
-// pub struct BlockBuilder {
-//     block_num: Option<u64>,
-//     batches: Option<Vec<Batch>>,
-// }
-//
-// impl PolicyBuilder {
-//     pub fn new() -> Self {
-//         Self::default()
-//     }
-//
-//     pub fn with_block_num(mut self, block_num: u64) -> Self {
-//         self.block_num = Some(block_num);
-//         self
-//     }
-//
-//     pub fn with_batches(mut self, batches: Vec<Batch>) -> Self {
-//         self.batches = Some(batches);
-//         self
-//     }
-//
-//     pub fn build(self) -> Result<Policy, ProtocolBuildError> {
-//         let block_num = self.block_num.ok_or_else(|| {
-//             ProtocolBuildError::MissingField("'block_num' field is required".to_string())
-//         })?;
-//         let batches = self.batches.ok_or_else(|| {
-//             ProtocolBuildError::MissingField("'batches' field is required".to_string())
-//         })?;
-//
-//         Ok(Policy {
-//             name,
-//             entries: self.entries,
-//         })
-//     }
-// }
+impl FromBytes<BlockPair> for BlockPair {
+    fn from_bytes(bytes: &[u8]) -> Result<Self, ProtoConversionError> {
+        Block::from_bytes(bytes)?
+            .into_pair()
+            .map_err(|err| ProtoConversionError::DeserializationError(err.to_string()))
+    }
+}
+
+impl FromNative<BlockPair> for BlockProto {
+    fn from_native(block_pair: BlockPair) -> Result<Self, ProtoConversionError> {
+        block_pair.block.into_proto()
+    }
+}
+
+impl FromProto<BlockProto> for BlockPair {
+    fn from_proto(block: BlockProto) -> Result<Self, ProtoConversionError> {
+        Block::from_proto(block)?
+            .into_pair()
+            .map_err(|err| ProtoConversionError::DeserializationError(err.to_string()))
+    }
+}
+
+impl IntoBytes for BlockPair {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        self.block.into_bytes()
+    }
+}
+
+impl IntoNative<BlockPair> for BlockProto {}
+impl IntoProto<BlockProto> for BlockPair {}
+
+/// Builder for [`Block`](struct.Block.html) and [`BlockPair`](struct.BlockPair.html)
+#[derive(Default, Clone)]
+pub struct BlockBuilder {
+    block_num: Option<u64>,
+    previous_block_id: Option<String>,
+    consensus: Vec<u8>,
+    state_root_hash: Option<String>,
+    batches: Option<Vec<Batch>>,
+}
+
+impl BlockBuilder {
+    /// Creates a new `BlockBuilder`
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets the block number for the block to be built
+    pub fn with_block_num(mut self, block_num: u64) -> Self {
+        self.block_num = Some(block_num);
+        self
+    }
+
+    /// Sets the ID of the block previous to the one being built
+    pub fn with_previous_block_id(mut self, previous_block_id: String) -> Self {
+        self.previous_block_id = Some(previous_block_id);
+        self
+    }
+
+    /// Sets the consensus bytes for of block to be built
+    pub fn with_consensus(mut self, consensus: Vec<u8>) -> Self {
+        self.consensus = consensus;
+        self
+    }
+
+    /// Sets the state root hash of the block to be built
+    pub fn with_state_root_hash(mut self, state_root_hash: String) -> Self {
+        self.state_root_hash = Some(state_root_hash);
+        self
+    }
+
+    /// Sets the batches that will be in the block to be built
+    pub fn with_batches(mut self, batches: Vec<Batch>) -> Self {
+        self.batches = Some(batches);
+        self
+    }
+
+    // TODO
+    pub fn build_pair(self) -> Result<BlockPair, ProtocolBuildError> {
+        let block_num = self.block_num.ok_or_else(|| {
+            ProtocolBuildError::MissingField("'block_num' field is required".to_string())
+        })?;
+        let previous_block_id = self.previous_block_id.ok_or_else(|| {
+            ProtocolBuildError::MissingField("'previous_block_id' field is required".to_string())
+        })?;
+        let state_root_hash = self.state_root_hash.ok_or_else(|| {
+            ProtocolBuildError::MissingField("'state_root_hash' field is required".to_string())
+        })?;
+        let batches = self.batches.ok_or_else(|| {
+            ProtocolBuildError::MissingField("'batches' field is required".to_string())
+        })?;
+
+        let header = BlockHeader {
+            block_num,
+            previous_block_id,
+            signer_public_key: "".to_string(),
+            batch_ids: batches
+                .iter()
+                .map(|batch| batch.header_signature.clone())
+                .collect(),
+            consensus: self.consensus,
+            state_root_hash,
+        };
+
+        let block = Block {
+            header: header.clone().into_bytes()?,
+            header_signature: "".to_string(),
+            batches,
+        };
+
+        Ok(BlockPair { block, header })
+    }
+
+    pub fn build(self) -> Result<Block, ProtocolBuildError> {
+        Ok(self.build_pair()?.block)
+    }
+}

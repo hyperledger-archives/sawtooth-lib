@@ -171,9 +171,9 @@ impl TransactionCommitCache {
 mod test {
     use super::*;
 
-    use crate::block::Block;
     use crate::journal::block_store::InMemoryBlockStore;
     use crate::journal::NULL_BLOCK_IDENTIFIER;
+    use crate::protocol::block::Block;
     use crate::transaction::Transaction;
 
     /// Creates Chains of blocks that match this diagram

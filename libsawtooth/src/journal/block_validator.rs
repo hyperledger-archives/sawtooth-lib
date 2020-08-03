@@ -26,8 +26,6 @@ use std::thread;
 use std::time::Duration;
 
 use crate::{
-    batch::Batch,
-    block::Block,
     execution::execution_platform::{ExecutionPlatform, NULL_STATE_HASH},
     journal::{
         block_manager::BlockManager,
@@ -40,6 +38,7 @@ use crate::{
         validation_rule_enforcer::enforce_validation_rules,
     },
     permissions::verifier::PermissionVerifier,
+    protocol::block::BlockPair,
     scheduler::TxnExecutionResult,
     state::{
         identity_view::IdentityView, settings_view::SettingsView,
@@ -165,8 +164,8 @@ impl From<ChainCommitStateError> for ValidationError {
     }
 }
 
-type InternalSender = Sender<(Block, Sender<BlockValidationResult>)>;
-type InternalReceiver = Receiver<(Block, Sender<BlockValidationResult>)>;
+type InternalSender = Sender<(BlockPair, Sender<BlockValidationResult>)>;
+type InternalReceiver = Receiver<(BlockPair, Sender<BlockValidationResult>)>;
 
 pub struct BlockValidator<TEP: ExecutionPlatform> {
     channels: Vec<(InternalSender, Option<InternalReceiver>)>,
@@ -213,8 +212,8 @@ where
 
     fn setup_thread(
         &self,
-        rcv: Receiver<(Block, Sender<BlockValidationResult>)>,
-        error_return_sender: Sender<(Block, Sender<BlockValidationResult>)>,
+        rcv: Receiver<(BlockPair, Sender<BlockValidationResult>)>,
+        error_return_sender: Sender<(BlockPair, Sender<BlockValidationResult>)>,
     ) {
         let backgroundthread = thread::Builder::new();
 
@@ -260,7 +259,7 @@ where
                 if exit.load(Ordering::Relaxed) {
                     break;
                 }
-                let block_id = block.header_signature.clone();
+                let block_id = block.block().header_signature().to_string();
 
                 match block_validations.validate_block(&block) {
                     Ok(result) => {
@@ -323,7 +322,7 @@ where
 
     pub fn submit_blocks_for_verification(
         &self,
-        blocks: &[Block],
+        blocks: &[BlockPair],
         response_sender: &Sender<BlockValidationResult>,
     ) {
         for block in self.block_scheduler.schedule(blocks.to_vec()) {
@@ -335,8 +334,12 @@ where
         }
     }
 
-    pub fn process_pending(&self, block: &Block, response_sender: &Sender<BlockValidationResult>) {
-        for block in self.block_scheduler.done(&block.header_signature) {
+    pub fn process_pending(
+        &self,
+        block: &BlockPair,
+        response_sender: &Sender<BlockValidationResult>,
+    ) {
+        for block in self.block_scheduler.done(block.block().header_signature()) {
             let tx = self.return_sender();
             if let Err(err) = tx.send((block, response_sender.clone())) {
                 warn!("During process pending: {:?}", err);
@@ -345,7 +348,7 @@ where
         }
     }
 
-    pub fn validate_block(&self, block: &Block) -> Result<(), ValidationError> {
+    pub fn validate_block(&self, block: &BlockPair) -> Result<(), ValidationError> {
         let validation1: Box<dyn BlockValidation<ReturnValue = ()>> = Box::new(
             DuplicatesAndDependenciesValidation::new(self.block_manager.clone()),
         );
@@ -402,7 +405,7 @@ impl<TEP: ExecutionPlatform + Clone> Clone for BlockValidator<TEP> {
 trait StateBlockValidation {
     fn validate_block(
         &self,
-        block: Block,
+        block: BlockPair,
         previous_state_root: Option<&String>,
     ) -> Result<BlockValidationResult, ValidationError>;
 }
@@ -414,7 +417,7 @@ trait BlockValidation: Send {
 
     fn validate_block(
         &self,
-        block: &Block,
+        block: &BlockPair,
         previous_state_root: Option<&String>,
     ) -> Result<Self::ReturnValue, ValidationError>;
 }
@@ -438,13 +441,13 @@ impl<SBV: BlockValidation<ReturnValue = BlockValidationResult>> BlockValidationP
         }
     }
 
-    fn validate_block(&self, block: &Block) -> Result<BlockValidationResult, ValidationError> {
+    fn validate_block(&self, block: &BlockPair) -> Result<BlockValidationResult, ValidationError> {
         let previous_blocks_state_hash = self
             .block_manager
-            .get(&[&block.previous_block_id])
+            .get(&[block.header().previous_block_id()])
             .next()
             .unwrap_or(None)
-            .map(|b| b.state_root_hash);
+            .map(|b| b.header().state_root_hash().to_string());
 
         for validation in &self.validations {
             match validation.validate_block(&block, previous_blocks_state_hash.as_ref()) {
@@ -477,10 +480,10 @@ impl<TEP: ExecutionPlatform> BlockValidation for BatchesInBlockValidation<TEP> {
 
     fn validate_block(
         &self,
-        block: &Block,
+        block: &BlockPair,
         previous_state_root: Option<&String>,
     ) -> Result<BlockValidationResult, ValidationError> {
-        let ending_state_hash = &block.state_root_hash;
+        let ending_state_hash = block.header().state_root_hash();
         let null_state_hash = NULL_STATE_HASH.into();
         let state_root = previous_state_root.unwrap_or(&null_state_hash);
         let mut scheduler = self
@@ -489,13 +492,14 @@ impl<TEP: ExecutionPlatform> BlockValidation for BatchesInBlockValidation<TEP> {
             .map_err(|err| {
                 ValidationError::BlockValidationError(format!(
                     "Error during validation of block {} batches: {:?}",
-                    &block.header_signature, err,
+                    block.block().header_signature(),
+                    err,
                 ))
             })?;
 
-        let greatest_batch_index = block.batches.len() - 1;
+        let greatest_batch_index = block.block().batches().len() - 1;
         let mut index = 0;
-        for batch in &block.batches {
+        for batch in block.block().batches() {
             if index < greatest_batch_index {
                 scheduler
                     .add_batch(batch.clone(), None, false)
@@ -534,7 +538,7 @@ impl<TEP: ExecutionPlatform> BlockValidation for BatchesInBlockValidation<TEP> {
             .ok_or_else(|| {
                 ValidationError::BlockValidationFailure(format!(
                     "Block {} failed validation: no execution results produced",
-                    &block.header_signature
+                    block.block().header_signature()
                 ))
             })?;
 
@@ -542,7 +546,7 @@ impl<TEP: ExecutionPlatform> BlockValidation for BatchesInBlockValidation<TEP> {
             if ending_state_hash != actual_ending_state_hash {
                 return Err(ValidationError::BlockValidationFailure(format!(
                 "Block {} failed validation: expected state hash {}, validation found state hash {}",
-                &block.header_signature,
+                block.block().header_signature(),
                 ending_state_hash,
                 actual_ending_state_hash
             )));
@@ -550,7 +554,7 @@ impl<TEP: ExecutionPlatform> BlockValidation for BatchesInBlockValidation<TEP> {
         } else {
             return Err(ValidationError::BlockValidationFailure(format!(
                 "Block {} failed validation: no ending state hash was produced",
-                &block.header_signature
+                block.block().header_signature()
             )));
         }
 
@@ -561,7 +565,7 @@ impl<TEP: ExecutionPlatform> BlockValidation for BatchesInBlockValidation<TEP> {
                     if !r.is_valid {
                         return Err(ValidationError::BlockValidationFailure(format!(
                             "Block {} failed validation: batch {} was invalid due to transaction {}",
-                            &block.header_signature,
+                            block.block().header_signature(),
                             &batch_id,
                             &r.signature)));
                     }
@@ -570,12 +574,13 @@ impl<TEP: ExecutionPlatform> BlockValidation for BatchesInBlockValidation<TEP> {
             } else {
                 return Err(ValidationError::BlockValidationFailure(format!(
                     "Block {} failed validation: batch {} did not have transaction results",
-                    &block.header_signature, &batch_id
+                    block.block().header_signature(),
+                    &batch_id
                 )));
             }
         }
         Ok(BlockValidationResult {
-            block_id: block.header_signature.clone(),
+            block_id: block.block().header_signature().to_string(),
             num_transactions: results.len() as u64,
             execution_results: results,
             status: BlockStatus::Valid,
@@ -596,16 +601,21 @@ impl DuplicatesAndDependenciesValidation {
 impl BlockValidation for DuplicatesAndDependenciesValidation {
     type ReturnValue = ();
 
-    fn validate_block(&self, block: &Block, _: Option<&String>) -> Result<(), ValidationError> {
-        let batch_ids: Vec<&String> = block.batches.iter().map(|b| &b.header_signature).collect();
+    fn validate_block(&self, block: &BlockPair, _: Option<&String>) -> Result<(), ValidationError> {
+        let batch_ids = block
+            .block()
+            .batches()
+            .iter()
+            .map(|b| &b.header_signature)
+            .collect::<Vec<_>>();
 
         validate_no_duplicate_batches(
             &self.block_manager,
-            &block.previous_block_id,
+            block.header().previous_block_id(),
             batch_ids.as_slice(),
         )?;
 
-        let txn_ids = block.batches.iter().fold(vec![], |mut arr, b| {
+        let txn_ids = block.block().batches().iter().fold(vec![], |mut arr, b| {
             for txn in &b.transactions {
                 arr.push(&txn.header_signature);
             }
@@ -614,11 +624,11 @@ impl BlockValidation for DuplicatesAndDependenciesValidation {
 
         validate_no_duplicate_transactions(
             &self.block_manager,
-            &block.previous_block_id,
+            block.header().previous_block_id(),
             txn_ids.as_slice(),
         )?;
 
-        let transactions = block.batches.iter().fold(vec![], |mut arr, b| {
+        let transactions = block.block().batches().iter().fold(vec![], |mut arr, b| {
             for txn in &b.transactions {
                 arr.push(txn.clone());
             }
@@ -626,7 +636,7 @@ impl BlockValidation for DuplicatesAndDependenciesValidation {
         });
         validate_transaction_dependencies(
             &self.block_manager,
-            &block.previous_block_id,
+            block.header().previous_block_id(),
             &transactions,
         )?;
         Ok(())
@@ -648,34 +658,34 @@ impl BlockValidation for PermissionValidation {
 
     fn validate_block(
         &self,
-        block: &Block,
+        block: &BlockPair,
         prev_state_root: Option<&String>,
     ) -> Result<(), ValidationError> {
-        if block.block_num != 0 {
+        if block.header().block_num() != 0 {
             let state_root = prev_state_root.ok_or_else(|| {
                 ValidationError::BlockValidationError(
                         format!("During permission check of block {} block_num is {} but missing a previous state root",
-                            &block.header_signature, block.block_num))
+                            block.block().header_signature(), block.header().block_num()))
             })?;
 
             let identity_view: IdentityView = self.state_view_factory.create_view(state_root)
                 .map_err(|err| {
                 ValidationError::BlockValidationError(
                         format!("During permission check of block ({}, {}) state root was not found in state: {}",
-                            &block.header_signature, block.block_num, err))
+                            block.block().header_signature(), block.header().block_num(), err))
             })?;
             let permission_verifier = PermissionVerifier::new(Box::new(identity_view));
-            for batch in &block.batches {
+            for batch in block.block().batches() {
                 let batch_id = &batch.header_signature;
                 let authorized = permission_verifier.is_batch_signer_authorized(batch).map_err(|err| {
                 ValidationError::BlockValidationError(
                         format!("During permission check of block ({}, {}), unable to read permissions: {}",
-                            &block.header_signature, block.block_num, err))
+                            block.block().header_signature(), block.header().block_num(), err))
                     })?;
                 if !authorized {
                     return Err(ValidationError::BlockValidationFailure(
                             format!("Block {} failed permission verification: batch {} signer is not authorized",
-                            &block.header_signature,
+                            block.block().header_signature(),
                             batch_id)));
                 }
             }
@@ -699,15 +709,15 @@ impl BlockValidation for OnChainRulesValidation {
 
     fn validate_block(
         &self,
-        block: &Block,
+        block: &BlockPair,
         prev_state_root: Option<&String>,
     ) -> Result<(), ValidationError> {
-        if block.block_num != 0 {
+        if block.header().block_num() != 0 {
             let state_root = prev_state_root.ok_or_else(|| {
                 ValidationError::BlockValidationError(
                         format!("During check of on-chain rules for block {}, block num was {}, but missing a previous state root",
-                            &block.header_signature,
-                            block.block_num))
+                            block.block().header_signature(),
+                            block.header().block_num()))
             })?;
             let settings_view: SettingsView =
                 self.view_factory.create_view(state_root).map_err(|err| {
@@ -716,11 +726,14 @@ impl BlockValidation for OnChainRulesValidation {
                         err
                     ))
                 })?;
-            let batches: Vec<&Batch> = block.batches.iter().collect();
-            if !enforce_validation_rules(&settings_view, &block.signer_public_key, &batches) {
+            if !enforce_validation_rules(
+                &settings_view,
+                block.header().signer_public_key(),
+                block.block().batches(),
+            ) {
                 return Err(ValidationError::BlockValidationFailure(format!(
                     "Block {} failed validation rules",
-                    &block.header_signature
+                    block.block().header_signature()
                 )));
             }
         }
@@ -782,7 +795,7 @@ mod test {
 
         fn validate_block(
             &self,
-            _block: &Block,
+            _block: &BlockPair,
             _previous_state_root: Option<&String>,
         ) -> Result<BlockValidationResult, ValidationError> {
             self.result.clone()
@@ -794,7 +807,7 @@ mod test {
 
         fn validate_block(
             &self,
-            _block: &Block,
+            _block: &BlockPair,
             _previous_state_root: Option<&String>,
         ) -> Result<(), ValidationError> {
             self.result.clone()
@@ -825,7 +838,7 @@ mod test {
 
         fn validate_block(
             &self,
-            _block: &Block,
+            _block: &BlockPair,
             _previous_state_root: Option<&String>,
         ) -> Result<(), ValidationError> {
             if *self.called.lock().expect("Error acquiring Mock2 lock") {
@@ -839,30 +852,30 @@ mod test {
         }
     }
 
-    impl BlockStore for Mock1<Option<Block>> {
-        fn iter(&self) -> Result<Box<dyn Iterator<Item = Block>>, BlockStoreError> {
+    impl BlockStore for Mock1<Option<BlockPair>> {
+        fn iter(&self) -> Result<Box<dyn Iterator<Item = BlockPair>>, BlockStoreError> {
             Ok(Box::new(self.result.clone().into_iter()))
         }
 
         fn get<'a>(
             &'a self,
             _block_ids: &[&str],
-        ) -> Result<Box<dyn Iterator<Item = Block> + 'a>, BlockStoreError> {
+        ) -> Result<Box<dyn Iterator<Item = BlockPair> + 'a>, BlockStoreError> {
             unimplemented!();
         }
 
-        fn put(&mut self, _block: Vec<Block>) -> Result<(), BlockStoreError> {
+        fn put(&mut self, _block: Vec<BlockPair>) -> Result<(), BlockStoreError> {
             unimplemented!();
         }
 
-        fn delete(&mut self, _block_ids: &[&str]) -> Result<Vec<Block>, BlockStoreError> {
+        fn delete(&mut self, _block_ids: &[&str]) -> Result<Vec<BlockPair>, BlockStoreError> {
             unimplemented!();
         }
     }
 
-    fn create_block(block_id: &str, previous_id: &str, batches: Vec<Batch>) -> Block {
+    fn create_block(block_id: &str, previous_id: &str, batches: Vec<Batch>) -> BlockPair {
         let batch_ids = batches.iter().map(|b| b.header_signature.clone()).collect();
-        Block {
+        BlockPair {
             header_signature: block_id.into(),
             batches,
             state_root_hash: "".into(),

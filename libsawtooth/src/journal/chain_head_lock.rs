@@ -15,8 +15,9 @@
  * ------------------------------------------------------------------------------
  */
 
+use crate::batch::Batch;
 use crate::journal::publisher::{PublisherState, SyncPublisher};
-use crate::{batch::Batch, block::Block};
+use crate::protocol::block::Block;
 
 use std::sync::RwLockWriteGuard;
 

@@ -25,7 +25,8 @@ use std::sync::{Arc, RwLock};
 
 use crate::journal::block_manager::BlockRef;
 use crate::journal::candidate_block::CandidateBlock;
-use crate::{batch::Batch, block::Block, execution::execution_platform::ExecutionPlatform};
+use crate::protocol::block::Block;
+use crate::{batch::Batch, execution::execution_platform::ExecutionPlatform};
 
 #[derive(Debug)]
 pub enum InitializeBlockError {

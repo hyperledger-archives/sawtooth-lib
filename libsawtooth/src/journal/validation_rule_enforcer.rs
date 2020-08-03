@@ -37,7 +37,7 @@ use crate::{batch::Batch, state::settings_view::SettingsView, transaction::Trans
 pub fn enforce_validation_rules(
     settings_view: &SettingsView,
     expected_signer: &str,
-    batches: &[&Batch],
+    batches: &[Batch],
 ) -> bool {
     let rules = settings_view
         .get_setting_str("sawtooth.validator.block_validation_rules", None)
@@ -45,7 +45,7 @@ pub fn enforce_validation_rules(
     enforce_rules(rules, expected_signer, batches)
 }
 
-fn enforce_rules(rules: Option<String>, expected_signer: &str, batches: &[&Batch]) -> bool {
+fn enforce_rules(rules: Option<String>, expected_signer: &str, batches: &[Batch]) -> bool {
     if rules.is_none() {
         return true;
     }

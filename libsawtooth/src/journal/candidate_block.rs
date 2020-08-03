@@ -15,7 +15,8 @@
  * ------------------------------------------------------------------------------
  */
 
-use crate::{batch::Batch, block::Block};
+use crate::batch::Batch;
+use crate::protocol::block::Block;
 
 #[derive(Debug)]
 pub enum CandidateBlockError {

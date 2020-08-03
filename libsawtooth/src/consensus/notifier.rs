@@ -21,8 +21,8 @@ use std::thread;
 
 use protobuf::{Message, RepeatedField};
 
-use crate::block::Block;
 use crate::hashlib::sha256_digest_strs;
+use crate::protocol::block::BlockPair;
 use crate::protos::{
     consensus::{
         ConsensusBlock, ConsensusNotifyBlockCommit, ConsensusNotifyBlockInvalid,
@@ -39,11 +39,11 @@ pub trait ConsensusNotifier: Send + Sync {
     fn notify_peer_disconnected(&self, peer_id: &str);
     fn notify_peer_message(&self, message: ConsensusPeerMessage, sender_id: &[u8]);
 
-    fn notify_block_new(&self, block: &Block);
+    fn notify_block_new(&self, block: &BlockPair);
     fn notify_block_valid(&self, block_id: &str);
     fn notify_block_invalid(&self, block_id: &str);
     fn notify_block_commit(&self, block_id: &str);
-    fn notify_engine_activated(&self, block: &Block);
+    fn notify_engine_activated(&self, block: &BlockPair);
     fn notify_engine_deactivated(&self, connection_id: String);
 }
 
@@ -101,7 +101,7 @@ impl<T: NotifierService> ConsensusNotifier for T {
             .expect("Failed to send peer message notification");
     }
 
-    fn notify_block_new(&self, block: &Block) {
+    fn notify_block_new(&self, block: &BlockPair) {
         let consensus_block = get_consensus_block(block);
 
         let mut notification = ConsensusNotifyBlockNew::new();
@@ -135,7 +135,7 @@ impl<T: NotifierService> ConsensusNotifier for T {
             .expect("Failed to send block commit notification");
     }
 
-    fn notify_engine_activated(&self, block: &Block) {
+    fn notify_engine_activated(&self, block: &BlockPair) {
         let chain_head = get_consensus_block(block);
 
         let peers = RepeatedField::from_vec(
@@ -177,27 +177,26 @@ impl<T: NotifierService> ConsensusNotifier for T {
     }
 }
 
-fn get_consensus_block(block: &Block) -> ConsensusBlock {
-    let batch_ids: Vec<&str> = block
-        .batches
-        .iter()
-        .map(|batch| batch.header_signature.as_str())
-        .collect();
+fn get_consensus_block(block: &BlockPair) -> ConsensusBlock {
+    let batch_ids = block.header().batch_ids();
 
-    let summary = sha256_digest_strs(batch_ids.as_slice());
+    let summary = sha256_digest_strs(batch_ids);
 
     let mut consensus_block = ConsensusBlock::new();
-    consensus_block.set_block_id(from_hex(&block.header_signature, "block.header_signature"));
+    consensus_block.set_block_id(from_hex(
+        block.block().header_signature(),
+        "block.header_signature",
+    ));
     consensus_block.set_previous_id(from_hex(
-        &block.previous_block_id,
+        block.header().previous_block_id(),
         "block.previous_block_id",
     ));
     consensus_block.set_signer_id(from_hex(
-        &block.signer_public_key,
+        block.header().signer_public_key(),
         "block.signer_public_key",
     ));
-    consensus_block.set_block_num(block.block_num);
-    consensus_block.set_payload(block.consensus.clone());
+    consensus_block.set_block_num(block.header().block_num());
+    consensus_block.set_payload(block.header().consensus().into());
     consensus_block.set_summary(summary);
 
     consensus_block
@@ -215,11 +214,11 @@ enum ConsensusNotification {
     PeerConnected(String),
     PeerDisconnected(String),
     PeerMessage((ConsensusPeerMessage, Vec<u8>)),
-    BlockNew(Block),
+    BlockNew(BlockPair),
     BlockValid(String),
     BlockInvalid(String),
     BlockCommit(String),
-    EngineActivated(Block),
+    EngineActivated(BlockPair),
     EngineDeactivated(String),
 }
 
@@ -269,7 +268,7 @@ impl ConsensusNotifier for BackgroundConsensusNotifier {
         )))
     }
 
-    fn notify_block_new(&self, block: &Block) {
+    fn notify_block_new(&self, block: &BlockPair) {
         self.send_notification(ConsensusNotification::BlockNew(block.clone()))
     }
 
@@ -285,7 +284,7 @@ impl ConsensusNotifier for BackgroundConsensusNotifier {
         self.send_notification(ConsensusNotification::BlockCommit(block_id.into()))
     }
 
-    fn notify_engine_activated(&self, block: &Block) {
+    fn notify_engine_activated(&self, block: &BlockPair) {
         self.send_notification(ConsensusNotification::EngineActivated(block.clone()))
     }
 
