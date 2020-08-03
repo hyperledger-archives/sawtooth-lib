@@ -32,6 +32,7 @@ metrics = { version = "0.12", features = ["std"], optional = true }
 openssl = { version = "0.10", optional = true }
 protobuf = "2"
 redis = { version = "0.13.0", default-features = false, optional = true }
+sha2 = "0.8"
 transact = "0.2"
 uluru = { version = "0.4", optional = true }
 

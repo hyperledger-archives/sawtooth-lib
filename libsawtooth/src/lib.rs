@@ -37,6 +37,7 @@ pub mod protocol;
 pub mod protos;
 #[cfg(feature = "validator-internals")]
 pub mod scheduler;
+pub mod signing;
 #[cfg(feature = "validator-internals")]
 pub mod state;
 #[cfg(feature = "stores")]
