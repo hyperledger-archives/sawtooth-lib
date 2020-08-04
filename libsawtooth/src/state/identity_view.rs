@@ -17,7 +17,8 @@
 
 use crate::{
     hashlib::sha256_digest_str,
-    protos::identity::{Policy, PolicyList, Role, RoleList},
+    protocol::identity::{Policy, Role},
+    protos::{FromBytes, ProtoConversionError},
     state::error::StateDatabaseError,
     state::StateReader,
 };
@@ -31,7 +32,7 @@ const MAX_KEY_PARTS: usize = 4;
 #[derive(Debug)]
 pub enum IdentityViewError {
     StateDatabaseError(StateDatabaseError),
-    EncodingError(protobuf::ProtobufError),
+    EncodingError(ProtoConversionError),
 }
 
 impl From<StateDatabaseError> for IdentityViewError {
@@ -40,8 +41,8 @@ impl From<StateDatabaseError> for IdentityViewError {
     }
 }
 
-impl From<protobuf::ProtobufError> for IdentityViewError {
-    fn from(err: protobuf::ProtobufError) -> Self {
+impl From<ProtoConversionError> for IdentityViewError {
+    fn from(err: ProtoConversionError) -> Self {
         IdentityViewError::EncodingError(err)
     }
 }
@@ -60,77 +61,55 @@ impl IdentityView {
     }
 
     /// Returns a single Role by name, if it exists.
-    #[allow(dead_code)]
     pub fn get_role(&self, name: &str) -> Result<Option<Role>, IdentityViewError> {
-        self.get_identity_value::<Role, RoleList>(name, &role_address(name))
+        self.get_identity_value(name, &role_address(name))
     }
 
     /// Returns all of the Roles under the Identity namespace
-    #[allow(dead_code)]
     pub fn get_roles(&self) -> Result<Vec<Role>, IdentityViewError> {
-        self.get_identity_value_list::<Role, RoleList>(ROLE_NS)
+        self.get_identity_value_list(ROLE_NS)
     }
 
     /// Returns a single Policy by name, if it exists.
-    #[allow(dead_code)]
     pub fn get_policy(&self, name: &str) -> Result<Option<Policy>, IdentityViewError> {
-        self.get_identity_value::<Policy, PolicyList>(name, &policy_address(name))
+        self.get_identity_value(name, &policy_address(name))
     }
 
     /// Returns all of the Policies under the Identity namespace
-    #[allow(dead_code)]
     pub fn get_policies(&self) -> Result<Vec<Policy>, IdentityViewError> {
-        self.get_identity_value_list::<Policy, PolicyList>(POLICY_NS)
+        self.get_identity_value_list(POLICY_NS)
     }
 
-    fn get_identity_value<I, L>(
+    fn get_identity_value<I>(
         &self,
         name: &str,
         address: &str,
     ) -> Result<Option<I>, IdentityViewError>
     where
         I: Named,
-        L: ProtobufList<I>,
+        Vec<I>: FromBytes<Vec<I>>,
     {
         if !self.state_reader.contains(&address)? {
             return Ok(None);
         }
 
-        self.state_reader
-            .get(&address)
-            .map_err(IdentityViewError::StateDatabaseError)
-            .and_then(|bytes_opt| {
-                Ok(if let Some(bytes) = bytes_opt {
-                    Some(protobuf::parse_from_bytes::<L>(&bytes)?)
-                } else {
-                    None
-                })
-            })
-            .map(|list_opt| {
-                if let Some(list) = list_opt {
-                    for item in list.values() {
-                        if item.name() == name {
-                            return Some(item.clone());
-                        }
-                    }
-                }
-                // We didn't find the item, so return None
-                None
-            })
+        Ok(self
+            .state_reader
+            .get(&address)?
+            .map(|bytes| Vec::from_bytes(&bytes))
+            .transpose()?
+            .and_then(|list| list.into_iter().find(|item| item.name() == name)))
     }
 
-    fn get_identity_value_list<I, L>(&self, prefix: &str) -> Result<Vec<I>, IdentityViewError>
+    fn get_identity_value_list<I>(&self, prefix: &str) -> Result<Vec<I>, IdentityViewError>
     where
         I: Named,
-        L: ProtobufList<I>,
+        Vec<I>: FromBytes<Vec<I>>,
     {
         let mut res = Vec::new();
         for state_value in self.state_reader.leaves(Some(prefix))? {
             let (_, bytes) = state_value?;
-            let item_list = protobuf::parse_from_bytes::<L>(&bytes)?;
-            for item in item_list.values() {
-                res.push(item.clone());
-            }
+            res.append(&mut Vec::from_bytes(&bytes)?);
         }
         res.sort_by(|a, b| a.name().cmp(b.name()));
         Ok(res)
@@ -143,35 +122,19 @@ impl From<Box<dyn StateReader>> for IdentityView {
     }
 }
 
-trait ProtobufList<T>: protobuf::Message {
-    fn values(&self) -> &[T];
-}
-
-impl ProtobufList<Role> for RoleList {
-    fn values(&self) -> &[Role] {
-        self.get_roles()
-    }
-}
-
-impl ProtobufList<Policy> for PolicyList {
-    fn values(&self) -> &[Policy] {
-        self.get_policies()
-    }
-}
-
 trait Named: Clone {
     fn name(&self) -> &str;
 }
 
 impl Named for Role {
     fn name(&self) -> &str {
-        self.get_name()
+        self.name()
     }
 }
 
 impl Named for Policy {
     fn name(&self) -> &str {
-        self.get_name()
+        self.name()
     }
 }
 
@@ -206,13 +169,11 @@ fn short_hash(s: &str, length: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::protos::identity::{
-        Policy, PolicyList, Policy_Entry, Policy_EntryType, Role, RoleList,
-    };
 
-    use protobuf;
-    use protobuf::Message;
     use std::collections::HashMap;
+
+    use crate::protocol::identity::{Permission, Policy, PolicyBuilder, Role, RoleBuilder};
+    use crate::protos::IntoBytes;
 
     #[test]
     fn addressing() {
@@ -310,55 +271,41 @@ mod tests {
     }
 
     fn role(name: &str, policy_name: &str) -> Role {
-        let mut role = Role::new();
-        role.set_name(name.to_string());
-        role.set_policy_name(policy_name.to_string());
-
-        role
+        RoleBuilder::new()
+            .with_name(name.into())
+            .with_policy_name(policy_name.into())
+            .build()
+            .expect("Unable to build role")
     }
 
     fn role_entry(name: &str, policy_name: &str) -> (String, Vec<u8>) {
-        let role = role(name, policy_name);
-        let mut role_list = RoleList::new();
-        role_list.set_roles(protobuf::RepeatedField::from_slice(&[role]));
-
         (
             role_address(name),
-            role_list
-                .write_to_bytes()
-                .expect("Unable to serialize role"),
+            vec![role(name, policy_name)]
+                .into_bytes()
+                .expect("Unable to serialize roles"),
         )
     }
 
     fn policy(name: &str, permits: &[&str]) -> Policy {
-        let mut policy = Policy::new();
-
-        policy.set_name(name.to_string());
-        policy.set_entries(protobuf::RepeatedField::from_vec(
-            permits
-                .iter()
-                .map(|key| {
-                    let mut entry = Policy_Entry::new();
-                    entry.set_field_type(Policy_EntryType::PERMIT_KEY);
-                    entry.set_key(key.to_string());
-                    entry
-                })
-                .collect(),
-        ));
-
-        policy
+        PolicyBuilder::new()
+            .with_name(name.into())
+            .with_permissions(
+                permits
+                    .into_iter()
+                    .map(|key| Permission::PermitKey(key.to_owned().into()))
+                    .collect(),
+            )
+            .build()
+            .expect("Unable to build policy")
     }
 
     fn policy_entry(name: &str, permits: &[&str]) -> (String, Vec<u8>) {
-        let policy = policy(name, permits);
-        let mut policy_list = PolicyList::new();
-        policy_list.set_policies(protobuf::RepeatedField::from_slice(&[policy]));
-
         (
             policy_address(name),
-            policy_list
-                .write_to_bytes()
-                .expect("Unable to serialize policy"),
+            vec![policy(name, permits)]
+                .into_bytes()
+                .expect("Unable to serialize policies"),
         )
     }
 

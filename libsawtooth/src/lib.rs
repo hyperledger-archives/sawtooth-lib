@@ -33,6 +33,7 @@ pub mod hashlib;
 pub mod journal;
 #[cfg(feature = "validator-internals")]
 pub mod permissions;
+pub mod protocol;
 pub mod protos;
 #[cfg(feature = "validator-internals")]
 pub mod scheduler;

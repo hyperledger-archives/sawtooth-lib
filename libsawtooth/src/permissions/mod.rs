@@ -24,54 +24,9 @@ mod error;
 mod state_source;
 pub mod verifier;
 
+use crate::protocol::identity::{Policy, Role};
+
 pub use error::IdentityError;
-
-/// A permission either allows or denies a given public key.
-#[derive(Clone)]
-pub enum Permission {
-    /// Allow the specified public key.
-    PermitKey(String),
-    /// Deny the specified public key.
-    DenyKey(String),
-}
-
-/// A Policy is a named set of permissions.
-#[derive(Clone)]
-pub struct Policy {
-    name: String,
-    permissions: Vec<Permission>,
-}
-
-impl Policy {
-    /// Construct a new Policy with the given name and set of permissions.
-    pub fn new<S: Into<String>>(name: S, permissions: Vec<Permission>) -> Self {
-        Policy {
-            name: name.into(),
-            permissions,
-        }
-    }
-
-    pub fn permissions(&self) -> &[Permission] {
-        &self.permissions
-    }
-}
-
-/// A role is link between a set of activities and a Policy.
-#[derive(Clone)]
-pub struct Role {
-    name: String,
-    policy_name: String,
-}
-
-impl Role {
-    /// Construct a new Role with a given name and associated policy.
-    pub fn new<N: Into<String>, P: Into<String>>(name: N, policy_name: P) -> Self {
-        Role {
-            name: name.into(),
-            policy_name: policy_name.into(),
-        }
-    }
-}
 
 /// A source of Roles and Policies.
 pub trait IdentitySource: Sync + Send {
@@ -95,6 +50,6 @@ pub trait IdentitySource: Sync + Send {
     ///
     /// Return an error if the underlying implementation is unable to complete the request.
     fn get_policy(&self, role: &Role) -> Result<Option<Policy>, IdentityError> {
-        self.get_policy_by_name(&role.policy_name)
+        self.get_policy_by_name(role.policy_name())
     }
 }
