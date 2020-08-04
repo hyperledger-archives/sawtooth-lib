@@ -14,6 +14,12 @@
  * limitations under the License.
  * ------------------------------------------------------------------------------
  */
+use std::convert::TryFrom;
+
+use protobuf::Message;
+
+use transact::protocol::transaction::Transaction as TransactTransaction;
+use transact::protos::FromBytes;
 
 use crate::protos;
 
@@ -64,5 +70,43 @@ impl From<protos::transaction::Transaction> for Transaction {
             payload_sha512: txn_header.take_payload_sha512(),
             signer_public_key: txn_header.take_signer_public_key(),
         }
+    }
+}
+
+impl TryFrom<TransactTransaction> for Transaction {
+    type Error = &'static str;
+
+    fn try_from(txn: TransactTransaction) -> Result<Self, Self::Error> {
+        let mut txn_header: protos::transaction::TransactionHeader =
+            protobuf::parse_from_bytes(txn.header())
+                .map_err(|_| "Unable to parse TransactionHeader bytes")?;
+
+        Ok(Transaction {
+            header_signature: txn.header_signature().to_string(),
+            header_bytes: txn.header().to_vec(),
+            payload: txn.payload().to_vec(),
+            batcher_public_key: txn_header.take_batcher_public_key(),
+            dependencies: txn_header.take_dependencies().into_vec(),
+            family_name: txn_header.take_family_name(),
+            family_version: txn_header.take_family_version(),
+            inputs: txn_header.take_inputs().into_vec(),
+            outputs: txn_header.take_outputs().into_vec(),
+            nonce: txn_header.take_nonce(),
+            payload_sha512: txn_header.take_payload_sha512(),
+            signer_public_key: txn_header.take_signer_public_key(),
+        })
+    }
+}
+
+impl TryFrom<Transaction> for TransactTransaction {
+    type Error = &'static str;
+
+    fn try_from(txn: Transaction) -> Result<Self, Self::Error> {
+        let txn_bytes = protos::transaction::Transaction::from(txn)
+            .write_to_bytes()
+            .map_err(|_| "Unable to convert Transaction to bytes")?;
+
+        Ok(TransactTransaction::from_bytes(&txn_bytes)
+            .map_err(|_| "Unable to get transact Transaction from bytes")?)
     }
 }
