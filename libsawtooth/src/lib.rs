@@ -36,6 +36,8 @@ pub mod permissions;
 pub mod protocol;
 pub mod protos;
 #[cfg(feature = "validator-internals")]
+pub mod receipt;
+#[cfg(feature = "validator-internals")]
 pub mod scheduler;
 #[cfg(feature = "validator-internals")]
 pub mod state;
