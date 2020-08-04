@@ -15,6 +15,13 @@
  * ------------------------------------------------------------------------------
  */
 
+use std::convert::TryFrom;
+
+use protobuf::Message;
+
+use transact::protocol::batch::Batch as TransactBatch;
+use transact::protos::FromBytes;
+
 use crate::protos;
 use crate::transaction::Transaction;
 
@@ -65,5 +72,42 @@ impl From<protos::batch::Batch> for Batch {
                 .map(Transaction::from)
                 .collect(),
         }
+    }
+}
+
+impl TryFrom<TransactBatch> for Batch {
+    type Error = &'static str;
+
+    fn try_from(batch: TransactBatch) -> Result<Self, Self::Error> {
+        let mut batch_header: protos::batch::BatchHeader =
+            protobuf::parse_from_bytes(batch.header()).expect("Unable to parse BatchHeader bytes");
+
+        let mut transactions = vec![];
+        for txn in batch.transactions().iter() {
+            transactions.push(Transaction::try_from(txn.clone())?);
+        }
+
+        Ok(Batch {
+            header_signature: batch.header_signature().to_string(),
+            header_bytes: batch.header().to_vec(),
+            signer_public_key: batch_header.take_signer_public_key(),
+            transaction_ids: batch_header.take_transaction_ids().into_vec(),
+            trace: batch.trace(),
+
+            transactions,
+        })
+    }
+}
+
+impl TryFrom<Batch> for TransactBatch {
+    type Error = &'static str;
+
+    fn try_from(batch: Batch) -> Result<Self, Self::Error> {
+        let batch_bytes = protos::batch::Batch::from(batch)
+            .write_to_bytes()
+            .map_err(|_| "Unable to convert Batch to bytes")?;
+
+        Ok(TransactBatch::from_bytes(&batch_bytes)
+            .map_err(|_| "Unable to get transact Batch from bytes")?)
     }
 }
