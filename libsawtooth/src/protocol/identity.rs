@@ -404,3 +404,142 @@ impl RoleBuilder {
         Ok(Role { name, policy_name })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const POLICY_NAME: &str = "policy_name";
+    const ROLE_NAME: &str = "role_name";
+    const KEY1: &str = "012345";
+    const KEY2: &str = "abcdef";
+
+    /// Verify that the `PolicyBuilder` can be successfully used in a chain.
+    ///
+    /// 1. Construct the policy using a builder chain
+    /// 2. Verify that the resulting policy is correct
+    #[test]
+    fn policy_builder_chain() {
+        let permissions = vec![
+            Permission::PermitKey(KEY1.into()),
+            Permission::DenyKey(KEY2.into()),
+        ];
+
+        let policy = PolicyBuilder::new()
+            .with_name(POLICY_NAME.into())
+            .with_permissions(permissions.clone())
+            .build()
+            .expect("Failed to build policy");
+
+        assert_eq!(policy.name(), POLICY_NAME);
+        assert_eq!(policy.permissions(), permissions.as_slice());
+    }
+
+    /// Verify that the `PolicyBuilder` can be successfully used with separate calls to its methods.
+    ///
+    /// 1. Construct the policy using separate method calls and assignments of the builder
+    /// 2. Verify that the resulting policy is correct
+    #[test]
+    fn policy_builder_separate() {
+        let permissions = vec![
+            Permission::PermitKey(KEY1.into()),
+            Permission::DenyKey(KEY2.into()),
+        ];
+
+        let mut builder = PolicyBuilder::new();
+        builder = builder.with_name(POLICY_NAME.into());
+        builder = builder.with_permissions(permissions.clone());
+
+        let policy = builder.build().expect("Failed to build policy");
+
+        assert_eq!(policy.name(), POLICY_NAME);
+        assert_eq!(policy.permissions(), permissions.as_slice());
+    }
+
+    /// Verify that the `PolicyBuilder` fails when any of the required fields are missing.
+    ///
+    /// 1. Attempt to build a policy without setting `name` and verify that it fails.
+    /// 2. Attempt to build a policy without setting `permissions` and verify that it fails.
+    #[test]
+    fn policy_builder_missing_fields() {
+        match PolicyBuilder::new()
+            .with_permissions(vec![
+                Permission::PermitKey(KEY1.into()),
+                Permission::DenyKey(KEY2.into()),
+            ])
+            .build()
+        {
+            Err(ProtocolBuildError::MissingField(_)) => {}
+            res => panic!(
+                "Expected Err(ProtocolBuildError::MissingField), got {:?}",
+                res
+            ),
+        }
+
+        match PolicyBuilder::new().with_name(POLICY_NAME.into()).build() {
+            Err(ProtocolBuildError::MissingField(_)) => {}
+            res => panic!(
+                "Expected Err(ProtocolBuildError::MissingField), got {:?}",
+                res
+            ),
+        }
+    }
+
+    /// Verify that the `RoleBuilder` can be successfully used in a chain.
+    ///
+    /// 1. Construct the role using a builder chain
+    /// 2. Verify that the resulting role is correct
+    #[test]
+    fn role_builder_chain() {
+        let role = RoleBuilder::new()
+            .with_name(ROLE_NAME.into())
+            .with_policy_name(POLICY_NAME.into())
+            .build()
+            .expect("Failed to build role");
+
+        assert_eq!(role.name(), ROLE_NAME);
+        assert_eq!(role.policy_name(), POLICY_NAME);
+    }
+
+    /// Verify that the `RoleBuilder` can be successfully used with separate calls to its methods.
+    ///
+    /// 1. Construct the role using separate method calls and assignments of the builder
+    /// 2. Verify that the resulting role is correct
+    #[test]
+    fn role_builder_separate() {
+        let mut builder = RoleBuilder::new();
+        builder = builder.with_name(ROLE_NAME.into());
+        builder = builder.with_policy_name(POLICY_NAME.into());
+
+        let role = builder.build().expect("Failed to build role");
+
+        assert_eq!(role.name(), ROLE_NAME);
+        assert_eq!(role.policy_name(), POLICY_NAME);
+    }
+
+    /// Verify that the `RoleBuilder` fails when any of the required fields are missing.
+    ///
+    /// 1. Attempt to build a role without setting `name` and verify that it fails.
+    /// 2. Attempt to build a role without setting `permissions` and verify that it fails.
+    #[test]
+    fn role_builder_missing_fields() {
+        match RoleBuilder::new()
+            .with_policy_name(POLICY_NAME.into())
+            .build()
+        {
+            Err(ProtocolBuildError::MissingField(_)) => {}
+            res => panic!(
+                "Expected Err(ProtocolBuildError::MissingField), got {:?}",
+                res
+            ),
+        }
+
+        match RoleBuilder::new().with_name(ROLE_NAME.into()).build() {
+            Err(ProtocolBuildError::MissingField(_)) => {}
+            res => panic!(
+                "Expected Err(ProtocolBuildError::MissingField), got {:?}",
+                res
+            ),
+        }
+    }
+}
