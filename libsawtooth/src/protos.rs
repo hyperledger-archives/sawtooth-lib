@@ -62,6 +62,12 @@ impl std::fmt::Display for ProtoConversionError {
     }
 }
 
+impl From<std::string::FromUtf8Error> for ProtoConversionError {
+    fn from(e: std::string::FromUtf8Error) -> Self {
+        ProtoConversionError::SerializationError(format!("{}", e))
+    }
+}
+
 impl From<hex::FromHexError> for ProtoConversionError {
     fn from(e: hex::FromHexError) -> Self {
         ProtoConversionError::SerializationError(format!("{}", e))

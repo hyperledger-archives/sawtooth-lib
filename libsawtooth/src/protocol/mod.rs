@@ -17,9 +17,11 @@
 
 //! Structs that cover the core protocols of the Sawtooth system.
 
+mod batch;
 pub mod block;
 pub mod identity;
 pub mod setting;
+mod transaction;
 
 use crate::protos::ProtoConversionError;
 use crate::signing::Error as SigningError;
