@@ -18,13 +18,11 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
-use crate::{
-    block::Block,
-    journal::{
-        block_manager::BlockManager, block_validator::BlockStatusStore, block_wrapper::BlockStatus,
-        chain::COMMIT_STORE, NULL_BLOCK_IDENTIFIER,
-    },
+use crate::journal::{
+    block_manager::BlockManager, block_validator::BlockStatusStore, block_wrapper::BlockStatus,
+    chain::COMMIT_STORE, NULL_BLOCK_IDENTIFIER,
 };
+use crate::protocol::block::BlockPair;
 
 #[derive(Clone)]
 pub struct BlockScheduler<B: BlockStatusStore> {
@@ -46,7 +44,7 @@ impl<B: BlockStatusStore> BlockScheduler<B> {
 
     /// Schedule the blocks, returning those that are directly ready to
     /// validate
-    pub fn schedule(&self, blocks: Vec<Block>) -> Vec<Block> {
+    pub fn schedule(&self, blocks: Vec<BlockPair>) -> Vec<BlockPair> {
         self.state
             .lock()
             .expect("The BlockScheduler Mutex was poisoned")
@@ -55,7 +53,7 @@ impl<B: BlockStatusStore> BlockScheduler<B> {
 
     /// Mark the block associated with block_id as having completed block
     /// validation, returning any blocks that are not available for processing
-    pub fn done(&self, block_id: &str) -> Vec<Block> {
+    pub fn done(&self, block_id: &str) -> Vec<BlockPair> {
         self.state
             .lock()
             .expect("The BlockScheduler Mutex was poisoned")
@@ -68,57 +66,57 @@ struct BlockSchedulerState<B: BlockStatusStore> {
     pub block_status_store: B,
     pub pending: HashSet<String>,
     pub processing: HashSet<String>,
-    pub descendants_by_previous_id: HashMap<String, Vec<Block>>,
+    pub descendants_by_previous_id: HashMap<String, Vec<BlockPair>>,
 }
 
 impl<B: BlockStatusStore> BlockSchedulerState<B> {
-    fn schedule(&mut self, blocks: Vec<Block>) -> Vec<Block> {
+    fn schedule(&mut self, blocks: Vec<BlockPair>) -> Vec<BlockPair> {
         let mut ready = vec![];
         for block in blocks {
-            if self.processing.contains(&block.header_signature) {
+            if self.processing.contains(block.block().header_signature()) {
                 debug!(
                     "During block scheduling, block already in process: {}",
-                    &block.header_signature
+                    block.block().header_signature()
                 );
                 continue;
             }
 
-            if self.pending.contains(&block.header_signature) {
+            if self.pending.contains(block.block().header_signature()) {
                 debug!(
                     "During block scheduling, block already in pending: {}",
-                    &block.header_signature
+                    block.block().header_signature()
                 );
                 continue;
             }
 
-            if self.processing.contains(&block.previous_block_id) {
+            if self.processing.contains(block.header().previous_block_id()) {
                 debug!(
                     "During block scheduling, previous block {} in process, adding block {} to pending",
-                    &block.previous_block_id,
-                    &block.header_signature);
+                    block.header().previous_block_id(),
+                    block.block().header_signature());
                 self.add_block_to_pending(block);
                 continue;
             }
 
-            if self.pending.contains(&block.previous_block_id) {
+            if self.pending.contains(block.header().previous_block_id()) {
                 debug!(
                     "During block scheduling, previous block {} is pending, adding block {} to pending",
-                    &block.previous_block_id,
-                    &block.header_signature);
+                    block.header().previous_block_id(),
+                    block.block().header_signature());
 
                 self.add_block_to_pending(block);
                 continue;
             }
 
-            if block.previous_block_id != NULL_BLOCK_IDENTIFIER
-                && self.block_validity(&block.previous_block_id) == BlockStatus::Unknown
+            if block.header().previous_block_id() != NULL_BLOCK_IDENTIFIER
+                && self.block_validity(block.header().previous_block_id()) == BlockStatus::Unknown
             {
                 info!(
                     "During block scheduling, predecessor of block {}, {}, status is unknown. Scheduling all blocks since last predecessor with known status",
-                    &block.header_signature, &block.previous_block_id);
+                    block.block().header_signature(), block.header().previous_block_id());
 
                 let blocks_previous_to_previous = self.block_manager
-                        .branch(&block.previous_block_id)
+                        .branch(block.header().previous_block_id())
                         .expect("Block id of block previous to block being scheduled is unknown to the block manager");
                 self.add_block_to_pending(block);
 
@@ -126,17 +124,21 @@ impl<B: BlockStatusStore> BlockSchedulerState<B> {
                 for predecessor in blocks_previous_to_previous {
                     if self
                         .block_status_store
-                        .status(&predecessor.header_signature)
+                        .status(predecessor.block().header_signature())
                         != BlockStatus::Unknown
                     {
                         break;
                     }
-                    match self.block_manager.ref_block(&predecessor.header_signature) {
+                    match self
+                        .block_manager
+                        .ref_block(predecessor.block().header_signature())
+                    {
                         Ok(_) => (),
                         Err(err) => {
                             warn!(
                                 "Failed to ref block {} during cache-miss block rescheduling: {:?}",
-                                &predecessor.header_signature, err
+                                predecessor.block().header_signature(),
+                                err
                             );
                         }
                     }
@@ -147,14 +149,19 @@ impl<B: BlockStatusStore> BlockSchedulerState<B> {
 
                 for block in self.schedule(to_be_scheduled) {
                     if !ready.contains(&block) {
-                        self.processing.insert(block.header_signature.clone());
+                        self.processing
+                            .insert(block.block().header_signature().to_string());
                         ready.push(block);
                     }
                 }
             } else {
-                debug!("Adding block {} for processing", &block.header_signature);
+                debug!(
+                    "Adding block {} for processing",
+                    block.block().header_signature()
+                );
 
-                self.processing.insert(block.header_signature.clone());
+                self.processing
+                    .insert(block.block().header_signature().to_string());
                 ready.push(block);
             }
         }
@@ -181,7 +188,7 @@ impl<B: BlockStatusStore> BlockSchedulerState<B> {
         }
     }
 
-    fn done(&mut self, block_id: &str) -> Vec<Block> {
+    fn done(&mut self, block_id: &str) -> Vec<BlockPair> {
         self.processing.remove(block_id);
         let ready = self
             .descendants_by_previous_id
@@ -189,19 +196,21 @@ impl<B: BlockStatusStore> BlockSchedulerState<B> {
             .unwrap_or_default();
 
         for blk in &ready {
-            self.pending.remove(&blk.header_signature);
-            self.processing.insert(blk.header_signature.clone());
+            self.pending.remove(blk.block().header_signature());
+            self.processing
+                .insert(blk.block().header_signature().to_string());
         }
 
         self.update_gauges();
         ready
     }
 
-    fn add_block_to_pending(&mut self, block: Block) {
-        self.pending.insert(block.header_signature.clone());
+    fn add_block_to_pending(&mut self, block: BlockPair) {
+        self.pending
+            .insert(block.block().header_signature().to_string());
         if let Some(ref mut waiting_descendants) = self
             .descendants_by_previous_id
-            .get_mut(&block.previous_block_id)
+            .get_mut(block.header().previous_block_id())
         {
             if !waiting_descendants.contains(&block) {
                 waiting_descendants.push(block);
@@ -210,7 +219,7 @@ impl<B: BlockStatusStore> BlockSchedulerState<B> {
         }
 
         self.descendants_by_previous_id
-            .insert(block.previous_block_id.clone(), vec![block]);
+            .insert(block.header().previous_block_id().to_string(), vec![block]);
     }
 
     fn update_gauges(&self) {
@@ -232,23 +241,25 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use crate::journal::NULL_BLOCK_IDENTIFIER;
+    use crate::protocol::block::{BlockBuilder, BlockPair};
+    use crate::signing::hash::HashSigner;
 
     #[test]
     fn test_block_scheduler_simple() {
         let block_manager = BlockManager::new();
-        let block_status_store = MockStore::new();
-        let block_a = create_block("A", NULL_BLOCK_IDENTIFIER, 0);
-        let block_a1 = create_block("A1", "A", 1);
-        let block_a2 = create_block("A2", "A", 1);
-        let block_b2 = create_block("B2", "A2", 2);
+        let block_status_store = ArcMockStore::new();
+        let block_a = create_block(NULL_BLOCK_IDENTIFIER, 0, None);
+        let block_a1 = create_block(block_a.block().header_signature(), 1, Some(b"a1"));
+        let block_a2 = create_block(block_a.block().header_signature(), 1, Some(b"a2"));
+        let block_b2 = create_block(block_a2.block().header_signature(), 2, None);
 
-        let block_unknown = create_block("UNKNOWN", "A", 1);
-        let block_b = create_block("B", "UNKNOWN", 2);
+        let block_unknown = create_block(block_a.block().header_signature(), 1, Some(b"UNKNOWN"));
+        let block_b = create_block(block_unknown.block().header_signature(), 2, None);
         block_manager
             .put(vec![block_a.clone(), block_unknown.clone()])
             .expect("The block manager failed to `put` a branch");
 
-        let block_scheduler = BlockScheduler::new(block_manager, block_status_store);
+        let block_scheduler = BlockScheduler::new(block_manager, block_status_store.clone());
 
         assert_eq!(
             block_scheduler.schedule(vec![
@@ -261,8 +272,14 @@ mod tests {
         );
 
         assert_eq!(
-            block_scheduler.done(&block_a.header_signature),
+            block_scheduler.done(block_a.block().header_signature()),
             vec![block_a1, block_a2]
+        );
+
+        // Mark block A as valid, since it's done
+        block_status_store.insert(
+            block_a.block().header_signature().into(),
+            BlockStatus::Valid,
         );
 
         assert_eq!(block_scheduler.schedule(vec![block_b]), vec![block_unknown]);
@@ -273,14 +290,14 @@ mod tests {
         let block_manager = BlockManager::new();
         let block_status_store = ArcMockStore::new();
 
-        let block_a = create_block("A", NULL_BLOCK_IDENTIFIER, 0);
-        let block_b = create_block("B", "A", 1);
-        let block_c1 = create_block("C1", "B", 2);
-        let block_c2 = create_block("C2", "B", 2);
-        let block_c3 = create_block("C3", "B", 2);
-        let block_d1 = create_block("D11", "C1", 3);
-        let block_d2 = create_block("D12", "C1", 3);
-        let block_d3 = create_block("D13", "C1", 3);
+        let block_a = create_block(NULL_BLOCK_IDENTIFIER, 0, None);
+        let block_b = create_block(block_a.block().header_signature(), 1, None);
+        let block_c1 = create_block(block_b.block().header_signature(), 2, Some(b"c1"));
+        let block_c2 = create_block(block_b.block().header_signature(), 2, Some(b"c2"));
+        let block_c3 = create_block(block_b.block().header_signature(), 2, Some(b"c3"));
+        let block_d1 = create_block(block_c1.block().header_signature(), 3, Some(b"d1"));
+        let block_d2 = create_block(block_c1.block().header_signature(), 3, Some(b"d2"));
+        let block_d3 = create_block(block_c1.block().header_signature(), 3, Some(b"d3"));
 
         block_manager
             .put(vec![
@@ -326,7 +343,7 @@ mod tests {
         );
 
         assert_eq!(
-            block_scheduler.done(&block_a.header_signature),
+            block_scheduler.done(block_a.block().header_signature()),
             vec![block_b.clone()],
             "Marking Block A as complete, makes Block B available"
         );
@@ -338,25 +355,25 @@ mod tests {
         );
 
         assert_eq!(
-            block_scheduler.done(&block_b.header_signature),
+            block_scheduler.done(block_b.block().header_signature()),
             vec![block_c1.clone(), block_c2.clone(), block_c3.clone()],
             "Marking Block B as complete, makes Block C1, C2, C3 available"
         );
 
         assert_eq!(
-            block_scheduler.done(&block_c2.header_signature),
+            block_scheduler.done(block_c2.block().header_signature()),
             vec![],
             "No Blocks are available"
         );
 
         assert_eq!(
-            block_scheduler.done(&block_c3.header_signature),
+            block_scheduler.done(block_c3.block().header_signature()),
             vec![],
             "No Blocks are available"
         );
 
         assert_eq!(
-            block_scheduler.done(&block_c1.header_signature),
+            block_scheduler.done(block_c1.block().header_signature()),
             vec![block_d1.clone(), block_d2.clone(), block_d3.clone()],
             "Blocks D1, D2, D3 are available"
         );
@@ -367,11 +384,11 @@ mod tests {
         let block_manager = BlockManager::new();
         let block_status_store = ArcMockStore::new();
 
-        let block_a = create_block("A", NULL_BLOCK_IDENTIFIER, 0);
-        let block_b = create_block("B", "A", 1);
-        let block_c1 = create_block("C1", "B", 2);
-        let block_c2 = create_block("C2", "B", 2);
-        let block_c3 = create_block("C3", "B", 2);
+        let block_a = create_block(NULL_BLOCK_IDENTIFIER, 0, None);
+        let block_b = create_block(block_a.block().header_signature(), 1, None);
+        let block_c1 = create_block(block_b.block().header_signature(), 2, Some(b"c1"));
+        let block_c2 = create_block(block_b.block().header_signature(), 2, Some(b"c2"));
+        let block_c3 = create_block(block_b.block().header_signature(), 2, Some(b"c3"));
 
         block_manager
             .put(vec![block_a.clone(), block_b.clone(), block_c1.clone()])
@@ -393,10 +410,10 @@ mod tests {
             "Block A is ready, but block b is not"
         );
 
-        block_status_store.insert(&block_a.header_signature, BlockStatus::Valid);
+        block_status_store.insert(block_a.block().header_signature(), BlockStatus::Valid);
 
         assert_eq!(
-            block_scheduler.done(&block_a.header_signature),
+            block_scheduler.done(block_a.block().header_signature()),
             vec![block_b.clone()],
             "Now Block B is ready"
         );
@@ -404,7 +421,7 @@ mod tests {
         // We are not inserting a status for block b so there will be a later miss
 
         assert_eq!(
-            block_scheduler.done(&block_b.header_signature),
+            block_scheduler.done(block_b.block().header_signature()),
             vec![],
             "Block B is done and there are no further blocks"
         );
@@ -418,36 +435,21 @@ mod tests {
         );
     }
 
-    fn create_block(header_signature: &str, previous_block_id: &str, block_num: u64) -> Block {
-        Block {
-            header_signature: header_signature.into(),
-            batches: vec![],
-            state_root_hash: "".into(),
-            consensus: vec![],
-            batch_ids: vec![],
-            signer_public_key: "".into(),
-            previous_block_id: previous_block_id.into(),
-            block_num,
-            header_bytes: vec![],
-        }
-    }
-
-    #[derive(Clone)]
-    struct MockStore {}
-
-    impl MockStore {
-        fn new() -> Self {
-            MockStore {}
-        }
-    }
-
-    impl BlockStatusStore for MockStore {
-        fn status(&self, block_id: &str) -> BlockStatus {
-            if block_id == "UNKNOWN" {
-                return BlockStatus::Unknown;
-            }
-            BlockStatus::Valid
-        }
+    /// `state_root_hash` should be set if two or more blocks with the same `previous_block_id` and
+    /// `block_num` are created; this ensures that the resulting header signatures (IDs) of the
+    /// blocks are different.
+    fn create_block(
+        previous_block_id: &str,
+        block_num: u64,
+        state_root_hash: Option<&[u8]>,
+    ) -> BlockPair {
+        BlockBuilder::new()
+            .with_block_num(block_num)
+            .with_previous_block_id(previous_block_id.into())
+            .with_state_root_hash(state_root_hash.unwrap_or_default().into())
+            .with_batches(vec![])
+            .build_pair(&HashSigner::default())
+            .expect("Failed to build block pair")
     }
 
     #[derive(Clone)]
@@ -472,16 +474,12 @@ mod tests {
 
     impl BlockStatusStore for ArcMockStore {
         fn status(&self, block_id: &str) -> BlockStatus {
-            if block_id == "UNKNOWN" {
-                return BlockStatus::Unknown;
-            } else {
-                self.statuses
-                    .lock()
-                    .expect("Mutex was poisoned")
-                    .get(block_id)
-                    .cloned()
-                    .unwrap_or(BlockStatus::Unknown)
-            }
+            self.statuses
+                .lock()
+                .expect("Mutex was poisoned")
+                .get(block_id)
+                .cloned()
+                .unwrap_or(BlockStatus::Unknown)
         }
     }
 }

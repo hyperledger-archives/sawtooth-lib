@@ -62,6 +62,12 @@ impl std::fmt::Display for ProtoConversionError {
     }
 }
 
+impl From<hex::FromHexError> for ProtoConversionError {
+    fn from(e: hex::FromHexError) -> Self {
+        ProtoConversionError::SerializationError(format!("{}", e))
+    }
+}
+
 pub trait FromProto<P>: Sized {
     fn from_proto(other: P) -> Result<Self, ProtoConversionError>;
 }

@@ -15,8 +15,6 @@
  * ------------------------------------------------------------------------------
  */
 
-use protobuf::Message;
-
 use transact::database::error::DatabaseError;
 use transact::database::lmdb::LmdbDatabase;
 use transact::database::lmdb::LmdbDatabaseWriter;
@@ -26,8 +24,9 @@ use crate::journal::block_store::{
     BatchIndex, BlockStore, BlockStoreError, IndexedBlockStore, TransactionIndex,
 };
 use crate::journal::chain::{ChainReadError, ChainReader};
-use crate::protos::block::{Block as ProtoBlock, BlockHeader};
-use crate::{batch::Batch, block::Block, transaction::Transaction};
+use crate::protocol::block::BlockPair;
+use crate::protos::{FromBytes, IntoBytes};
+use crate::{batch::Batch, transaction::Transaction};
 
 /// Contains all committed blocks for the current chain
 #[derive(Clone)]
@@ -42,20 +41,19 @@ impl CommitStore {
 
     // Get
 
-    fn read_proto_block_from_main(
+    fn read_block_from_main(
         reader: &dyn DatabaseReader,
         block_id: &[u8],
-    ) -> Result<ProtoBlock, DatabaseError> {
+    ) -> Result<BlockPair, DatabaseError> {
         let packed = reader.get(&block_id)?.ok_or_else(|| {
             DatabaseError::NotFoundError(format!("Block not found: {:?}", block_id))
         })?;
-        let proto_block: ProtoBlock = protobuf::parse_from_bytes(&packed).map_err(|err| {
+        BlockPair::from_bytes(&packed).map_err(|err| {
             DatabaseError::CorruptionError(format!(
                 "Could not interpret stored data as a block: {}",
                 err
             ))
-        })?;
-        Ok(proto_block)
+        })
     }
 
     fn read_block_id_from_batch_index(
@@ -113,51 +111,46 @@ impl CommitStore {
         Ok(val)
     }
 
-    pub fn get_by_block_id(&self, block_id: &str) -> Result<Block, DatabaseError> {
+    pub fn get_by_block_id(&self, block_id: &str) -> Result<BlockPair, DatabaseError> {
         let reader = self.db.reader()?;
-        let proto_block = Self::read_proto_block_from_main(&reader, block_id.as_bytes())?;
-        Ok(proto_block.into())
+        Self::read_block_from_main(&reader, block_id.as_bytes())
     }
 
-    pub fn get_by_block_num(&self, block_num: u64) -> Result<Block, DatabaseError> {
+    pub fn get_by_block_num(&self, block_num: u64) -> Result<BlockPair, DatabaseError> {
         let reader = self.db.reader()?;
         let block_id = Self::read_block_id_from_block_num_index(&reader, block_num)?;
-        let proto_block = Self::read_proto_block_from_main(&reader, &block_id)?;
-        Ok(proto_block.into())
+        Self::read_block_from_main(&reader, &block_id)
     }
 
-    pub fn get_by_batch_id(&self, batch_id: &str) -> Result<Block, DatabaseError> {
+    pub fn get_by_batch_id(&self, batch_id: &str) -> Result<BlockPair, DatabaseError> {
         let reader = self.db.reader()?;
         let block_id = Self::read_block_id_from_batch_index(&reader, batch_id.as_bytes())?;
-        let proto_block = Self::read_proto_block_from_main(&reader, &block_id)?;
-        Ok(proto_block.into())
+        Self::read_block_from_main(&reader, &block_id)
     }
 
-    pub fn get_by_transaction_id(&self, transaction_id: &str) -> Result<Block, DatabaseError> {
+    pub fn get_by_transaction_id(&self, transaction_id: &str) -> Result<BlockPair, DatabaseError> {
         let reader = self.db.reader()?;
         let block_id =
             Self::read_block_id_from_transaction_index(&reader, transaction_id.as_bytes())?;
-        let proto_block = Self::read_proto_block_from_main(&reader, &block_id)?;
-        Ok(proto_block.into())
+        Self::read_block_from_main(&reader, &block_id)
     }
 
-    pub fn get_chain_head(&self) -> Result<Block, DatabaseError> {
+    pub fn get_chain_head(&self) -> Result<BlockPair, DatabaseError> {
         let reader = self.db.reader()?;
         let chain_head_id = Self::read_chain_head_id_from_block_num_index(&reader)?;
-        let proto_block = Self::read_proto_block_from_main(&reader, &chain_head_id)?;
-        Ok(proto_block.into())
+        Self::read_block_from_main(&reader, &chain_head_id)
     }
 
     // Put
 
-    fn write_proto_block_to_main_db(
+    fn write_block_to_main_db(
         writer: &mut LmdbDatabaseWriter,
-        proto_block: &ProtoBlock,
+        block: &BlockPair,
     ) -> Result<(), DatabaseError> {
-        let packed = proto_block.write_to_bytes().map_err(|err| {
+        let packed = block.block().clone().into_bytes().map_err(|err| {
             DatabaseError::WriterError(format!("Failed to serialize block: {}", err))
         })?;
-        writer.put(&proto_block.header_signature.as_bytes(), &packed)
+        writer.put(&block.block().header_signature().as_bytes(), &packed)
     }
 
     fn write_block_num_to_index(
@@ -173,37 +166,37 @@ impl CommitStore {
         )
     }
 
-    fn write_proto_batches_to_index(
+    fn write_batches_to_index(
         writer: &mut LmdbDatabaseWriter,
-        proto_block: &ProtoBlock,
+        block: &BlockPair,
     ) -> Result<(), DatabaseError> {
-        for proto_batch in proto_block.batches.iter() {
+        for batch in block.block().batches().iter() {
             writer.index_put(
                 "index_batch",
-                &proto_batch.header_signature.as_bytes(),
-                &proto_block.header_signature.as_bytes(),
+                &batch.header_signature.as_bytes(),
+                &block.block().header_signature().as_bytes(),
             )?;
         }
         Ok(())
     }
 
-    fn write_proto_transctions_to_index(
+    fn write_transctions_to_index(
         writer: &mut LmdbDatabaseWriter,
-        proto_block: &ProtoBlock,
+        block: &BlockPair,
     ) -> Result<(), DatabaseError> {
-        for proto_batch in proto_block.batches.iter() {
-            for proto_txn in proto_batch.transactions.iter() {
+        for batch in block.block().batches().iter() {
+            for txn in batch.transactions.iter() {
                 writer.index_put(
                     "index_transaction",
-                    &proto_txn.header_signature.as_bytes(),
-                    &proto_block.header_signature.as_bytes(),
+                    &txn.header_signature.as_bytes(),
+                    &block.block().header_signature().as_bytes(),
                 )?;
             }
         }
         Ok(())
     }
 
-    pub fn put_blocks(&self, blocks: Vec<Block>) -> Result<(), DatabaseError> {
+    pub fn put_blocks(&self, blocks: Vec<BlockPair>) -> Result<(), DatabaseError> {
         let mut writer = self.db.writer()?;
         for block in blocks {
             Self::put_block(&mut writer, block)?;
@@ -211,25 +204,26 @@ impl CommitStore {
         Box::new(writer).commit()
     }
 
-    fn put_block(writer: &mut LmdbDatabaseWriter, block: Block) -> Result<(), DatabaseError> {
-        let block_num = block.block_num;
-        let proto_block: ProtoBlock = block.into();
-
-        Self::write_proto_block_to_main_db(writer, &proto_block)?;
-        Self::write_block_num_to_index(writer, block_num, &proto_block.header_signature)?;
-        Self::write_proto_transctions_to_index(writer, &proto_block)?;
-        Self::write_proto_batches_to_index(writer, &proto_block)?;
+    fn put_block(writer: &mut LmdbDatabaseWriter, block: BlockPair) -> Result<(), DatabaseError> {
+        Self::write_block_to_main_db(writer, &block)?;
+        Self::write_block_num_to_index(
+            writer,
+            block.header().block_num(),
+            block.block().header_signature(),
+        )?;
+        Self::write_transctions_to_index(writer, &block)?;
+        Self::write_batches_to_index(writer, &block)?;
 
         Ok(())
     }
 
     // Delete
 
-    fn delete_proto_block_from_main_db(
+    fn delete_block_from_main_db(
         writer: &mut LmdbDatabaseWriter,
-        proto_block: &ProtoBlock,
+        block: &BlockPair,
     ) -> Result<(), DatabaseError> {
-        writer.delete(&proto_block.header_signature.as_bytes())
+        writer.delete(&block.block().header_signature().as_bytes())
     }
 
     fn delete_block_num_from_index(
@@ -242,23 +236,23 @@ impl CommitStore {
         )
     }
 
-    fn delete_proto_batches_from_index(
+    fn delete_batches_from_index(
         writer: &mut LmdbDatabaseWriter,
-        proto_block: &ProtoBlock,
+        block: &BlockPair,
     ) -> Result<(), DatabaseError> {
-        for proto_batch in proto_block.batches.iter() {
-            writer.index_delete("index_batch", &proto_batch.header_signature.as_bytes())?;
+        for batch in block.block().batches().iter() {
+            writer.index_delete("index_batch", &batch.header_signature.as_bytes())?;
         }
         Ok(())
     }
 
-    fn delete_proto_transactions_from_index(
+    fn delete_transactions_from_index(
         writer: &mut LmdbDatabaseWriter,
-        proto_block: &ProtoBlock,
+        block: &BlockPair,
     ) -> Result<(), DatabaseError> {
-        for proto_batch in proto_block.batches.iter() {
-            for proto_txn in proto_batch.transactions.iter() {
-                writer.index_delete("index_transaction", &proto_txn.header_signature.as_bytes())?;
+        for batch in block.block().batches().iter() {
+            for txn in batch.transactions.iter() {
+                writer.index_delete("index_transaction", &txn.header_signature.as_bytes())?;
             }
         }
         Ok(())
@@ -267,20 +261,18 @@ impl CommitStore {
     fn delete_block_by_id(
         writer: &mut LmdbDatabaseWriter,
         block_id: &str,
-    ) -> Result<Block, DatabaseError> {
-        let proto_block = Self::read_proto_block_from_main(&*writer, block_id.as_bytes())?;
-        let block_header: BlockHeader = protobuf::parse_from_bytes(proto_block.get_header())
-            .expect("Unable to parse BlockHeader bytes");
+    ) -> Result<BlockPair, DatabaseError> {
+        let block = Self::read_block_from_main(&*writer, block_id.as_bytes())?;
 
-        Self::delete_proto_block_from_main_db(writer, &proto_block)?;
-        Self::delete_block_num_from_index(writer, block_header.block_num)?;
-        Self::delete_proto_batches_from_index(writer, &proto_block)?;
-        Self::delete_proto_transactions_from_index(writer, &proto_block)?;
+        Self::delete_block_from_main_db(writer, &block)?;
+        Self::delete_block_num_from_index(writer, block.header().block_num())?;
+        Self::delete_batches_from_index(writer, &block)?;
+        Self::delete_transactions_from_index(writer, &block)?;
 
-        Ok(proto_block.into())
+        Ok(block)
     }
 
-    fn delete_blocks_by_ids(&self, block_ids: &[&str]) -> Result<Vec<Block>, DatabaseError> {
+    fn delete_blocks_by_ids(&self, block_ids: &[&str]) -> Result<Vec<BlockPair>, DatabaseError> {
         let mut blocks = Vec::new();
         let mut writer = self.db.writer()?;
 
@@ -298,9 +290,11 @@ impl CommitStore {
     pub fn get_batch(&self, batch_id: &str) -> Result<Batch, DatabaseError> {
         self.get_by_batch_id(batch_id).and_then(|block| {
             block
-                .batches
-                .into_iter()
+                .block()
+                .batches()
+                .iter()
                 .find(|batch| batch.header_signature == batch_id)
+                .cloned()
                 .ok_or_else(|| DatabaseError::CorruptionError("Batch index corrupted".into()))
         })
     }
@@ -309,8 +303,10 @@ impl CommitStore {
         self.get_by_transaction_id(transaction_id)
             .and_then(|block| {
                 block
-                    .batches
-                    .into_iter()
+                    .block()
+                    .batches()
+                    .iter()
+                    .cloned()
                     .flat_map(|batch| batch.transactions.into_iter())
                     .find(|txn| txn.header_signature == transaction_id)
                     .ok_or_else(|| {
@@ -323,14 +319,16 @@ impl CommitStore {
         self.get_by_transaction_id(transaction_id)
             .and_then(|block| {
                 block
-                    .batches
-                    .into_iter()
+                    .block()
+                    .batches()
+                    .iter()
                     .find(|batch| {
                         !batch
                             .transaction_ids
                             .iter()
                             .any(|txn_id| txn_id == transaction_id)
                     })
+                    .cloned()
                     .ok_or_else(|| {
                         DatabaseError::CorruptionError("Transaction index corrupted".into())
                     })
@@ -391,7 +389,7 @@ impl CommitStore {
                 ByHeightDirection::Increasing => Some(0),
                 ByHeightDirection::Decreasing => Some(
                     self.get_chain_head()
-                        .map(|head| head.block_num)
+                        .map(|head| head.header().block_num())
                         .unwrap_or(0),
                 ),
             }
@@ -410,7 +408,7 @@ impl BlockStore for CommitStore {
     fn get<'a>(
         &'a self,
         block_ids: &[&str],
-    ) -> Result<Box<dyn Iterator<Item = Block> + 'a>, BlockStoreError> {
+    ) -> Result<Box<dyn Iterator<Item = BlockPair> + 'a>, BlockStoreError> {
         Ok(Box::new(CommitStoreGetIterator {
             store: self.clone(),
             block_ids: block_ids.iter().map(|id| (*id).into()).collect(),
@@ -418,7 +416,7 @@ impl BlockStore for CommitStore {
         }))
     }
 
-    fn delete(&mut self, block_ids: &[&str]) -> Result<Vec<Block>, BlockStoreError> {
+    fn delete(&mut self, block_ids: &[&str]) -> Result<Vec<BlockPair>, BlockStoreError> {
         self.delete_blocks_by_ids(block_ids)
             .map_err(|err| match err {
                 DatabaseError::NotFoundError(_) => BlockStoreError::UnknownBlock,
@@ -426,17 +424,17 @@ impl BlockStore for CommitStore {
             })
     }
 
-    fn put(&mut self, blocks: Vec<Block>) -> Result<(), BlockStoreError> {
+    fn put(&mut self, blocks: Vec<BlockPair>) -> Result<(), BlockStoreError> {
         self.put_blocks(blocks).map_err(|err| match err {
             DatabaseError::NotFoundError(_) => BlockStoreError::UnknownBlock,
             err => BlockStoreError::Error(format!("{:?}", err)),
         })
     }
 
-    fn iter<'a>(&'a self) -> Result<Box<dyn Iterator<Item = Block> + 'a>, BlockStoreError> {
+    fn iter<'a>(&'a self) -> Result<Box<dyn Iterator<Item = BlockPair> + 'a>, BlockStoreError> {
         match self.get_chain_head() {
             Ok(head) => Ok(Box::new(self.get_block_by_height_iter(
-                Some(head.block_num),
+                Some(head.header().block_num()),
                 ByHeightDirection::Decreasing,
             ))),
             Err(DatabaseError::NotFoundError(_)) => Ok(Box::new(
@@ -453,7 +451,7 @@ impl BatchIndex for CommitStore {
             .map_err(|err| BlockStoreError::Error(format!("{:?}", err)))
     }
 
-    fn get_block_by_id(&self, id: &str) -> Result<Option<Block>, BlockStoreError> {
+    fn get_block_by_id(&self, id: &str) -> Result<Option<BlockPair>, BlockStoreError> {
         match self.get_by_batch_id(id) {
             Ok(block) => Ok(Some(block)),
             Err(DatabaseError::NotFoundError(_)) => Ok(None),
@@ -468,7 +466,7 @@ impl TransactionIndex for CommitStore {
             .map_err(|err| BlockStoreError::Error(format!("{:?}", err)))
     }
 
-    fn get_block_by_id(&self, id: &str) -> Result<Option<Block>, BlockStoreError> {
+    fn get_block_by_id(&self, id: &str) -> Result<Option<BlockPair>, BlockStoreError> {
         match self.get_by_transaction_id(id) {
             Ok(block) => Ok(Some(block)),
             Err(DatabaseError::NotFoundError(_)) => Ok(None),
@@ -486,7 +484,7 @@ struct CommitStoreGetIterator {
 }
 
 impl Iterator for CommitStoreGetIterator {
-    type Item = Block;
+    type Item = BlockPair;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(block_id) = self.block_ids.get(self.index) {
@@ -517,7 +515,7 @@ pub struct CommitStoreByHeightIterator {
 }
 
 impl Iterator for CommitStoreByHeightIterator {
-    type Item = Block;
+    type Item = BlockPair;
 
     fn next(&mut self) -> Option<Self::Item> {
         let block = match self.next {
@@ -542,25 +540,25 @@ impl Iterator for CommitStoreByHeightIterator {
 }
 
 fn map_block_database_result_to_chain_reader_result(
-    result: Result<Block, DatabaseError>,
-) -> Result<Option<Block>, ChainReadError> {
+    result: Result<BlockPair, DatabaseError>,
+) -> Result<Option<BlockPair>, ChainReadError> {
     match result {
-        Ok(block) => Ok(Some(block)),
+        Ok(pair) => Ok(Some(pair)),
         Err(DatabaseError::NotFoundError(_)) => Ok(None),
         Err(err) => Err(ChainReadError::GeneralReadError(format!("{:?}", err))),
     }
 }
 
 impl ChainReader for CommitStore {
-    fn chain_head(&self) -> Result<Option<Block>, ChainReadError> {
+    fn chain_head(&self) -> Result<Option<BlockPair>, ChainReadError> {
         map_block_database_result_to_chain_reader_result(self.get_chain_head())
     }
 
-    fn get_block_by_block_id(&self, block_id: &str) -> Result<Option<Block>, ChainReadError> {
+    fn get_block_by_block_id(&self, block_id: &str) -> Result<Option<BlockPair>, ChainReadError> {
         map_block_database_result_to_chain_reader_result(self.get_by_block_id(block_id))
     }
 
-    fn get_block_by_block_num(&self, block_num: u64) -> Result<Option<Block>, ChainReadError> {
+    fn get_block_by_block_num(&self, block_num: u64) -> Result<Option<BlockPair>, ChainReadError> {
         map_block_database_result_to_chain_reader_result(self.get_by_block_num(block_num))
     }
 

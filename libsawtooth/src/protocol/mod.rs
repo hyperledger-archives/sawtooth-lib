@@ -17,16 +17,19 @@
 
 //! Structs that cover the core protocols of the Sawtooth system.
 
+pub mod block;
 pub mod identity;
 pub mod setting;
 
 use crate::protos::ProtoConversionError;
+use crate::signing::Error as SigningError;
 
 /// Errors that may occur when building a protocol object
 #[derive(Debug)]
 pub enum ProtocolBuildError {
     MissingField(String),
     DeserializationError(String),
+    SigningError(String),
 }
 
 impl std::error::Error for ProtocolBuildError {
@@ -34,6 +37,7 @@ impl std::error::Error for ProtocolBuildError {
         match *self {
             Self::MissingField(ref msg) => msg,
             Self::DeserializationError(ref msg) => msg,
+            Self::SigningError(ref msg) => msg,
         }
     }
 }
@@ -43,6 +47,7 @@ impl std::fmt::Display for ProtocolBuildError {
         match *self {
             Self::MissingField(ref s) => write!(f, "missing a required field: {}", s),
             Self::DeserializationError(ref s) => write!(f, "failed to deserialize: {}", s),
+            Self::SigningError(ref s) => write!(f, "failed to sign: {}", s),
         }
     }
 }
@@ -50,5 +55,11 @@ impl std::fmt::Display for ProtocolBuildError {
 impl From<ProtoConversionError> for ProtocolBuildError {
     fn from(err: ProtoConversionError) -> Self {
         Self::DeserializationError(format!("{}", err))
+    }
+}
+
+impl From<SigningError> for ProtocolBuildError {
+    fn from(err: SigningError) -> Self {
+        Self::SigningError(format!("{}", err))
     }
 }

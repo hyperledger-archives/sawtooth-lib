@@ -38,11 +38,11 @@ impl StateViewFactory {
     /// Creates a state view for a given state root hash.
     pub fn create_view<V: From<Box<dyn StateReader>>>(
         &self,
-        state_root_hash: &str,
+        state_root_hash: &[u8],
     ) -> Result<V, StateDatabaseError> {
         let merkle_db = DecodedMerkleStateReader::new(MerkleRadixTree::new(
             Box::new(self.state_database.clone()),
-            Some(state_root_hash),
+            Some(&hex::encode(state_root_hash)),
         )?);
         Ok(V::from(Box::new(merkle_db)))
     }

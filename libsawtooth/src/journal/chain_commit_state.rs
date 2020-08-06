@@ -171,9 +171,12 @@ impl TransactionCommitCache {
 mod test {
     use super::*;
 
-    use crate::block::Block;
+    use std::collections::HashMap;
+
     use crate::journal::block_store::InMemoryBlockStore;
     use crate::journal::NULL_BLOCK_IDENTIFIER;
+    use crate::protocol::block::{BlockBuilder, BlockPair};
+    use crate::signing::hash::HashSigner;
     use crate::transaction::Transaction;
 
     /// Creates Chains of blocks that match this diagram
@@ -190,64 +193,93 @@ mod test {
     ///  the batches in B2-1, for example, are B2-1b0 and B2-1b1
     ///  the transactions in b0, are B2-1b0t0, B2'b0t1, and B2-1b0t2
     ///
-    fn create_chains_to_put_in_block_manager() -> Vec<Vec<Block>> {
-        let mut previous_block_id = NULL_BLOCK_IDENTIFIER;
+    fn create_chains_to_put_in_block_manager() -> Vec<Vec<(String, BlockPair)>> {
+        let mut previous_block_id = NULL_BLOCK_IDENTIFIER.to_string();
         let mut block_num = 0;
         let chain0 = ["B0", "B1", "B2", "B3", "B4", "B5"]
             .iter()
-            .map(|ref mut block_id| {
-                let block = create_block_w_batches_txns(block_id, previous_block_id, block_num);
-                previous_block_id = block_id;
+            .map(|block_handle| {
+                let block =
+                    create_block_w_batches_txns(&previous_block_id, block_num, block_handle);
+                previous_block_id = block.block().header_signature().to_string();
                 block_num += 1;
-                block
+                (block_handle.to_string(), block)
             })
-            .collect();
+            .collect::<Vec<_>>();
 
-        let mut previous_block_id = "B1";
+        let mut previous_block_id = chain0
+            .iter()
+            .find_map(|(handle, block)| if handle == "B1" { Some(block) } else { None })
+            .expect("B1 not found")
+            .block()
+            .header_signature()
+            .to_string();
         let mut block_num = 2;
         let chain1 = ["B2-1", "B3-1", "B4-1", "B5-1"]
             .iter()
-            .map(|ref mut block_id| {
-                let block = create_block_w_batches_txns(block_id, previous_block_id, block_num);
-                previous_block_id = block_id;
+            .map(|block_handle| {
+                let block =
+                    create_block_w_batches_txns(&previous_block_id, block_num, block_handle);
+                previous_block_id = block.block().header_signature().to_string();
                 block_num += 1;
-                block
+                (block_handle.to_string(), block)
             })
-            .collect();
+            .collect::<Vec<_>>();
 
-        let mut previous_block_id = "B3-1";
+        let mut previous_block_id = chain1
+            .iter()
+            .find_map(|(handle, block)| if handle == "B3-1" { Some(block) } else { None })
+            .expect("B3-1 not found")
+            .block()
+            .header_signature()
+            .to_string();
         let mut block_num = 4;
         let chain4 = ["B4-4", "B5-4"]
             .iter()
-            .map(|ref mut block_id| {
-                let block = create_block_w_batches_txns(block_id, previous_block_id, block_num);
-                previous_block_id = block_id;
+            .map(|block_handle| {
+                let block =
+                    create_block_w_batches_txns(&previous_block_id, block_num, block_handle);
+                previous_block_id = block.block().header_signature().to_string();
                 block_num += 1;
-                block
+                (block_handle.to_string(), block)
             })
-            .collect();
+            .collect::<Vec<_>>();
 
-        let mut previous_block_id = "B2";
+        let mut previous_block_id = chain0
+            .iter()
+            .find_map(|(handle, block)| if handle == "B2" { Some(block) } else { None })
+            .expect("B2 not found")
+            .block()
+            .header_signature()
+            .to_string();
         let block_num = 3;
         let chain2 = ["B3-2", "B4-2", "B5-2"]
             .iter()
-            .map(|ref mut block_id| {
-                let block = create_block_w_batches_txns(block_id, previous_block_id, block_num);
-                previous_block_id = block_id;
-                block
+            .map(|block_handle| {
+                let block =
+                    create_block_w_batches_txns(&previous_block_id, block_num, block_handle);
+                previous_block_id = block.block().header_signature().to_string();
+                (block_handle.to_string(), block)
             })
-            .collect();
+            .collect::<Vec<_>>();
 
-        let mut previous_block_id = "B3-2";
+        let mut previous_block_id = chain2
+            .iter()
+            .find_map(|(handle, block)| if handle == "B3-2" { Some(block) } else { None })
+            .expect("B3-2 not found")
+            .block()
+            .header_signature()
+            .to_string();
         let block_num = 4;
         let chain3 = ["B4-3", "B5-3"]
             .iter()
-            .map(|ref mut block_id| {
-                let block = create_block_w_batches_txns(block_id, previous_block_id, block_num);
-                previous_block_id = block_id;
-                block
+            .map(|block_handle| {
+                let block =
+                    create_block_w_batches_txns(&previous_block_id, block_num, block_handle);
+                previous_block_id = block.block().header_signature().to_string();
+                (block_handle.to_string(), block)
             })
-            .collect();
+            .collect::<Vec<_>>();
         vec![chain0, chain1, chain4, chain2, chain3]
     }
 
@@ -277,7 +309,7 @@ mod test {
 
     #[test]
     fn test_dependency_in_other_fork() {
-        let block_manager = setup_state();
+        let (block_manager, blocks) = setup_state();
 
         let transactions: Vec<Transaction> = ["B6b0t0", "B6b0t1", "B6b0t2"]
             .iter()
@@ -285,18 +317,33 @@ mod test {
             .collect();
 
         block_manager
-            .persist("B5", "commit")
+            .persist(
+                blocks
+                    .get("B5")
+                    .expect("B5 not found")
+                    .block()
+                    .header_signature(),
+                "commit",
+            )
             .expect("The block manager is able to persist all blocks known to it");
 
         assert_eq!(
-            validate_transaction_dependencies(&block_manager, "B5-1", &transactions),
+            validate_transaction_dependencies(
+                &block_manager,
+                blocks
+                    .get("B5-1")
+                    .expect("B5-1 not found")
+                    .block()
+                    .header_signature(),
+                &transactions
+            ),
             Err(ChainCommitStateError::MissingDependency("B2b0t0".into()))
         );
     }
 
     #[test]
     fn test_dependency_in_chain() {
-        let block_manager = setup_state();
+        let (block_manager, blocks) = setup_state();
 
         let transactions: Vec<Transaction> = ["B6b0t0", "B6b0t1", "B6b0t2"]
             .iter()
@@ -304,18 +351,33 @@ mod test {
             .collect();
 
         block_manager
-            .persist("B5", "commit")
+            .persist(
+                blocks
+                    .get("B5")
+                    .expect("B5 not found")
+                    .block()
+                    .header_signature(),
+                "commit",
+            )
             .expect("The block manager is able to persist all blocks known to it");
 
         assert_eq!(
-            validate_transaction_dependencies(&block_manager, "B5-1", &transactions),
+            validate_transaction_dependencies(
+                &block_manager,
+                blocks
+                    .get("B5-1")
+                    .expect("B5-1 not found")
+                    .block()
+                    .header_signature(),
+                &transactions
+            ),
             Ok(())
         );
     }
 
     #[test]
     fn test_dependency_in_chain_chain_head_greater() {
-        let block_manager = setup_state();
+        let (block_manager, blocks) = setup_state();
 
         let transactions: Vec<Transaction> = ["B3-1b0t0", "B3-1b0t1", "B3-1b0t2"]
             .iter()
@@ -323,18 +385,33 @@ mod test {
             .collect();
 
         block_manager
-            .persist("B5", "commit")
+            .persist(
+                blocks
+                    .get("B5")
+                    .expect("B5 not found")
+                    .block()
+                    .header_signature(),
+                "commit",
+            )
             .expect("The block manager is able to persist all blocks known to it");
 
         assert_eq!(
-            validate_transaction_dependencies(&block_manager, "B2", &transactions),
+            validate_transaction_dependencies(
+                &block_manager,
+                blocks
+                    .get("B2")
+                    .expect("B2 not found")
+                    .block()
+                    .header_signature(),
+                &transactions
+            ),
             Ok(())
         );
     }
 
     #[test]
     fn test_dependency_in_uncommitted() {
-        let block_manager = setup_state();
+        let (block_manager, blocks) = setup_state();
 
         let transactions: Vec<Transaction> = ["B6b0t0", "B6b0t1", "B6b0t2"]
             .iter()
@@ -342,29 +419,55 @@ mod test {
             .collect();
 
         block_manager
-            .persist("B1", "commit")
+            .persist(
+                blocks
+                    .get("B1")
+                    .expect("B1 not found")
+                    .block()
+                    .header_signature(),
+                "commit",
+            )
             .expect("The block manager is able to persist all blocks known to it");
 
         assert_eq!(
-            validate_transaction_dependencies(&block_manager, "B5-3", &transactions),
+            validate_transaction_dependencies(
+                &block_manager,
+                blocks
+                    .get("B5-3")
+                    .expect("B5-3 not found")
+                    .block()
+                    .header_signature(),
+                &transactions
+            ),
             Ok(())
         );
     }
 
     #[test]
     fn test_no_duplicate_batches() {
-        let block_manager = setup_state();
+        let (block_manager, blocks) = setup_state();
 
         let batches = ["B6b0".into(), "B6b1".into()];
 
         block_manager
-            .persist("B4", "commit")
+            .persist(
+                blocks
+                    .get("B4")
+                    .expect("B4 not found")
+                    .block()
+                    .header_signature(),
+                "commit",
+            )
             .expect("The block manager is able to persist all blocks known to it");
 
         assert_eq!(
             validate_no_duplicate_batches(
                 &block_manager,
-                "B5",
+                blocks
+                    .get("B5")
+                    .expect("B5 not found")
+                    .block()
+                    .header_signature(),
                 &batches.iter().collect::<Vec<&String>>()
             ),
             Ok(())
@@ -373,18 +476,29 @@ mod test {
 
     #[test]
     fn test_no_duplicates_because_batches_in_other_fork() {
-        let block_manager = setup_state();
+        let (block_manager, blocks) = setup_state();
 
         let batches = ["B3b0".into(), "B3b1".into()];
 
         block_manager
-            .persist("B5", "commit")
+            .persist(
+                blocks
+                    .get("B5")
+                    .expect("B5 not found")
+                    .block()
+                    .header_signature(),
+                "commit",
+            )
             .expect("The block manager is able to persist all blocks known to it");
 
         assert_eq!(
             validate_no_duplicate_batches(
                 &block_manager,
-                "B5-2",
+                blocks
+                    .get("B5-2")
+                    .expect("B5-2 not found")
+                    .block()
+                    .header_signature(),
                 &batches.iter().collect::<Vec<&String>>()
             ),
             Ok(())
@@ -393,17 +507,28 @@ mod test {
 
     #[test]
     fn test_no_duplicate_batches_duplicate_in_branch() {
-        let block_manager = setup_state();
+        let (block_manager, blocks) = setup_state();
 
         let batches = ["B2b0".into(), "B2b1".into()];
 
         block_manager
-            .persist("B5", "commit")
+            .persist(
+                blocks
+                    .get("B5")
+                    .expect("B5 not found")
+                    .block()
+                    .header_signature(),
+                "commit",
+            )
             .expect("The block manage is able to persist all blocks known to it");
 
         assert!(validate_no_duplicate_batches(
             &block_manager,
-            "B5-2",
+            blocks
+                .get("B5-2")
+                .expect("B5-2 not found")
+                .block()
+                .header_signature(),
             &batches.iter().collect::<Vec<&String>>(),
         )
         .is_err(),);
@@ -411,17 +536,28 @@ mod test {
 
     #[test]
     fn test_no_duplicate_batches_duplicate_in_uncommitted() {
-        let block_manager = setup_state();
+        let (block_manager, blocks) = setup_state();
 
         let batches = ["B5-2b0".into(), "B5-2b1".into()];
 
         block_manager
-            .persist("B5", "commit")
+            .persist(
+                blocks
+                    .get("B5")
+                    .expect("B5 not found")
+                    .block()
+                    .header_signature(),
+                "commit",
+            )
             .expect("The block manager is able to persist all blocks known to it");
 
         assert!(validate_no_duplicate_batches(
             &block_manager,
-            "B5-2",
+            blocks
+                .get("B5-2")
+                .expect("B5-2 not found")
+                .block()
+                .header_signature(),
             &batches.iter().collect::<Vec<&String>>(),
         )
         .is_err(),);
@@ -429,18 +565,29 @@ mod test {
 
     #[test]
     fn test_no_duplicate_batches_duplicate_in_other_fork() {
-        let block_manager = setup_state();
+        let (block_manager, blocks) = setup_state();
 
         let batches = ["B2b0".into(), "B2b1".into()];
 
         block_manager
-            .persist("B5", "commit")
+            .persist(
+                blocks
+                    .get("B5")
+                    .expect("B5 not found")
+                    .block()
+                    .header_signature(),
+                "commit",
+            )
             .expect("The block manager is able to persist all blocks known to it");
 
         assert_eq!(
             validate_no_duplicate_batches(
                 &block_manager,
-                "B5-1",
+                blocks
+                    .get("B5-1")
+                    .expect("B5-1 not found")
+                    .block()
+                    .header_signature(),
                 &batches.iter().collect::<Vec<&String>>()
             ),
             Ok(())
@@ -449,7 +596,7 @@ mod test {
 
     #[test]
     fn test_no_duplicate_transactions() {
-        let block_manager = setup_state();
+        let (block_manager, blocks) = setup_state();
 
         let transactions = [
             "B6b0t0".into(),
@@ -461,13 +608,24 @@ mod test {
         ];
 
         block_manager
-            .persist("B5", "commit")
+            .persist(
+                blocks
+                    .get("B5")
+                    .expect("B5 not found")
+                    .block()
+                    .header_signature(),
+                "commit",
+            )
             .expect("The block manager is able to persist all blocks known to it");
 
         assert_eq!(
             validate_no_duplicate_transactions(
                 &block_manager,
-                "B5",
+                blocks
+                    .get("B5")
+                    .expect("B5 not found")
+                    .block()
+                    .header_signature(),
                 &transactions.iter().collect::<Vec<&String>>()
             ),
             Ok(())
@@ -476,17 +634,28 @@ mod test {
 
     #[test]
     fn test_no_duplicate_transactions_duplicate_in_branch() {
-        let block_manager = setup_state();
+        let (block_manager, blocks) = setup_state();
 
         let transactions = ["B6b0t0".into(), "B6b0t1".into(), "B2b0t2".into()];
 
         block_manager
-            .persist("B5-3", "commit")
+            .persist(
+                blocks
+                    .get("B5-3")
+                    .expect("B5-3 not found")
+                    .block()
+                    .header_signature(),
+                "commit",
+            )
             .expect("The block manager is able to persist all blocks known to it");
 
         assert!(validate_no_duplicate_transactions(
             &block_manager,
-            "B5-2",
+            blocks
+                .get("B5-2")
+                .expect("B5-2 not found")
+                .block()
+                .header_signature(),
             &transactions.iter().collect::<Vec<&String>>(),
         )
         .is_err(),)
@@ -494,17 +663,28 @@ mod test {
 
     #[test]
     fn test_no_duplicate_transactions_duplicate_in_uncommitted() {
-        let block_manager = setup_state();
+        let (block_manager, blocks) = setup_state();
 
         let transactions = ["B6b0t0".into(), "B6b0t1".into(), "B2-1b0t1".into()];
 
         block_manager
-            .persist("B5-3", "commit")
+            .persist(
+                blocks
+                    .get("B5-3")
+                    .expect("B5-3 not found")
+                    .block()
+                    .header_signature(),
+                "commit",
+            )
             .expect("The block manager is able to persist all blocks known to it");
 
         assert!(validate_no_duplicate_transactions(
             &block_manager,
-            "B5-4",
+            blocks
+                .get("B5-4")
+                .expect("B5-4 not found")
+                .block()
+                .header_signature(),
             &transactions.iter().collect::<Vec<&String>>(),
         )
         .is_err(),);
@@ -512,18 +692,29 @@ mod test {
 
     #[test]
     fn test_no_duplicate_transactions_duplicate_in_other_fork() {
-        let block_manager = setup_state();
+        let (block_manager, blocks) = setup_state();
 
         let transactions = ["B6b0t0".into(), "B6b0t1".into(), "B2b0t1".into()];
 
         block_manager
-            .persist("B5", "commit")
+            .persist(
+                blocks
+                    .get("B5")
+                    .expect("B5 not found")
+                    .block()
+                    .header_signature(),
+                "commit",
+            )
             .expect("The block manager is able to persist all blocks known to it");
 
         assert_eq!(
             validate_no_duplicate_transactions(
                 &block_manager,
-                "B5-1",
+                blocks
+                    .get("B5-1")
+                    .expect("B5-1 not found")
+                    .block()
+                    .header_signature(),
                 &transactions.iter().collect::<Vec<&String>>()
             ),
             Ok(())
@@ -532,7 +723,7 @@ mod test {
 
     #[test]
     fn test_before_genesis() {
-        let block_manager = setup_state();
+        let (block_manager, blocks) = setup_state();
 
         let transactions = ["B0b0t0".into(), "B0b0t1".into(), "B0b0t2".into()];
         let batches = ["B0b0".into(), "B0b1".into()];
@@ -561,7 +752,11 @@ mod test {
         assert_eq!(
             validate_no_duplicate_batches(
                 &block_manager,
-                "B2",
+                blocks
+                    .get("B2")
+                    .expect("B2 not found")
+                    .block()
+                    .header_signature(),
                 &batches.iter().collect::<Vec<&String>>()
             ),
             Ok(())
@@ -570,7 +765,11 @@ mod test {
         assert_eq!(
             validate_no_duplicate_transactions(
                 &block_manager,
-                "B2",
+                blocks
+                    .get("B2")
+                    .expect("B2 not found")
+                    .block()
+                    .header_signature(),
                 &transactions.iter().collect::<Vec<&String>>()
             ),
             Ok(())
@@ -581,27 +780,35 @@ mod test {
 
         assert!(validate_no_duplicate_batches(
             &block_manager,
-            "B3",
+            blocks
+                .get("B3")
+                .expect("B3 not found")
+                .block()
+                .header_signature(),
             &batches.iter().collect::<Vec<&String>>(),
         )
         .is_err(),);
         assert!(validate_no_duplicate_transactions(
             &block_manager,
-            "B3",
+            blocks
+                .get("B3")
+                .expect("B3 not found")
+                .block()
+                .header_signature(),
             &transactions.iter().collect::<Vec<&String>>(),
         )
         .is_err(),);
     }
 
     fn create_block_w_batches_txns(
-        block_id: &str,
         previous_block_id: &str,
         block_num: u64,
-    ) -> Block {
+        block_handle: &str,
+    ) -> BlockPair {
         let batches = vec!["b0", "b1"]
             .into_iter()
             .map(|batch_id: &str| {
-                let batch_header_signature = format!("{}{}", block_id, batch_id);
+                let batch_header_signature = format!("{}{}", block_handle, batch_id);
                 let txns = vec!["t0", "t1", "t2"]
                     .into_iter()
                     .map(|t_id: &str| {
@@ -613,29 +820,17 @@ mod test {
             })
             .collect();
 
-        let block = create_block(block_id, previous_block_id, block_num, batches);
-
-        block
+        create_block(previous_block_id, block_num, batches)
     }
 
-    fn create_block(
-        block_id: &str,
-        previous_id: &str,
-        block_num: u64,
-        batches: Vec<Batch>,
-    ) -> Block {
-        let batch_ids = batches.iter().map(|b| b.header_signature.clone()).collect();
-        Block {
-            header_signature: block_id.into(),
-            batches,
-            state_root_hash: "".into(),
-            consensus: vec![],
-            batch_ids,
-            signer_public_key: "".into(),
-            previous_block_id: previous_id.into(),
-            block_num,
-            header_bytes: vec![],
-        }
+    fn create_block(previous_block_id: &str, block_num: u64, batches: Vec<Batch>) -> BlockPair {
+        BlockBuilder::new()
+            .with_block_num(block_num)
+            .with_previous_block_id(previous_block_id.into())
+            .with_state_root_hash("".into())
+            .with_batches(batches)
+            .build_pair(&HashSigner::default())
+            .expect("Failed to build block pair")
     }
 
     fn create_batch(batch_id: String, transactions: Vec<Transaction>) -> Batch {
@@ -670,12 +865,18 @@ mod test {
         }
     }
 
-    fn setup_state() -> BlockManager {
+    fn setup_state() -> (BlockManager, HashMap<String, BlockPair>) {
         let block_manager = BlockManager::new();
+        let branches = create_chains_to_put_in_block_manager();
 
-        for branch in create_chains_to_put_in_block_manager() {
+        for branch in branches.clone().into_iter() {
             block_manager
-                .put(branch)
+                .put(
+                    branch
+                        .into_iter()
+                        .map(|(_, block_pair)| block_pair)
+                        .collect(),
+                )
                 .expect("The branches were created to be `put` in the block manager without error");
         }
         let block_store = Box::new(InMemoryBlockStore::default());
@@ -683,6 +884,12 @@ mod test {
             .add_store("commit", block_store.clone())
             .expect("The block manager failed to add a blockstore");
 
-        block_manager
+        (
+            block_manager,
+            branches
+                .into_iter()
+                .flat_map(|branch| branch.into_iter())
+                .collect(),
+        )
     }
 }

@@ -15,7 +15,8 @@
  * ------------------------------------------------------------------------------
  */
 
-use crate::{batch::Batch, block::Block};
+use crate::batch::Batch;
+use crate::protocol::block::BlockPair;
 
 #[derive(Debug)]
 pub enum CandidateBlockError {
@@ -24,7 +25,7 @@ pub enum CandidateBlockError {
 
 #[derive(Debug)]
 pub struct FinalizeBlockResult {
-    pub block: Option<Block>,
+    pub block: Option<BlockPair>,
     pub remaining_batches: Vec<Batch>,
     pub last_batch: Batch,
     pub injected_batch_ids: Vec<String>,

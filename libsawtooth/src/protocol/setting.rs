@@ -181,3 +181,67 @@ impl SettingBuilder {
         Ok(Setting { key, value })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const KEY: &str = "key";
+    const VALUE: &str = "value";
+
+    /// Verify that the `SettingBuilder` can be successfully used in a chain.
+    ///
+    /// 1. Construct the setting using a builder chain
+    /// 2. Verify that the resulting setting is correct
+    #[test]
+    fn builder_chain() {
+        let setting = SettingBuilder::new()
+            .with_key(KEY.into())
+            .with_value(VALUE.into())
+            .build()
+            .expect("Failed to build setting");
+
+        assert_eq!(setting.key(), KEY);
+        assert_eq!(setting.value(), VALUE);
+    }
+
+    /// Verify that the `SettingBuilder` can be successfully used with separate calls to its
+    /// methods.
+    ///
+    /// 1. Construct the setting using separate method calls and assignments of the builder
+    /// 2. Verify that the resulting setting is correct
+    #[test]
+    fn builder_separate() {
+        let mut builder = SettingBuilder::new();
+        builder = builder.with_key(KEY.into());
+        builder = builder.with_value(VALUE.into());
+
+        let setting = builder.build().expect("Failed to build setting");
+
+        assert_eq!(setting.key(), KEY);
+        assert_eq!(setting.value(), VALUE);
+    }
+
+    /// Verify that the `SettingBuilder` fails when any of the required fields are missing.
+    ///
+    /// 1. Attempt to build a setting without setting `key` and verify that it fails.
+    /// 2. Attempt to build a setting without setting `value` and verify that it fails.
+    #[test]
+    fn builder_missing_fields() {
+        match SettingBuilder::new().with_value(VALUE.into()).build() {
+            Err(ProtocolBuildError::MissingField(_)) => {}
+            res => panic!(
+                "Expected Err(ProtocolBuildError::MissingField), got {:?}",
+                res
+            ),
+        }
+
+        match SettingBuilder::new().with_key(KEY.into()).build() {
+            Err(ProtocolBuildError::MissingField(_)) => {}
+            res => panic!(
+                "Expected Err(ProtocolBuildError::MissingField), got {:?}",
+                res
+            ),
+        }
+    }
+}

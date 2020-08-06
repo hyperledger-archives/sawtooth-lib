@@ -21,12 +21,12 @@ use crate::scheduler::Scheduler;
 /// The logical state hash before state has been added to the
 /// merkle database. May not be the actual first state hash due to
 /// implementation details of the merkle database.
-pub const NULL_STATE_HASH: &str = "";
+pub const NULL_STATE_HASH: &[u8] = &[];
 
 pub trait ExecutionPlatform: Sync + Send {
     fn create_scheduler(
         &self,
-        state_hash: &str,
+        state_hash: &[u8],
     ) -> Result<Box<dyn Scheduler>, ExecutionPlatformError>;
 }
 
