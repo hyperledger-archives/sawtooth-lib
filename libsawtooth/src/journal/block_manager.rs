@@ -580,7 +580,7 @@ impl BlockManager {
     pub fn contains_any_transactions(
         &self,
         block_id: &str,
-        ids: &[&String],
+        ids: &[&str],
     ) -> Result<Option<String>, BlockManagerError> {
         let _lock = self
             .persist_lock
@@ -621,7 +621,7 @@ impl BlockManager {
     pub fn contains_any_batches(
         &self,
         block_id: &str,
-        ids: &[&String],
+        ids: &[&str],
     ) -> Result<Option<String>, BlockManagerError> {
         let _lock = self
             .persist_lock
@@ -657,31 +657,26 @@ impl BlockManager {
         }
     }
 
-    fn block_contains_any_transaction(&self, block: &BlockPair, ids: &[&String]) -> Option<String> {
-        let transaction_ids: HashSet<&String> = HashSet::from_iter(
+    fn block_contains_any_transaction(&self, block: &BlockPair, ids: &[&str]) -> Option<String> {
+        let transaction_ids: HashSet<&str> = HashSet::from_iter(
             block
                 .block()
                 .batches()
                 .iter()
-                .fold(vec![], |mut arr, b| {
-                    for transaction in &b.transactions {
-                        arr.push(&transaction.header_signature)
-                    }
-                    arr
-                })
-                .into_iter(),
+                .flat_map(|batch| batch.transactions())
+                .map(|txn| txn.header_signature()),
         );
-        let comparison_transaction_ids: HashSet<&String> = HashSet::from_iter(ids.iter().cloned());
+        let comparison_transaction_ids = HashSet::from_iter(ids.iter().cloned());
         transaction_ids
             .intersection(&comparison_transaction_ids)
             .next()
             .map(|t| t.to_string())
     }
 
-    fn block_contains_any_batch(&self, block: &BlockPair, ids: &[&String]) -> Option<String> {
-        let batch_ids =
-            HashSet::from_iter(block.block().batches().iter().map(|b| &b.header_signature));
-        let comparison_batch_ids: HashSet<&String> = HashSet::from_iter(ids.iter().cloned());
+    fn block_contains_any_batch(&self, block: &BlockPair, ids: &[&str]) -> Option<String> {
+        let batch_ids: HashSet<&str> =
+            HashSet::from_iter(block.block().batches().iter().map(|b| b.header_signature()));
+        let comparison_batch_ids = HashSet::from_iter(ids.iter().cloned());
         batch_ids
             .intersection(&comparison_batch_ids)
             .next()
@@ -707,7 +702,7 @@ impl BlockManager {
         &self,
         store: &dyn IndexedBlockStore,
         block_id: &str,
-        ids: &[&String],
+        ids: &[&str],
     ) -> Result<Option<String>, BlockManagerError> {
         for id in ids {
             if self.transaction_index_contains(store, block_id, id)? {
@@ -721,7 +716,7 @@ impl BlockManager {
         &self,
         store: &dyn IndexedBlockStore,
         block_id: &str,
-        ids: &[&String],
+        ids: &[&str],
     ) -> Result<Option<String>, BlockManagerError> {
         for id in ids {
             if self.batch_index_contains(store, block_id, id)? {

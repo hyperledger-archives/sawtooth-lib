@@ -19,6 +19,8 @@
 
 use std::error::Error as StdError;
 
+use transact::signing::Error as TransactError;
+
 #[derive(Debug)]
 pub enum Error {
     SigningError(String),
@@ -42,6 +44,14 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
             Error::SigningError(ref s) => write!(f, "SigningError: {}", s),
+        }
+    }
+}
+
+impl From<Error> for TransactError {
+    fn from(err: Error) -> Self {
+        match err {
+            Error::SigningError(msg) => Self::SigningError(msg),
         }
     }
 }

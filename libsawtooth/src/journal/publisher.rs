@@ -23,10 +23,12 @@ use std::mem;
 use std::slice::Iter;
 use std::sync::{Arc, RwLock};
 
+use transact::protocol::batch::Batch;
+
+use crate::execution::execution_platform::ExecutionPlatform;
 use crate::journal::block_manager::BlockRef;
 use crate::journal::candidate_block::CandidateBlock;
 use crate::protocol::block::BlockPair;
-use crate::{batch::Batch, execution::execution_platform::ExecutionPlatform};
 
 #[derive(Debug)]
 pub enum InitializeBlockError {
@@ -158,7 +160,7 @@ impl PendingBatchesPool {
     }
 
     pub fn append(&mut self, batch: Batch) -> bool {
-        if self.ids.insert(batch.header_signature.clone()) {
+        if self.ids.insert(batch.header_signature().to_string()) {
             self.batches.push(batch);
             true
         } else {
@@ -174,14 +176,14 @@ impl PendingBatchesPool {
     ///   uncommitted (List<Batches): Batches that were committed in the old
     ///   fork since the common root.
     pub fn rebuild(&mut self, committed: Option<Vec<Batch>>, uncommitted: Option<Vec<Batch>>) {
-        let committed_set = if let Some(committed) = committed {
-            committed
-                .iter()
-                .map(|i| i.header_signature.clone())
-                .collect::<HashSet<String>>()
-        } else {
-            HashSet::new()
-        };
+        let committed_set = committed
+            .map(|committed| {
+                committed
+                    .iter()
+                    .map(|i| i.header_signature().to_string())
+                    .collect::<HashSet<_>>()
+            })
+            .unwrap_or_default();
 
         let previous_batches = self.batches.clone();
 
@@ -192,14 +194,14 @@ impl PendingBatchesPool {
 
         if let Some(batch_list) = uncommitted {
             for batch in batch_list {
-                if !committed_set.contains(&batch.header_signature) {
+                if !committed_set.contains(batch.header_signature()) {
                     self.append(batch);
                 }
             }
         }
 
         for batch in previous_batches {
-            if !committed_set.contains(&batch.header_signature) {
+            if !committed_set.contains(batch.header_signature()) {
                 self.append(batch);
             }
         }
@@ -214,7 +216,7 @@ impl PendingBatchesPool {
         let last_index = self
             .batches
             .iter()
-            .position(|i| i.header_signature == last_sent.header_signature);
+            .position(|i| i.header_signature() == last_sent.header_signature());
 
         let unsent = if let Some(idx) = last_index {
             let mut unsent = vec![];

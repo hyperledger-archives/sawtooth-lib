@@ -15,7 +15,8 @@
  * ------------------------------------------------------------------------------
  */
 
-use crate::batch::Batch;
+use transact::protocol::batch::Batch;
+
 use crate::protocol::block::BlockPair;
 
 #[derive(Debug)]

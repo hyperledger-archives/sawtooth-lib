@@ -18,10 +18,9 @@
 //! Sawtooth block protocol
 
 use protobuf::Message;
+use transact::protocol::batch::Batch;
 
-use crate::batch::Batch;
 use crate::protos::{
-    batch::Batch as BatchProto,
     block::{Block as BlockProto, BlockHeader as BlockHeaderProto},
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
@@ -89,7 +88,13 @@ impl FromNative<Block> for BlockProto {
 
         block_proto.set_header(block.header);
         block_proto.set_header_signature(block.header_signature);
-        block_proto.set_batches(block.batches.into_iter().map(BatchProto::from).collect());
+        block_proto.set_batches(
+            block
+                .batches
+                .into_iter()
+                .map(IntoProto::into_proto)
+                .collect::<Result<_, _>>()?,
+        );
 
         Ok(block_proto)
     }
@@ -100,7 +105,11 @@ impl FromProto<BlockProto> for Block {
         Ok(Block {
             header: block.header,
             header_signature: block.header_signature,
-            batches: block.batches.into_iter().map(Batch::from).collect(),
+            batches: block
+                .batches
+                .into_iter()
+                .map(Batch::from_proto)
+                .collect::<Result<_, _>>()?,
         })
     }
 }
@@ -349,7 +358,7 @@ impl BlockBuilder {
             signer_public_key: signer.public_key().into(),
             batch_ids: batches
                 .iter()
-                .map(|batch| batch.header_signature.clone())
+                .map(|batch| batch.header_signature().to_string())
                 .collect(),
             consensus: self.consensus,
             state_root_hash,
@@ -378,14 +387,17 @@ impl BlockBuilder {
 mod tests {
     use super::*;
 
+    use transact::protocol::{
+        batch::BatchBuilder,
+        transaction::{HashMethod, TransactionBuilder},
+    };
+
     use crate::signing::hash::HashSigner;
 
     const BLOCK_NUM: u64 = 0;
     const PREVIOUS_BLOCK_ID: &str = "0123";
     const CONSENSUS: [u8; 4] = [0x01, 0x02, 0x03, 0x04];
     const STATE_ROOT_HASH: [u8; 4] = [0x05, 0x06, 0x07, 0x08];
-    const BATCH_1_ID: &str = "89ab";
-    const BATCH_2_ID: &str = "cdef";
 
     /// Verify that the `BlockBuilder` can be successfully used in a chain.
     ///
@@ -518,7 +530,10 @@ mod tests {
         assert_eq!(pair.header().signer_public_key(), signer.public_key());
         assert_eq!(
             pair.header().batch_ids(),
-            &[BATCH_1_ID.to_string(), BATCH_2_ID.to_string()]
+            &[
+                batch_1().header_signature().to_string(),
+                batch_2().header_signature().to_string()
+            ]
         );
         assert_eq!(pair.header().consensus(), CONSENSUS);
         assert_eq!(pair.header().state_root_hash(), STATE_ROOT_HASH);
@@ -534,24 +549,42 @@ mod tests {
     }
 
     fn batch_1() -> Batch {
-        Batch {
-            header_signature: BATCH_1_ID.into(),
-            transactions: vec![],
-            signer_public_key: "".into(),
-            transaction_ids: vec![],
-            trace: false,
-            header_bytes: vec![],
-        }
+        let signer = HashSigner::default();
+
+        let txn = TransactionBuilder::new()
+            .with_family_name("test".into())
+            .with_family_version("1.0".into())
+            .with_inputs(vec![])
+            .with_outputs(vec![])
+            .with_payload_hash_method(HashMethod::SHA512)
+            .with_payload(vec![])
+            .with_nonce(vec![1])
+            .build(&signer)
+            .expect("Failed to build txn");
+
+        BatchBuilder::new()
+            .with_transactions(vec![txn])
+            .build(&signer)
+            .expect("Failed to build batch1")
     }
 
     fn batch_2() -> Batch {
-        Batch {
-            header_signature: BATCH_2_ID.into(),
-            transactions: vec![],
-            signer_public_key: "".into(),
-            transaction_ids: vec![],
-            trace: false,
-            header_bytes: vec![],
-        }
+        let signer = HashSigner::default();
+
+        let txn = TransactionBuilder::new()
+            .with_family_name("test".into())
+            .with_family_version("1.0".into())
+            .with_inputs(vec![])
+            .with_outputs(vec![])
+            .with_payload_hash_method(HashMethod::SHA512)
+            .with_payload(vec![])
+            .with_nonce(vec![2])
+            .build(&signer)
+            .expect("Failed to build txn");
+
+        BatchBuilder::new()
+            .with_transactions(vec![txn])
+            .build(&signer)
+            .expect("Failed to build batch1")
     }
 }

@@ -15,7 +15,8 @@
  * ------------------------------------------------------------------------------
  */
 
-use crate::batch::Batch;
+use transact::protocol::batch::Batch;
+
 use crate::protos::{events::Event, transaction_receipt::StateChange};
 
 pub trait Scheduler: Sync + Send {
