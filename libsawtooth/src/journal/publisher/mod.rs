@@ -18,6 +18,7 @@
 // allow borrowed box, this is required to use PublisherState trait
  #![allow(clippy::borrowed_box)]
 
+pub mod batch_injector;
 mod error;
 
 use std::collections::{HashMap, HashSet, VecDeque};
