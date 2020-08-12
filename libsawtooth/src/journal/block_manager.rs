@@ -37,6 +37,23 @@ pub enum BlockManagerError {
     BlockStoreError,
 }
 
+impl std::error::Error for BlockManagerError {}
+
+impl std::fmt::Display for BlockManagerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::MissingPredecessor(msg) => write!(f, "missing predecessor block: {}", msg),
+            Self::MissingPredecessorInBranch(msg) => {
+                write!(f, "missing predecessor block in branch: {}", msg)
+            }
+            Self::MissingInput => f.write_str("missing input"),
+            Self::UnknownBlock => f.write_str("unknown block"),
+            Self::UnknownBlockStore => f.write_str("unknown block store"),
+            Self::BlockStoreError => f.write_str("block store error"),
+        }
+    }
+}
+
 impl From<BlockStoreError> for BlockManagerError {
     fn from(_other: BlockStoreError) -> Self {
         BlockManagerError::BlockStoreError
