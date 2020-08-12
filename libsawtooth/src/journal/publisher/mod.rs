@@ -18,6 +18,8 @@
 // allow borrowed box, this is required to use PublisherState trait
  #![allow(clippy::borrowed_box)]
 
+mod error;
+
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::mem;
 use std::slice::Iter;
@@ -29,6 +31,8 @@ use crate::execution::execution_platform::ExecutionPlatform;
 use crate::journal::block_manager::BlockRef;
 use crate::journal::candidate_block::CandidateBlock;
 use crate::protocol::block::BlockPair;
+
+pub use error::BlockPublisherError;
 
 #[derive(Debug)]
 pub enum InitializeBlockError {
