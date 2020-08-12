@@ -51,6 +51,12 @@ pub trait BatchObserver: Send + Sync {
     fn notify_batch_pending(&self, batch: &Batch);
 }
 
+/// Broadcasts blocks to the network
+pub trait BlockBroadcaster: Send {
+    /// Broadcast the block to the network
+    fn broadcast(&self, block: BlockPair) -> Result<(), BlockPublisherError>;
+}
+
 pub trait PublisherState: Send + Sync {
     fn pending_batches(&self) -> &PendingBatchesPool;
 
