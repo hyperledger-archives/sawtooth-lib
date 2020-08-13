@@ -1,5 +1,13 @@
 # Release Notes
 
+## Changes in libsawtooth 0.5.0
+
+* Add the `protocol::block` module that provides the block protocol for
+  Sawtooth, including protobuf conversions and a builder
+* Remove the batch and transaction structs from Sawtooth and use the
+  corresponding structs from Transact's protocols
+
+
 ## Changes in libsawtooth 0.4.0
 
 * Add the `protocol` module with native setting and identity protocol structs
