@@ -15,7 +15,8 @@
  * ------------------------------------------------------------------------------
  */
 
-use crate::batch::Batch;
+use transact::protocol::batch::Batch;
+
 use crate::journal::publisher::{PublisherState, SyncPublisher};
 use crate::protocol::block::BlockPair;
 

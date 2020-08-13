@@ -605,34 +605,34 @@ impl BlockValidation for DuplicatesAndDependenciesValidation {
             .block()
             .batches()
             .iter()
-            .map(|b| &b.header_signature)
+            .map(|b| b.header_signature())
             .collect::<Vec<_>>();
-
         validate_no_duplicate_batches(
             &self.block_manager,
             block.header().previous_block_id(),
             batch_ids.as_slice(),
         )?;
 
-        let txn_ids = block.block().batches().iter().fold(vec![], |mut arr, b| {
-            for txn in &b.transactions {
-                arr.push(&txn.header_signature);
-            }
-            arr
-        });
-
+        let txn_ids = block
+            .block()
+            .batches()
+            .iter()
+            .flat_map(|batch| batch.transactions())
+            .map(|txn| txn.header_signature())
+            .collect::<Vec<_>>();
         validate_no_duplicate_transactions(
             &self.block_manager,
             block.header().previous_block_id(),
             txn_ids.as_slice(),
         )?;
 
-        let transactions = block.block().batches().iter().fold(vec![], |mut arr, b| {
-            for txn in &b.transactions {
-                arr.push(txn.clone());
-            }
-            arr
-        });
+        let transactions = block
+            .block()
+            .batches()
+            .iter()
+            .flat_map(|batch| batch.transactions())
+            .cloned()
+            .collect::<Vec<_>>();
         validate_transaction_dependencies(
             &self.block_manager,
             block.header().previous_block_id(),
@@ -675,7 +675,6 @@ impl BlockValidation for PermissionValidation {
             })?;
             let permission_verifier = PermissionVerifier::new(Box::new(identity_view));
             for batch in block.block().batches() {
-                let batch_id = &batch.header_signature;
                 let authorized = permission_verifier.is_batch_signer_authorized(batch).map_err(|err| {
                 ValidationError::BlockValidationError(
                         format!("During permission check of block ({}, {}), unable to read permissions: {}",
@@ -685,7 +684,7 @@ impl BlockValidation for PermissionValidation {
                     return Err(ValidationError::BlockValidationFailure(
                             format!("Block {} failed permission verification: batch {} signer is not authorized",
                             block.block().header_signature(),
-                            batch_id)));
+                            batch.header_signature())));
                 }
             }
         }
@@ -727,7 +726,7 @@ impl BlockValidation for OnChainRulesValidation {
                 })?;
             if !enforce_validation_rules(
                 &settings_view,
-                &hex::encode(block.header().signer_public_key()),
+                block.header().signer_public_key(),
                 block.block().batches(),
             ) {
                 return Err(ValidationError::BlockValidationFailure(format!(
@@ -742,10 +741,10 @@ impl BlockValidation for OnChainRulesValidation {
 
 #[cfg(test)]
 mod test {
-
     use super::*;
 
-    use crate::batch::Batch;
+    use transact::protocol::batch::Batch;
+
     use crate::journal::block_store::{BlockStore, BlockStoreError};
     use crate::journal::NULL_BLOCK_IDENTIFIER;
     use crate::protocol::block::{BlockBuilder, BlockPair};

@@ -22,6 +22,7 @@
 //! the need of a cryptographic library for public-private key signing.
 
 use sha2::{Digest, Sha512};
+use transact::signing::{Error as TransactError, Signer as TransactSigner};
 
 use crate::signing::Error;
 use crate::signing::Signer;
@@ -53,5 +54,15 @@ impl Signer for HashSigner {
 
     fn public_key(&self) -> &[u8] {
         &self.public_key
+    }
+}
+
+impl TransactSigner for HashSigner {
+    fn sign(&self, message: &[u8]) -> Result<Vec<u8>, TransactError> {
+        Ok(Signer::sign(self, message)?)
+    }
+
+    fn public_key(&self) -> &[u8] {
+        Signer::public_key(self)
     }
 }

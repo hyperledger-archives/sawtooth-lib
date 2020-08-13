@@ -15,7 +15,9 @@
  * ------------------------------------------------------------------------------
  */
 
-use crate::{batch::Batch, state::settings_view::SettingsView, transaction::Transaction};
+use transact::protocol::{batch::Batch, transaction::TransactionHeader};
+
+use crate::state::settings_view::SettingsView;
 
 /// Retrieve the validation rules stored in state and check that the
 /// given batches do not violate any of those rules. These rules include:
@@ -36,7 +38,7 @@ use crate::{batch::Batch, state::settings_view::SettingsView, transaction::Trans
 ///     batches (:list:Batch): the list of batches to validate
 pub fn enforce_validation_rules(
     settings_view: &SettingsView,
-    expected_signer: &str,
+    expected_signer: &[u8],
     batches: &[Batch],
 ) -> bool {
     let rules = settings_view
@@ -45,25 +47,34 @@ pub fn enforce_validation_rules(
     enforce_rules(rules, expected_signer, batches)
 }
 
-fn enforce_rules(rules: Option<String>, expected_signer: &str, batches: &[Batch]) -> bool {
+fn enforce_rules(rules: Option<String>, expected_signer: &[u8], batches: &[Batch]) -> bool {
     if rules.is_none() {
         return true;
     }
 
-    let mut transactions = vec![];
-    batches
+    let txn_headers = match batches
         .iter()
-        .for_each(|batch| transactions.extend(&batch.transactions));
+        .flat_map(|batch| batch.transactions())
+        .cloned()
+        .map(|txn| txn.into_pair().map(|txn_pair| txn_pair.take().1))
+        .collect::<Result<Vec<_>, _>>()
+    {
+        Ok(txn_headers) => txn_headers,
+        Err(err) => {
+            debug!("Unable to deserialize transaction header: {}", err);
+            return false;
+        }
+    };
 
     let mut valid = true;
     for rule_str in rules.unwrap().split(';') {
         if let Some((rule_type, arguments)) = parse_rule(rule_str) {
             if rule_type == "NofX" {
-                valid = do_nofx(&transactions, &arguments);
+                valid = do_nofx(&txn_headers, &arguments);
             } else if rule_type == "XatY" {
-                valid = do_xaty(&transactions, &arguments);
+                valid = do_xaty(&txn_headers, &arguments);
             } else if rule_type == "local" {
-                valid = do_local(&transactions, expected_signer, &arguments);
+                valid = do_local(&txn_headers, expected_signer, &arguments);
             }
 
             if !valid {
@@ -85,7 +96,7 @@ fn enforce_rules(rules: Option<String>, expected_signer: &str, batches: &[Batch]
 /// interpreted as the name of a transaction family. For example, the
 /// string "NofX:2,intkey" means only allow 2 intkey transactions per
 /// block.
-fn do_nofx(transactions: &[&Transaction], arguments: &[&str]) -> bool {
+fn do_nofx(txn_headers: &[TransactionHeader], arguments: &[&str]) -> bool {
     let (limit, family) = if arguments.len() == 2 {
         let limit: usize = match arguments[0].trim().parse() {
             Ok(i) => i,
@@ -109,8 +120,8 @@ fn do_nofx(transactions: &[&Transaction], arguments: &[&str]) -> bool {
 
     let mut count = 0usize;
 
-    for txn in transactions {
-        if txn.family_name == family {
+    for header in txn_headers {
+        if header.family_name() == family {
             count += 1;
         }
 
@@ -134,7 +145,7 @@ fn do_nofx(transactions: &[&Transaction], arguments: &[&str]) -> bool {
 /// would not be a transaction of type X at Y and the block would be
 /// invalid. For example, the string "XatY:intkey,0" means the first
 /// transaction in the block must be an intkey transaction.
-fn do_xaty(transactions: &[&Transaction], arguments: &[&str]) -> bool {
+fn do_xaty(txn_headers: &[TransactionHeader], arguments: &[&str]) -> bool {
     let (family, position) = if arguments.len() == 2 {
         let family = arguments[0].trim();
         let position: usize = match arguments[1].trim().parse() {
@@ -156,7 +167,7 @@ fn do_xaty(transactions: &[&Transaction], arguments: &[&str]) -> bool {
         return true;
     };
 
-    if position >= transactions.len() {
+    if position >= txn_headers.len() {
         debug!(
             "Block does not have enough transactions to valid this rule XatY:{:?}",
             arguments
@@ -164,8 +175,7 @@ fn do_xaty(transactions: &[&Transaction], arguments: &[&str]) -> bool {
         return false;
     }
 
-    let txn = transactions[position];
-    if txn.family_name != family {
+    if txn_headers[position].family_name() != family {
         debug!(
             "Transaction at position {} is not of type {}",
             position, family
@@ -181,7 +191,7 @@ fn do_xaty(transactions: &[&Transaction], arguments: &[&str]) -> bool {
 /// rule on each. This rule is useful in combination with the other rules
 /// to ensure a client is not submitting transactions that should only be
 /// injected by the winning validator.
-fn do_local(transactions: &[&Transaction], expected_signer: &str, arguments: &[&str]) -> bool {
+fn do_local(txn_headers: &[TransactionHeader], expected_signer: &[u8], arguments: &[&str]) -> bool {
     let indices: Result<Vec<usize>, _> = arguments.iter().map(|s| s.trim().parse()).collect();
 
     if indices.is_err() || indices.as_ref().unwrap().is_empty() {
@@ -194,7 +204,7 @@ fn do_local(transactions: &[&Transaction], expected_signer: &str, arguments: &[&
     }
 
     for index in indices.unwrap() {
-        if index >= transactions.len() {
+        if index >= txn_headers.len() {
             debug!(
                 "Ignore, Block does not have enough transactions to validate this rule local: {}",
                 index
@@ -202,7 +212,7 @@ fn do_local(transactions: &[&Transaction], expected_signer: &str, arguments: &[&
             continue;
         }
 
-        if transactions[index].signer_public_key != expected_signer {
+        if txn_headers[index].signer_public_key() != expected_signer {
             debug!(
                 "Transaction at  position {} was not signed by the expected signer.",
                 index
@@ -230,13 +240,21 @@ fn parse_rule(rule: &str) -> Option<(&str, Vec<&str>)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{batch::Batch, transaction::Transaction};
+
+    use transact::protocol::{
+        batch::{Batch, BatchBuilder},
+        transaction::{HashMethod, TransactionBuilder},
+    };
+
+    use crate::signing::hash::HashSigner;
+
+    const PUB_KEY: &[u8] = b"pub_key";
 
     /// Test that if no validation rules are set, the block is valid.
     #[test]
     fn test_no_setting() {
-        let batches = make_batches(&["intkey"], "pub_key");
-        assert!(enforce_rules(None, "pub_key", &batches));
+        let batches = make_batches(&["intkey"], PUB_KEY);
+        assert!(enforce_rules(None, PUB_KEY, &batches));
     }
 
     /// Test that if NofX Rule is set, the validation rule is checked
@@ -246,22 +264,18 @@ mod tests {
     ///     3. Valid Block, ignore rule because it is formatted incorrectly.
     #[test]
     fn test_n_of_x() {
-        let batches = make_batches(&["intkey"], "pub_key");
+        let batches = make_batches(&["intkey"], PUB_KEY);
         assert!(enforce_rules(
             Some("NofX:1,intkey".to_string()),
-            "pub_key",
+            PUB_KEY,
             &batches
         ));
         assert!(!enforce_rules(
             Some("NofX:0,intkey".to_string()),
-            "pub_key",
+            PUB_KEY,
             &batches
         ));
-        assert!(enforce_rules(
-            Some("NofX:0".to_string()),
-            "pub_key",
-            &batches
-        ));
+        assert!(enforce_rules(Some("NofX:0".to_string()), PUB_KEY, &batches));
     }
 
     /// Test that if XatY Rule is set, the validation rule is checked
@@ -271,22 +285,18 @@ mod tests {
     ///     3. Valid Block, ignore rule because it is formatted incorrectly.
     #[test]
     fn test_x_at_y() {
-        let batches = make_batches(&["intkey"], "pub_key");
+        let batches = make_batches(&["intkey"], PUB_KEY);
         assert!(enforce_rules(
             Some("XatY:intkey,0".to_string()),
-            "pub_key",
+            PUB_KEY,
             &batches
         ));
         assert!(!enforce_rules(
             Some("XatY:blockinfo,0".to_string()),
-            "pub_key",
+            PUB_KEY,
             &batches
         ));
-        assert!(enforce_rules(
-            Some("XatY:0".to_string()),
-            "pub_key",
-            &batches
-        ));
+        assert!(enforce_rules(Some("XatY:0".to_string()), PUB_KEY, &batches));
     }
 
     /// Test that if local Rule is set, the validation rule is checked
@@ -297,32 +307,28 @@ mod tests {
     ///     3. Valid Block, ignore rule because it is formatted incorrectly.
     #[test]
     fn test_local() {
-        let batches = make_batches(&["intkey"], "pub_key");
+        let batches = make_batches(&["intkey"], PUB_KEY);
         assert!(enforce_rules(
             Some("local:0".to_string()),
-            "pub_key",
+            PUB_KEY,
             &batches
         ));
         assert!(!enforce_rules(
             Some("local:0".to_string()),
-            "another_pub_key",
+            b"another_pub_key",
             &batches
         ));
-        assert!(enforce_rules(
-            Some("local".to_string()),
-            "pub_key",
-            &batches
-        ));
+        assert!(enforce_rules(Some("local".to_string()), PUB_KEY, &batches));
     }
 
     /// Test that if multiple rules are set, they are all checked correctly.
     /// Block should be valid.
     #[test]
     fn test_all_at_once() {
-        let batches = make_batches(&["intkey"], "pub_key");
+        let batches = make_batches(&["intkey"], PUB_KEY);
         assert!(enforce_rules(
             Some("NofX:1,intkey;XatY:intkey,0;local:0".to_string()),
-            "pub_key",
+            PUB_KEY,
             &batches
         ));
     }
@@ -331,10 +337,10 @@ mod tests {
     /// Block is invalid, because there are too many intkey transactions
     #[test]
     fn test_all_at_once_bad_number_of_intkey() {
-        let batches = make_batches(&["intkey"], "pub_key");
+        let batches = make_batches(&["intkey"], PUB_KEY);
         assert!(!enforce_rules(
             Some("NofX:0,intkey;XatY:intkey,0;local:0".to_string()),
-            "pub_key",
+            PUB_KEY,
             &batches
         ));
     }
@@ -344,10 +350,10 @@ mod tests {
     /// position.
     #[test]
     fn test_all_at_once_bad_family_at_index() {
-        let batches = make_batches(&["intkey"], "pub_key");
+        let batches = make_batches(&["intkey"], PUB_KEY);
         assert!(!enforce_rules(
             Some("NofX:1,intkey;XatY:blockinfo,0;local:0".to_string()),
-            "pub_key",
+            PUB_KEY,
             &batches
         ));
     }
@@ -357,45 +363,35 @@ mod tests {
     /// signed by the expected signer.
     #[test]
     fn test_all_at_once_signer_key() {
-        let batches = make_batches(&["intkey"], "pub_key");
+        let batches = make_batches(&["intkey"], PUB_KEY);
         assert!(!enforce_rules(
             Some("NofX:1,intkey;XatY:intkey,0;local:0".to_string()),
-            "not_same_pubkey",
+            b"not_same_pubkey",
             &batches
         ));
     }
 
-    fn make_batches(families: &[&str], pubkey: &str) -> Vec<Batch> {
-        let transactions: Vec<Transaction> = families
+    fn make_batches(families: &[&str], pubkey: &[u8]) -> Vec<Batch> {
+        let signer = HashSigner::new(pubkey.into());
+
+        let transactions = families
             .iter()
-            .enumerate()
-            .map(|(i, family)| Transaction {
-                family_name: family.to_string(),
-                family_version: "0.test".into(),
-                signer_public_key: pubkey.to_string(),
-                batcher_public_key: pubkey.to_string(),
-                inputs: vec![],
-                outputs: vec![],
-                dependencies: vec![],
-                payload: vec![],
-                payload_sha512: String::new(),
-                header_signature: format!("{}_{}", family, i),
-                nonce: String::new(),
-
-                header_bytes: vec![],
+            .map(|family| {
+                TransactionBuilder::new()
+                    .with_family_name((*family).into())
+                    .with_family_version("0.test".into())
+                    .with_inputs(vec![])
+                    .with_outputs(vec![])
+                    .with_payload_hash_method(HashMethod::SHA512)
+                    .with_payload(vec![])
+                    .build(&signer)
             })
-            .collect();
+            .collect::<Result<Vec<_>, _>>()
+            .expect("Failed to build transactions");
 
-        vec![Batch {
-            transaction_ids: transactions
-                .iter()
-                .map(|t| t.header_signature.clone())
-                .collect(),
-            transactions: transactions,
-            signer_public_key: pubkey.to_string(),
-            trace: false,
-            header_bytes: vec![],
-            header_signature: "test_batch".into(),
-        }]
+        vec![BatchBuilder::new()
+            .with_transactions(transactions)
+            .build(&signer)
+            .expect("Failed to build batch")]
     }
 }

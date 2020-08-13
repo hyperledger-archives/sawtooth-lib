@@ -34,8 +34,9 @@ use std::sync::RwLock;
 use std::thread;
 use std::time::Duration;
 
+use transact::protocol::batch::Batch;
+
 use crate::{
-    batch::Batch,
     consensus::{notifier::ConsensusNotifier, registry::ConsensusRegistry},
     execution::execution_platform::ExecutionPlatform,
     journal::chain_head_lock::ChainHeadLock,
@@ -186,7 +187,7 @@ impl ChainControllerState {
             });
 
         let transaction_count = committed_batches.iter().fold(0, |mut txn_count, batch| {
-            txn_count += batch.transactions.len();
+            txn_count += batch.transactions().len();
             txn_count
         });
 
@@ -763,10 +764,10 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
                 );
 
                 block.block().batches().iter().for_each(|batch| {
-                    if batch.trace {
+                    if batch.trace() {
                         debug!(
                             "TRACE: {}: ChainController.on_block_validated",
-                            batch.header_signature
+                            batch.header_signature()
                         )
                     }
                 });

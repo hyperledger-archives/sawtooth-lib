@@ -19,6 +19,7 @@ use transact::database::error::DatabaseError;
 use transact::database::lmdb::LmdbDatabase;
 use transact::database::lmdb::LmdbDatabaseWriter;
 use transact::database::{DatabaseReader, DatabaseWriter};
+use transact::protocol::{batch::Batch, transaction::Transaction};
 
 use crate::journal::block_store::{
     BatchIndex, BlockStore, BlockStoreError, IndexedBlockStore, TransactionIndex,
@@ -26,7 +27,6 @@ use crate::journal::block_store::{
 use crate::journal::chain::{ChainReadError, ChainReader};
 use crate::protocol::block::BlockPair;
 use crate::protos::{FromBytes, IntoBytes};
-use crate::{batch::Batch, transaction::Transaction};
 
 /// Contains all committed blocks for the current chain
 #[derive(Clone)]
@@ -173,7 +173,7 @@ impl CommitStore {
         for batch in block.block().batches().iter() {
             writer.index_put(
                 "index_batch",
-                &batch.header_signature.as_bytes(),
+                &batch.header_signature().as_bytes(),
                 &block.block().header_signature().as_bytes(),
             )?;
         }
@@ -185,10 +185,10 @@ impl CommitStore {
         block: &BlockPair,
     ) -> Result<(), DatabaseError> {
         for batch in block.block().batches().iter() {
-            for txn in batch.transactions.iter() {
+            for txn in batch.transactions() {
                 writer.index_put(
                     "index_transaction",
-                    &txn.header_signature.as_bytes(),
+                    &txn.header_signature().as_bytes(),
                     &block.block().header_signature().as_bytes(),
                 )?;
             }
@@ -241,7 +241,7 @@ impl CommitStore {
         block: &BlockPair,
     ) -> Result<(), DatabaseError> {
         for batch in block.block().batches().iter() {
-            writer.index_delete("index_batch", &batch.header_signature.as_bytes())?;
+            writer.index_delete("index_batch", &batch.header_signature().as_bytes())?;
         }
         Ok(())
     }
@@ -251,8 +251,8 @@ impl CommitStore {
         block: &BlockPair,
     ) -> Result<(), DatabaseError> {
         for batch in block.block().batches().iter() {
-            for txn in batch.transactions.iter() {
-                writer.index_delete("index_transaction", &txn.header_signature.as_bytes())?;
+            for txn in batch.transactions() {
+                writer.index_delete("index_transaction", &txn.header_signature().as_bytes())?;
             }
         }
         Ok(())
@@ -293,7 +293,7 @@ impl CommitStore {
                 .block()
                 .batches()
                 .iter()
-                .find(|batch| batch.header_signature == batch_id)
+                .find(|batch| batch.header_signature() == batch_id)
                 .cloned()
                 .ok_or_else(|| DatabaseError::CorruptionError("Batch index corrupted".into()))
         })
@@ -306,9 +306,9 @@ impl CommitStore {
                     .block()
                     .batches()
                     .iter()
+                    .flat_map(|batch| batch.transactions())
+                    .find(|txn| txn.header_signature() == transaction_id)
                     .cloned()
-                    .flat_map(|batch| batch.transactions.into_iter())
-                    .find(|txn| txn.header_signature == transaction_id)
                     .ok_or_else(|| {
                         DatabaseError::CorruptionError("Transaction index corrupted".into())
                     })
@@ -324,9 +324,9 @@ impl CommitStore {
                     .iter()
                     .find(|batch| {
                         !batch
-                            .transaction_ids
+                            .transactions()
                             .iter()
-                            .any(|txn_id| txn_id == transaction_id)
+                            .any(|txn| txn.header_signature() == transaction_id)
                     })
                     .cloned()
                     .ok_or_else(|| {
