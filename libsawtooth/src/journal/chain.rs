@@ -1127,6 +1127,3 @@ impl StopHandle for ChainThreadStopHandle {
         self.exit.store(true, Ordering::Relaxed)
     }
 }
-
-#[cfg(tests)]
-mod tests {}
