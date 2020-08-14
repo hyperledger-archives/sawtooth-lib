@@ -37,7 +37,7 @@ use std::time::Duration;
 use transact::protocol::batch::Batch;
 
 use crate::{
-    consensus::{notifier::ConsensusNotifier, registry::ConsensusRegistry},
+    consensus::notifier::ConsensusNotifier,
     execution::execution_platform::ExecutionPlatform,
     journal::chain_head_lock::ChainHeadLock,
     journal::{
@@ -53,7 +53,7 @@ use crate::{
     protocol::block::BlockPair,
     protos::transaction_receipt::TransactionReceipt,
     scheduler::TxnExecutionResult,
-    state::{state_pruning_manager::StatePruningManager, state_view_factory::StateViewFactory},
+    state::state_pruning_manager::StatePruningManager,
 };
 
 pub const COMMIT_STORE: &str = "commit_store";
@@ -249,8 +249,6 @@ pub struct ChainController<TEP: ExecutionPlatform + Clone> {
     stop_handle: Arc<Mutex<Option<ChainThreadStopHandle>>>,
 
     consensus_notifier: Arc<dyn ConsensusNotifier>,
-    consensus_registry: Arc<dyn ConsensusRegistry>,
-    state_view_factory: StateViewFactory,
     block_validator: Option<BlockValidator<TEP>>,
     block_validation_results: BlockValidationResultStore,
 
@@ -270,8 +268,6 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
         chain_head_lock: ChainHeadLock,
         block_validation_results: BlockValidationResultStore,
         consensus_notifier: Box<dyn ConsensusNotifier>,
-        consensus_registry: Box<dyn ConsensusRegistry>,
-        state_view_factory: StateViewFactory,
         data_dir: String,
         state_pruning_block_depth: u32,
         observers: Vec<Box<dyn ChainObserver>>,
@@ -296,8 +292,6 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
             state_pruning_block_depth,
             chain_head_lock,
             consensus_notifier: Arc::from(consensus_notifier),
-            consensus_registry: Arc::from(consensus_registry),
-            state_view_factory,
         };
 
         chain_controller.initialize_chain_head();
