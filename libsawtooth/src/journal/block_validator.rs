@@ -666,29 +666,46 @@ impl BlockValidation for PermissionValidation {
     ) -> Result<(), ValidationError> {
         if block.header().block_num() != 0 {
             let state_root = prev_state_root.ok_or_else(|| {
-                ValidationError::BlockValidationError(
-                        format!("During permission check of block {} block_num is {} but missing a previous state root",
-                            block.block().header_signature(), block.header().block_num()))
+                ValidationError::BlockValidationError(format!(
+                    "During permission check of block {} block_num is {} but missing a\
+                            previous state root",
+                    block.block().header_signature(),
+                    block.header().block_num()
+                ))
             })?;
 
-            let identity_view: IdentityView = self.state_view_factory.create_view(state_root)
+            let identity_view: IdentityView = self
+                .state_view_factory
+                .create_view(state_root)
                 .map_err(|err| {
-                ValidationError::BlockValidationError(
-                        format!("During permission check of block ({}, {}) state root was not found in state: {}",
-                            block.block().header_signature(), block.header().block_num(), err))
-            })?;
+                    ValidationError::BlockValidationError(format!(
+                        "During permission check of block ({}, {}) state root was not \
+                            found in state: {}",
+                        block.block().header_signature(),
+                        block.header().block_num(),
+                        err
+                    ))
+                })?;
             let permission_verifier = PermissionVerifier::new(Box::new(identity_view));
             for batch in block.block().batches() {
-                let authorized = permission_verifier.is_batch_signer_authorized(batch).map_err(|err| {
-                ValidationError::BlockValidationError(
-                        format!("During permission check of block ({}, {}), unable to read permissions: {}",
-                            block.block().header_signature(), block.header().block_num(), err))
+                let authorized = permission_verifier
+                    .is_batch_signer_authorized(batch)
+                    .map_err(|err| {
+                        ValidationError::BlockValidationError(format!(
+                            "During permission check of block ({}, {}), unable to read \
+                        permissions: {}",
+                            block.block().header_signature(),
+                            block.header().block_num(),
+                            err
+                        ))
                     })?;
                 if !authorized {
-                    return Err(ValidationError::BlockValidationFailure(
-                            format!("Block {} failed permission verification: batch {} signer is not authorized",
-                            block.block().header_signature(),
-                            batch.header_signature())));
+                    return Err(ValidationError::BlockValidationFailure(format!(
+                        "Block {} failed permission verification: batch {} signer is \
+                            not authorized",
+                        block.block().header_signature(),
+                        batch.header_signature()
+                    )));
                 }
             }
         }
@@ -716,10 +733,12 @@ impl BlockValidation for OnChainRulesValidation {
     ) -> Result<(), ValidationError> {
         if block.header().block_num() != 0 {
             let state_root = prev_state_root.ok_or_else(|| {
-                ValidationError::BlockValidationError(
-                        format!("During check of on-chain rules for block {}, block num was {}, but missing a previous state root",
-                            block.block().header_signature(),
-                            block.header().block_num()))
+                ValidationError::BlockValidationError(format!(
+                    "During check of on-chain rules for block {}, block num was {}, \
+                            but missing a previous state root",
+                    block.block().header_signature(),
+                    block.header().block_num()
+                ))
             })?;
             let settings_view: SettingsView =
                 self.view_factory.create_view(state_root).map_err(|err| {
