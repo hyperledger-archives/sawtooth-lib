@@ -31,6 +31,7 @@ use crate::{
         block_manager::BlockManager,
         block_scheduler::BlockScheduler,
         block_wrapper::BlockStatus,
+        chain::ChainControllerRequest,
         chain_commit_state::{
             validate_no_duplicate_batches, validate_no_duplicate_transactions,
             validate_transaction_dependencies, ChainCommitStateError,
@@ -164,8 +165,8 @@ impl From<ChainCommitStateError> for ValidationError {
     }
 }
 
-type InternalSender = Sender<(BlockPair, Sender<BlockValidationResult>)>;
-type InternalReceiver = Receiver<(BlockPair, Sender<BlockValidationResult>)>;
+type InternalSender = Sender<(BlockPair, Sender<ChainControllerRequest>)>;
+type InternalReceiver = Receiver<(BlockPair, Sender<ChainControllerRequest>)>;
 
 pub struct BlockValidator<TEP: ExecutionPlatform> {
     channels: Vec<(InternalSender, Option<InternalReceiver>)>,
@@ -212,8 +213,8 @@ where
 
     fn setup_thread(
         &self,
-        rcv: Receiver<(BlockPair, Sender<BlockValidationResult>)>,
-        error_return_sender: Sender<(BlockPair, Sender<BlockValidationResult>)>,
+        rcv: Receiver<(BlockPair, Sender<ChainControllerRequest>)>,
+        error_return_sender: Sender<(BlockPair, Sender<ChainControllerRequest>)>,
     ) {
         let backgroundthread = thread::Builder::new();
 
@@ -264,19 +265,22 @@ where
                 match block_validations.validate_block(&block) {
                     Ok(result) => {
                         info!("Block {} passed validation", block_id);
-                        if let Err(err) = results_sender.send(result) {
+                        if let Err(err) = results_sender.send(ChainControllerRequest::from(result))
+                        {
                             warn!("During handling valid block: {:?}", err);
                             exit.store(true, Ordering::Relaxed);
                         }
                     }
                     Err(ValidationError::BlockValidationFailure(ref reason)) => {
                         warn!("Block {} failed validation: {}", &block_id, reason);
-                        if let Err(err) = results_sender.send(BlockValidationResult {
-                            block_id,
-                            execution_results: vec![],
-                            num_transactions: 0,
-                            status: BlockStatus::Invalid,
-                        }) {
+                        if let Err(err) = results_sender.send(ChainControllerRequest::from(
+                            BlockValidationResult {
+                                block_id,
+                                execution_results: vec![],
+                                num_transactions: 0,
+                                status: BlockStatus::Invalid,
+                            },
+                        )) {
                             warn!("During handling block failure: {:?}", err);
                             exit.store(true, Ordering::Relaxed);
                         }
@@ -322,8 +326,8 @@ where
 
     pub fn submit_blocks_for_verification(
         &self,
-        blocks: &[BlockPair],
-        response_sender: &Sender<BlockValidationResult>,
+        blocks: Vec<BlockPair>,
+        response_sender: Sender<ChainControllerRequest>,
     ) {
         for block in self.block_scheduler.schedule(blocks.to_vec()) {
             let tx = self.return_sender();
@@ -337,7 +341,7 @@ where
     pub fn process_pending(
         &self,
         block: &BlockPair,
-        response_sender: &Sender<BlockValidationResult>,
+        response_sender: &Sender<ChainControllerRequest>,
     ) {
         for block in self.block_scheduler.done(block.block().header_signature()) {
             let tx = self.return_sender();
