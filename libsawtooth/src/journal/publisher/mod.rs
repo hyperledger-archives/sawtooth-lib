@@ -35,6 +35,8 @@ mod batch_submitter;
 mod builder;
 pub mod chain_head_lock;
 mod error;
+#[cfg(feature = "pending-batch-queue")]
+pub mod pending_batch_queue;
 
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
