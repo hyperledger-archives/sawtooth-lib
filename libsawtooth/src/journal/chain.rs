@@ -244,7 +244,6 @@ impl ChainControllerState {
     }
 }
 
-#[derive(Clone)]
 pub struct ChainController<TEP: ExecutionPlatform + Clone> {
     state: Arc<RwLock<ChainControllerState>>,
     stop_handle: Arc<Mutex<Option<ChainThreadStopHandle>>>,
