@@ -91,18 +91,22 @@ impl<B: BlockStatusStore> BlockSchedulerState<B> {
 
             if self.processing.contains(block.header().previous_block_id()) {
                 debug!(
-                    "During block scheduling, previous block {} in process, adding block {} to pending",
+                    "During block scheduling, previous block {} in process, adding block {} to \
+                        pending",
                     block.header().previous_block_id(),
-                    block.block().header_signature());
+                    block.block().header_signature()
+                );
                 self.add_block_to_pending(block);
                 continue;
             }
 
             if self.pending.contains(block.header().previous_block_id()) {
                 debug!(
-                    "During block scheduling, previous block {} is pending, adding block {} to pending",
+                    "During block scheduling, previous block {} is pending, adding block {} to \
+                        pending",
                     block.header().previous_block_id(),
-                    block.block().header_signature());
+                    block.block().header_signature()
+                );
 
                 self.add_block_to_pending(block);
                 continue;
@@ -112,12 +116,19 @@ impl<B: BlockStatusStore> BlockSchedulerState<B> {
                 && self.block_validity(block.header().previous_block_id()) == BlockStatus::Unknown
             {
                 info!(
-                    "During block scheduling, predecessor of block {}, {}, status is unknown. Scheduling all blocks since last predecessor with known status",
-                    block.block().header_signature(), block.header().previous_block_id());
+                    "During block scheduling, predecessor of block {}, {}, status is unknown. \
+                        Scheduling all blocks since last predecessor with known status",
+                    block.block().header_signature(),
+                    block.header().previous_block_id()
+                );
 
-                let blocks_previous_to_previous = self.block_manager
-                        .branch(block.header().previous_block_id())
-                        .expect("Block id of block previous to block being scheduled is unknown to the block manager");
+                let blocks_previous_to_previous = self
+                    .block_manager
+                    .branch(block.header().previous_block_id())
+                    .expect(
+                        "Block id of block previous to block being scheduled is unknown \
+                        to the block manager",
+                    );
                 self.add_block_to_pending(block);
 
                 let mut to_be_scheduled = vec![];
