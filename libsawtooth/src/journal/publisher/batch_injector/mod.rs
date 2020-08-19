@@ -14,6 +14,8 @@
 
 //! Traits for generating batches to inject into blocks before they're published.
 
+pub mod block_info;
+
 use transact::protocol::batch::BatchPair;
 
 use crate::protocol::block::BlockPair;
