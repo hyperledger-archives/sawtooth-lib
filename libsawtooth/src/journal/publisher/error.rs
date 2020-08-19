@@ -16,6 +16,8 @@
 
 use std::error::Error;
 
+use crate::state::{error::StateDatabaseError, settings_view::SettingsViewError};
+
 /// Errors that can occur in the block publisher
 #[derive(Debug)]
 pub enum BlockPublisherError {
@@ -30,5 +32,17 @@ impl std::fmt::Display for BlockPublisherError {
         match self {
             Self::Internal(msg) => f.write_str(msg),
         }
+    }
+}
+
+impl From<StateDatabaseError> for BlockPublisherError {
+    fn from(err: StateDatabaseError) -> Self {
+        Self::Internal(err.to_string())
+    }
+}
+
+impl From<SettingsViewError> for BlockPublisherError {
+    fn from(err: SettingsViewError) -> Self {
+        Self::Internal(err.to_string())
     }
 }

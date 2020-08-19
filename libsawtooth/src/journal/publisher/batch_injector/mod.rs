@@ -15,12 +15,16 @@
 //! Traits for generating batches to inject into blocks before they're published.
 
 pub mod block_info;
+mod default_factory;
 
 use transact::protocol::batch::BatchPair;
 
 use crate::protocol::block::BlockPair;
 
 use super::BlockPublisherError;
+
+#[allow(unused_imports)]
+pub(super) use default_factory::DefaultBatchInjectorFactory;
 
 /// Generates batches to be injected into a block
 pub trait BatchInjector: Send {
