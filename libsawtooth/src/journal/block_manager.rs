@@ -195,8 +195,8 @@ impl BlockManagerState {
         Ok(false)
     }
 
-    /// Checks that every block is preceded by the block referenced by block.previous_block_id except the
-    /// zeroth block in tail, which references head.
+    /// Checks that every block is preceded by the block referenced by block.previous_block_id
+    /// except the zeroth block in tail, which references head.
     fn check_predecessor_relationship(
         &self,
         tail: &[BlockPair],
