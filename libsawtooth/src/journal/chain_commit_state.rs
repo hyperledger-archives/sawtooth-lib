@@ -15,11 +15,9 @@
  * ------------------------------------------------------------------------------
  */
 
-use std::collections::HashSet;
+use transact::protocol::transaction::Transaction;
 
-use transact::protocol::{batch::Batch, transaction::Transaction};
-
-use crate::journal::{block_manager::BlockManager, commit_store::CommitStore};
+use crate::journal::block_manager::BlockManager;
 
 #[derive(Debug, PartialEq)]
 pub enum ChainCommitStateError {
@@ -129,51 +127,6 @@ pub fn validate_transaction_dependencies(
     Ok(())
 }
 
-pub struct TransactionCommitCache {
-    committed: HashSet<String>,
-    commit_store: CommitStore,
-}
-
-impl TransactionCommitCache {
-    pub fn new(commit_store: CommitStore) -> Self {
-        TransactionCommitCache {
-            committed: HashSet::new(),
-            commit_store,
-        }
-    }
-
-    pub fn add(&mut self, transaction_id: String) {
-        self.committed.insert(transaction_id);
-    }
-
-    pub fn add_batch(&mut self, batch: &Batch) {
-        batch
-            .transactions()
-            .iter()
-            .for_each(|txn| self.add(txn.header_signature().to_string()));
-    }
-
-    pub fn remove(&mut self, transaction_id: &str) {
-        self.committed.remove(transaction_id);
-    }
-
-    pub fn remove_batch(&mut self, batch: &Batch) {
-        batch
-            .transactions()
-            .iter()
-            .for_each(|txn| self.remove(txn.header_signature()));
-    }
-
-    pub fn contains(&self, transaction_id: &str) -> bool {
-        // Shouldn't expect here
-        self.committed.contains(transaction_id)
-            || self
-                .commit_store
-                .contains_transaction(transaction_id)
-                .expect("Couldn't check commit store for txn")
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -182,7 +135,7 @@ mod test {
 
     use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
     use transact::protocol::{
-        batch::BatchBuilder,
+        batch::{Batch, BatchBuilder},
         transaction::{HashMethod, Transaction, TransactionBuilder},
     };
 
