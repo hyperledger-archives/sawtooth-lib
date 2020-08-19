@@ -686,8 +686,14 @@ impl BlockValidation for PermissionValidation {
                 })?;
             let permission_verifier = PermissionVerifier::new(Box::new(identity_view));
             for batch in block.block().batches() {
+                let batch_pair = batch.clone().into_pair().map_err(|_| {
+                    ValidationError::BlockValidationFailure(format!(
+                        "Validation failure, invalid batch header {}",
+                        batch.header_signature()
+                    ))
+                })?;
                 let authorized = permission_verifier
-                    .is_batch_signer_authorized(batch)
+                    .is_batch_signer_authorized(&batch_pair)
                     .map_err(|err| {
                         ValidationError::BlockValidationError(format!(
                             "During permission check of block ({}, {}), unable to read \

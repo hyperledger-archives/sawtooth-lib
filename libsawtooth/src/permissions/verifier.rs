@@ -19,7 +19,7 @@
 //! Provides a permission verifier which checks permissions against batch and transaction
 //! signatories.
 
-use transact::protocol::{batch::Batch, transaction::Transaction};
+use transact::protocol::{batch::BatchPair, transaction::Transaction};
 
 use crate::protocol::identity::{Permission, Policy};
 
@@ -54,6 +54,7 @@ impl PermissionVerifier {
     pub fn new(identities: Box<dyn IdentitySource>) -> Self {
         PermissionVerifier { identities }
     }
+
     /// Check the batch signing key against the allowed transactor
     /// permissions. The roles being checked are the following, from first
     /// to last:
@@ -63,13 +64,13 @@ impl PermissionVerifier {
     ///
     /// The first role that is set will be the one used to enforce if the
     /// batch signer is allowed.
-    pub fn is_batch_signer_authorized(&self, batch: &Batch) -> Result<bool, IdentityError> {
+    pub fn is_batch_signer_authorized(&self, batch: &BatchPair) -> Result<bool, IdentityError> {
         Self::is_batch_allowed(&*self.identities, batch, Some(POLICY_DEFAULT))
     }
 
     fn is_batch_allowed(
         identity_source: &dyn IdentitySource,
-        batch: &Batch,
+        batch: &BatchPair,
         default_policy: Option<&str>,
     ) -> Result<bool, IdentityError> {
         let policy_name: Option<String> = identity_source
@@ -90,27 +91,23 @@ impl PermissionVerifier {
             None
         };
 
-        let batch_header = match batch.clone().into_pair() {
-            Ok(batch_pair) => batch_pair.take().1,
-            Err(err) => {
-                debug!("Unable to deserialize batch header: {}", err);
-                return Ok(false);
-            }
-        };
-
         let allowed = policy
-            .map(|policy| Self::is_allowed(batch_header.signer_public_key(), &policy))
+            .map(|policy| Self::is_allowed(batch.header().signer_public_key(), &policy))
             .unwrap_or(true);
 
         if !allowed {
             debug!(
                 "Batch Signer: {} is not permitted.",
-                hex::encode(batch_header.signer_public_key())
+                hex::encode(batch.header().signer_public_key())
             );
             return Ok(false);
         }
 
-        Self::is_transaction_allowed(identity_source, batch.transactions(), default_policy)
+        Self::is_transaction_allowed(
+            identity_source,
+            batch.batch().transactions(),
+            default_policy,
+        )
     }
 
     /// Check the transaction signing key against the allowed transactor
@@ -436,7 +433,7 @@ mod tests {
         context.new_signer(key)
     }
 
-    fn create_batches(count: u8, txns_per_batch: u8, signer: &dyn Signer) -> Vec<Batch> {
+    fn create_batches(count: u8, txns_per_batch: u8, signer: &dyn Signer) -> Vec<BatchPair> {
         (0..count)
             .map(|i| {
                 let txns = (0..txns_per_batch)
@@ -454,7 +451,9 @@ mod tests {
                     .collect::<Result<_, _>>()
                     .expect("Failed to build transactions");
 
-                BatchBuilder::new().with_transactions(txns).build(signer)
+                BatchBuilder::new()
+                    .with_transactions(txns)
+                    .build_pair(signer)
             })
             .collect::<Result<_, _>>()
             .expect("Failed to build batches")
