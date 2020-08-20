@@ -36,7 +36,7 @@ use crate::{
             validate_no_duplicate_batches, validate_no_duplicate_transactions,
             validate_transaction_dependencies, ChainCommitStateError,
         },
-        validation_rule_enforcer::enforce_validation_rules,
+        validation_rule_enforcer::ValidationRuleEnforcer,
     },
     permissions::verifier::PermissionVerifier,
     protocol::block::BlockPair,
@@ -747,11 +747,15 @@ impl BlockValidation for OnChainRulesValidation {
                         err
                     ))
                 })?;
-            if !enforce_validation_rules(
+            let mut validation_rule_enforcer = ValidationRuleEnforcer::new(
                 &settings_view,
-                block.header().signer_public_key(),
-                block.block().batches(),
-            ) {
+                block.header().signer_public_key().to_vec(),
+            )
+            .map_err(|err| ValidationError::BlockValidationError(err.to_string()))?;
+            validation_rule_enforcer
+                .add_batches(block.block().batches())
+                .map_err(|err| ValidationError::BlockValidationFailure(err.to_string()))?;
+            if !validation_rule_enforcer.validate(true) {
                 return Err(ValidationError::BlockValidationFailure(format!(
                     "Block {} failed validation rules",
                     block.block().header_signature()
