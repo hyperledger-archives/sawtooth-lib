@@ -17,6 +17,7 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::error::Error;
 use std::iter::repeat;
 use std::num::ParseIntError;
 
@@ -36,6 +37,30 @@ pub enum SettingsViewError {
     EncodingError(ProtoConversionError),
 
     ParseIntError(ParseIntError),
+}
+
+impl Error for SettingsViewError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::StateDatabaseError(err) => Some(err),
+            Self::EncodingError(err) => Some(err),
+            Self::ParseIntError(err) => Some(err),
+        }
+    }
+}
+
+impl std::fmt::Display for SettingsViewError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::StateDatabaseError(err) => write!(
+                f,
+                "failed to access state database to get settings: {}",
+                err
+            ),
+            Self::EncodingError(err) => write!(f, "failed to deserialize settings data: {}", err),
+            Self::ParseIntError(err) => write!(f, "failed to parse setting as integer: {}", err),
+        }
+    }
 }
 
 impl From<StateDatabaseError> for SettingsViewError {
