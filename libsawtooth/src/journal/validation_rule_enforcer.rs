@@ -58,11 +58,12 @@ impl ValidationRuleEnforcer {
         })
     }
 
-    /// Adds the given batches to a running-list and returns a boolean to indicate if all batches
-    /// received so-far follow the rules.
+    /// Checks if the given batches, combined with those already added to the
+    /// `ValidationRuleEnforcer`, follow the rules. If the batches follow the rules, they are saved
+    /// by the `ValidationRuleEnforcer`.
     ///
     /// If not enough batches/transactions have been added to verify rules based on the position of
-    /// batches/transactions, those rules are ignored.
+    /// batches/transactions, those rules are ignored when validating the batches.
     pub fn add_batches<'a, I: IntoIterator<Item = &'a Batch>>(
         &mut self,
         batches: I,
@@ -71,17 +72,27 @@ impl ValidationRuleEnforcer {
             return Ok(true);
         }
 
-        // Store the info from all transactions
-        batches
+        // Pull the transaction info out of the batches
+        let mut txn_info = batches
             .into_iter()
             .flat_map(|batch| batch.transactions())
             .cloned()
-            .try_for_each(|txn| {
-                self.txn_info.push(TxnInfo::try_from(txn)?);
-                Ok(())
-            })?;
+            .map(TxnInfo::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
 
-        Ok(self.validate(false))
+        // Validate the old + new transaction info; store the transaction info if valid.
+        let is_valid = self.rules.iter().all(|rule| {
+            rule.validate(
+                self.txn_info.iter().chain(txn_info.iter()),
+                &self.local_signer_key,
+                false,
+            )
+        });
+        if is_valid {
+            self.txn_info.append(&mut txn_info);
+        }
+
+        Ok(is_valid)
     }
 
     /// Returns whether or not the added batches follow the rules. If `final_validation` is true,
@@ -127,16 +138,16 @@ impl Rule {
     /// * `local_signer_key` - The key used for validating the `Local` rule
     /// * `final_validation` - If `true`, the `XatY` and `Local` rules will fail when there is no
     ///   transactions at the required position
-    pub fn validate(
+    pub fn validate<'a, I: IntoIterator<Item = &'a TxnInfo>>(
         &self,
-        txn_info: &[TxnInfo],
+        txn_info: I,
         local_signer_key: &[u8],
         final_validation: bool,
     ) -> bool {
         match self {
             Self::NofX { family_name, limit } => {
                 let count = txn_info
-                    .iter()
+                    .into_iter()
                     .filter(|info| &info.family_name == family_name)
                     .count();
                 if count > *limit {
@@ -153,7 +164,7 @@ impl Rule {
                 family_name,
                 position,
             } => {
-                let txn_family_name = match txn_info.get(*position) {
+                let txn_family_name = match txn_info.into_iter().nth(*position) {
                     Some(info) => &info.family_name,
                     None if final_validation => {
                         debug!(
@@ -168,7 +179,7 @@ impl Rule {
                     debug!(
                         "Transaction at position {} is not of the correct type; expected {}, \
                          found {}",
-                        position, family_name, txn_info[*position].family_name
+                        position, family_name, txn_family_name
                     );
                     false
                 } else {
@@ -176,8 +187,9 @@ impl Rule {
                 }
             }
             Self::Local { indices } => {
+                let mut txn_info = txn_info.into_iter();
                 for index in indices {
-                    let signer_key = match txn_info.get(*index) {
+                    let signer_key = match txn_info.by_ref().nth(*index) {
                         Some(info) => info.signer_public_key.as_slice(),
                         None if final_validation => {
                             debug!("Transaction at index {} is required by local rule", index);
@@ -438,7 +450,6 @@ mod tests {
         assert!(!enforcer
             .add_batches(&batches)
             .expect("Failed to add batches"));
-        assert!(!enforcer.validate(true));
     }
 
     /// Test that if XatY Rule is set, the validation rule is checked
