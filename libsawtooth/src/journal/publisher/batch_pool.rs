@@ -16,16 +16,32 @@
  */
 
 use std::collections::{HashSet, VecDeque};
-use std::mem;
 use std::slice::Iter;
 
-use transact::protocol::batch::Batch;
+use transact::protocol::batch::BatchPair;
+
+/// The default number of most-recently-published blocks to use when computing the limit of the
+/// pending batches pool
+const DEFAULT_BATCH_POOL_SAMPLE_SIZE: usize = 5;
+/// The default value used to seed the pending batch pool's limit
+const DEFAULT_BATCH_POOL_INITIAL_SAMPLE_VALUE: usize = 30;
+/// The multiplier of the rolling average for computing the pending batch pool's limit
+const BATCH_POOL_MULTIPLIER: usize = 10;
 
 /// Ordered batches waiting to be processed
 pub struct PendingBatchesPool {
-    batches: Vec<Batch>,
+    batches: Vec<BatchPair>,
     ids: HashSet<String>,
     limit: QueueLimit,
+}
+
+impl Default for PendingBatchesPool {
+    fn default() -> Self {
+        Self::new(
+            DEFAULT_BATCH_POOL_SAMPLE_SIZE,
+            DEFAULT_BATCH_POOL_INITIAL_SAMPLE_VALUE,
+        )
+    }
 }
 
 impl PendingBatchesPool {
@@ -37,15 +53,15 @@ impl PendingBatchesPool {
         }
     }
 
-    pub fn len(&self) -> usize {
-        self.batches.len()
-    }
-
     pub fn is_empty(&self) -> bool {
         self.batches.is_empty()
     }
 
-    pub fn iter(&self) -> Iter<Batch> {
+    pub fn is_full(&self) -> bool {
+        self.batches.len() >= self.limit.get()
+    }
+
+    pub fn iter(&self) -> Iter<BatchPair> {
         self.batches.iter()
     }
 
@@ -58,8 +74,11 @@ impl PendingBatchesPool {
         self.ids = HashSet::new();
     }
 
-    pub fn append(&mut self, batch: Batch) -> bool {
-        if self.ids.insert(batch.header_signature().to_string()) {
+    pub fn append(&mut self, batch: BatchPair) -> bool {
+        if self
+            .ids
+            .insert(batch.batch().header_signature().to_string())
+        {
             self.batches.push(batch);
             true
         } else {
@@ -74,12 +93,16 @@ impl PendingBatchesPool {
     ///   since the root of the fork switching from.
     ///   uncommitted (List<Batches): Batches that were committed in the old
     ///   fork since the common root.
-    pub fn rebuild(&mut self, committed: Option<Vec<Batch>>, uncommitted: Option<Vec<Batch>>) {
+    pub fn rebuild(
+        &mut self,
+        committed: Option<Vec<BatchPair>>,
+        uncommitted: Option<Vec<BatchPair>>,
+    ) {
         let committed_set = committed
             .map(|committed| {
                 committed
                     .iter()
-                    .map(|i| i.header_signature().to_string())
+                    .map(|i| i.batch().header_signature().to_string())
                     .collect::<HashSet<_>>()
             })
             .unwrap_or_default();
@@ -93,14 +116,14 @@ impl PendingBatchesPool {
 
         if let Some(batch_list) = uncommitted {
             for batch in batch_list {
-                if !committed_set.contains(batch.header_signature()) {
+                if !committed_set.contains(batch.batch().header_signature()) {
                     self.append(batch);
                 }
             }
         }
 
         for batch in previous_batches {
-            if !committed_set.contains(batch.header_signature()) {
+            if !committed_set.contains(batch.batch().header_signature()) {
                 self.append(batch);
             }
         }
@@ -111,29 +134,15 @@ impl PendingBatchesPool {
         );
     }
 
-    pub fn update(&mut self, mut still_pending: Vec<Batch>, last_sent: &Batch) {
-        let last_index = self
-            .batches
-            .iter()
-            .position(|i| i.header_signature() == last_sent.header_signature());
-
-        let unsent = if let Some(idx) = last_index {
-            let mut unsent = vec![];
-            mem::swap(&mut unsent, &mut self.batches);
-            still_pending.extend_from_slice(unsent.split_off(idx + 1).as_slice());
-            still_pending
-        } else {
-            let mut unsent = vec![];
-            mem::swap(&mut unsent, &mut self.batches);
-            unsent
-        };
-
-        self.reset();
-
-        for batch in unsent {
-            self.append(batch);
+    /// Removes the batches with the given IDs from the pool
+    ///
+    /// This method is called when a new block is published
+    pub fn update(&mut self, published_batch_ids: HashSet<&str>) {
+        self.batches
+            .retain(|batch| !published_batch_ids.contains(batch.batch().header_signature()));
+        for id in published_batch_ids {
+            self.ids.remove(id);
         }
-
         gauge!(
             "publisher.BlockPublisher.pending_batch_gauge",
             self.batches.len() as i64
@@ -142,10 +151,6 @@ impl PendingBatchesPool {
 
     pub fn update_limit(&mut self, consumed: usize) {
         self.limit.update(self.batches.len(), consumed);
-    }
-
-    pub fn limit(&self) -> usize {
-        self.limit.get()
     }
 }
 
@@ -181,8 +186,6 @@ struct QueueLimit {
     avg: RollingAverage,
 }
 
-const QUEUE_MULTIPLIER: usize = 10;
-
 impl QueueLimit {
     pub fn new(sample_size: usize, initial_value: usize) -> QueueLimit {
         QueueLimit {
@@ -211,9 +214,9 @@ impl QueueLimit {
     }
 
     pub fn get(&self) -> usize {
-        // Limit the number of items to QUEUE_MULTIPLIER times the publishing
+        // Limit the number of items to BATCH_POOL_MULTIPLIER times the publishing
         // average.  This allows the queue to grow geometrically, if the queue
         // is drained.
-        QUEUE_MULTIPLIER * self.avg.value()
+        BATCH_POOL_MULTIPLIER * self.avg.value()
     }
 }
