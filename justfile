@@ -109,3 +109,10 @@ test:
         done
     done
     echo "\n\033[92mTest Success\033[0m\n"
+
+docker-test:
+    docker-compose -f docker/compose/run-tests.yaml up \
+        --build \
+        --abort-on-container-exit \
+        --exit-code-from \
+        test-libsawtooth

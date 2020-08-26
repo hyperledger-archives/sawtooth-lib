@@ -80,6 +80,12 @@ pipeline {
                 sh 'docker-compose -f docker/compose/run-lint.yaml up --build --abort-on-container-exit --exit-code-from lint-libsawtooth'
             }
         }
+
+        stage("Run tests") {
+            steps {
+                sh 'docker-compose -f docker/compose/run-tests.yaml up --build --abort-on-container-exit --exit-code-from test-libsawtooth'
+            }
+        }
     }
     post {
         always {
