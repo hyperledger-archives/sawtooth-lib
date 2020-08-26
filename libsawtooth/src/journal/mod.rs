@@ -26,5 +26,6 @@ pub mod chain_head_lock;
 pub mod chain_id_manager;
 pub mod commit_store;
 pub mod fork_cache;
+pub mod genesis;
 pub mod publisher;
 pub mod validation_rule_enforcer;
