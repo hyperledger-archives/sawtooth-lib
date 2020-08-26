@@ -19,19 +19,14 @@ services:
 
   lint-libsawtooth:
     build:
-      context: ../
-      dockerfile: ./lint
+      context: ../../
+      dockerfile: ./docker/test-libsawtooth.dockerfile
       args:
         - http_proxy
         - https_proxy
         - no_proxy
-    image: lint-libsawtooth:${ISOLATION_ID}
+    image: test-libsawtooth:${ISOLATION_ID}
     volumes:
-      - ../../libsawtooth:/project/libsawtooth
-    command: |
-      bash -c "
-        set -e
-        cd /project/libsawtooth
-        cargo fmt -- --check
-        cargo clippy -- -D clippy::all
-      "
+      - ../../:/project/libsawtooth
+    working_dir: /project/libsawtooth
+    command: just lint
