@@ -1,5 +1,4 @@
-
-# Copyright 2018 Cargill Incorporated
+# Copyright 2020 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,20 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version: '3.6'
+version: "3.7"
 
 services:
 
-  lint-libsawtooth:
+  test-libsawtooth:
     build:
-      context: ../../
+      context: ../..
       dockerfile: ./docker/test-libsawtooth.dockerfile
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    image: test-libsawtooth:${ISOLATION_ID}
+    image: libsawtooth-tests:$ISOLATION_ID
     volumes:
       - ../../:/project/libsawtooth
     working_dir: /project/libsawtooth
-    command: just lint
+    command: just test
