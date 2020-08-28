@@ -111,7 +111,8 @@ impl IdentityView {
             let (_, bytes) = state_value?;
             res.append(&mut Vec::from_bytes(&bytes)?);
         }
-        res.sort_by(|a, b| a.name().cmp(b.name()));
+
+        res.sort_by_key(|a| a.name().to_string());
         Ok(res)
     }
 }
