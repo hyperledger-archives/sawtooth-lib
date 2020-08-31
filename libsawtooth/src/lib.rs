@@ -19,6 +19,8 @@ extern crate log;
 #[macro_use]
 extern crate metrics;
 
+#[cfg(feature = "client")]
+pub mod client;
 #[cfg(feature = "validator-internals")]
 pub mod consensus;
 #[cfg(feature = "validator-internals")]
