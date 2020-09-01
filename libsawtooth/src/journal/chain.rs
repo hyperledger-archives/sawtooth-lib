@@ -328,6 +328,7 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
                     execution_results: vec![],
                     num_transactions: 0,
                     status: BlockStatus::Valid,
+                    state_changes: vec![],
                 };
                 return Some(result);
             }
@@ -352,6 +353,7 @@ impl<TEP: ExecutionPlatform + Clone + 'static> ChainController<TEP> {
                 execution_results: vec![],
                 num_transactions: 0,
                 status: BlockStatus::InValidation,
+                state_changes: vec![],
             });
 
             // Submit for validation

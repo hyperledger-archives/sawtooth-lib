@@ -110,6 +110,7 @@ pub struct BlockValidationResult {
     pub execution_results: Vec<TxnExecutionResult>,
     pub num_transactions: u64,
     pub status: BlockStatus,
+    pub state_changes: Vec<StateChange>,
 }
 
 impl BlockValidationResult {
@@ -119,12 +120,14 @@ impl BlockValidationResult {
         execution_results: Vec<TxnExecutionResult>,
         num_transactions: u64,
         status: BlockStatus,
+        state_changes: Vec<StateChange>,
     ) -> Self {
         BlockValidationResult {
             block_id,
             execution_results,
             num_transactions,
             status,
+            state_changes,
         }
     }
 }
@@ -279,6 +282,7 @@ where
                                 execution_results: vec![],
                                 num_transactions: 0,
                                 status: BlockStatus::Invalid,
+                                state_changes: vec![],
                             },
                         )) {
                             warn!("During handling block failure: {:?}", err);
@@ -585,6 +589,7 @@ impl<TEP: ExecutionPlatform> BlockValidation for BatchesInBlockValidation<TEP> {
             num_transactions: results.len() as u64,
             execution_results: results,
             status: BlockStatus::Valid,
+            state_changes: changes,
         })
     }
 }
@@ -798,6 +803,7 @@ mod test {
             vec![],
             0,
             BlockStatus::Valid,
+            vec![],
         )));
 
         let validation_processor =
