@@ -19,6 +19,7 @@
 
 mod batch;
 pub mod block;
+pub mod block_info;
 pub mod identity;
 pub mod setting;
 mod transaction;
