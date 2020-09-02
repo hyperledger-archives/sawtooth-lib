@@ -1159,10 +1159,11 @@ impl Iterator for BranchDiffIterator {
 mod tests {
     use super::{BlockManager, BlockManagerError};
 
+    use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
+
     use crate::journal::block_store::InMemoryBlockStore;
     use crate::journal::NULL_BLOCK_IDENTIFIER;
     use crate::protocol::block::{BlockBuilder, BlockPair};
-    use crate::signing::hash::HashSigner;
 
     /// `state_root_hash` should be set if two or more blocks with the same `previous_block_id` and
     /// `block_num` are created; this ensures that the resulting header signatures (IDs) of the
@@ -1177,8 +1178,14 @@ mod tests {
             .with_previous_block_id(previous_block_id.into())
             .with_state_root_hash(state_root_hash.unwrap_or_default().into())
             .with_batches(vec![])
-            .build_pair(&HashSigner::default())
+            .build_pair(&*new_signer())
             .expect("Failed to build block pair")
+    }
+
+    fn new_signer() -> Box<dyn Signer> {
+        let context = Secp256k1Context::new();
+        let key = context.new_random_private_key();
+        context.new_signer(key)
     }
 
     #[test]

@@ -25,6 +25,7 @@ description = """\
 
 [dependencies]
 cbor-codec = { version = "0.7", optional = true }
+cylinder = "0.1"
 hex = "0.4"
 log = "0.4"
 lmdb-zero = { version = "0.4", optional = true }
@@ -32,9 +33,15 @@ metrics = { version = "0.12", features = ["std"], optional = true }
 openssl = { version = "0.10", optional = true }
 protobuf = "2"
 redis = { version = "0.13.0", default-features = false, optional = true }
-sha2 = "0.8"
-transact = "0.2"
+transact = "0.3"
 uluru = { version = "0.4", optional = true }
+
+[dev-dependencies]
+rand = "0.4"
+
+[build-dependencies]
+protoc-rust = "2.0"
+glob = "0.2"
 
 [features]
 default = []
@@ -65,10 +72,3 @@ validator-internals = [
   "openssl",
   "uluru",
 ]
-
-[build-dependencies]
-protoc-rust = "2.0"
-glob = "0.2"
-
-[dev-dependencies]
-rand = "0.4"

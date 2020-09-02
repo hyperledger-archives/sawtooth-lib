@@ -249,9 +249,10 @@ impl Iterator for InMemoryIter {
 mod test {
     use super::*;
 
+    use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
+
     use crate::journal::NULL_BLOCK_IDENTIFIER;
     use crate::protocol::block::{BlockBuilder, BlockPair};
-    use crate::signing::hash::HashSigner;
 
     fn create_block(previous_block_id: &str, block_num: u64) -> BlockPair {
         BlockBuilder::new()
@@ -259,8 +260,14 @@ mod test {
             .with_previous_block_id(previous_block_id.into())
             .with_state_root_hash(vec![])
             .with_batches(vec![])
-            .build_pair(&HashSigner::default())
+            .build_pair(&*new_signer())
             .expect("Failed to build block pair")
+    }
+
+    fn new_signer() -> Box<dyn Signer> {
+        let context = Secp256k1Context::new();
+        let key = context.new_random_private_key();
+        context.new_signer(key)
     }
 
     #[test]

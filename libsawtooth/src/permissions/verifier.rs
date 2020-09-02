@@ -211,21 +211,22 @@ mod tests {
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
 
+    use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
     use transact::protocol::{
         batch::BatchBuilder,
         transaction::{HashMethod, TransactionBuilder},
     };
 
     use crate::protocol::identity::{PolicyBuilder, Role, RoleBuilder};
-    use crate::signing::hash::HashSigner;
-
-    const PUB_KEY: &[u8] = b"test_pubkey";
 
     #[test]
     /// Test that if no roles are set and no default policy is set,
     /// permit all is used.
     fn allow_all_with_no_permissions() {
-        let batch = create_batches(1, 1, PUB_KEY).into_iter().nth(0).unwrap();
+        let batch = create_batches(1, 1, &*new_signer())
+            .into_iter()
+            .nth(0)
+            .unwrap();
 
         let permission_verifier = PermissionVerifier::new(Box::new(Arc::new(Mutex::new(
             TestIdentitySource::default(),
@@ -241,7 +242,10 @@ mod tests {
     ///     1. Set default policy to permit all. Batch should be allowed.
     ///     2. Set default policy to deny all. Batch should be rejected.
     fn default_policy_permission() {
-        let batch = create_batches(1, 1, PUB_KEY).into_iter().nth(0).unwrap();
+        let batch = create_batches(1, 1, &*new_signer())
+            .into_iter()
+            .nth(0)
+            .unwrap();
 
         {
             let mut on_chain_identities = TestIdentitySource::default();
@@ -273,13 +277,15 @@ mod tests {
     ///     1. Set policy to permit signing key. Batch should be allowed.
     ///     2. Set policy to permit some other key. Batch should be rejected.
     fn transactor_role() {
-        let batch = create_batches(1, 1, PUB_KEY).into_iter().nth(0).unwrap();
+        let signer = new_signer();
+        let pub_key = signer.public_key().expect("Failed to get pub key");
+        let batch = create_batches(1, 1, &*signer).into_iter().nth(0).unwrap();
 
         {
             let mut on_chain_identities = TestIdentitySource::default();
             on_chain_identities.add_policy(create_policy(
                 "policy1",
-                vec![Permission::PermitKey(hex::encode(PUB_KEY))],
+                vec![Permission::PermitKey(pub_key.as_hex())],
             ));
             on_chain_identities.add_role(create_role("transactor", "policy1"));
 
@@ -292,7 +298,7 @@ mod tests {
             let mut on_chain_identities = TestIdentitySource::default();
             on_chain_identities.add_policy(create_policy(
                 "policy1",
-                vec![Permission::DenyKey(hex::encode(PUB_KEY))],
+                vec![Permission::DenyKey(pub_key.as_hex())],
             ));
             on_chain_identities.add_role(create_role("transactor", "policy1"));
 
@@ -308,13 +314,15 @@ mod tests {
     ///     1. Set policy to permit signing key. Batch should be allowed.
     ///     2. Set policy to permit some other key. Batch should be rejected.
     fn transactor_batch_signer_role() {
-        let batch = create_batches(1, 1, PUB_KEY).into_iter().nth(0).unwrap();
+        let signer = new_signer();
+        let pub_key = signer.public_key().expect("Failed to get pub key");
+        let batch = create_batches(1, 1, &*signer).into_iter().nth(0).unwrap();
 
         {
             let mut on_chain_identities = TestIdentitySource::default();
             on_chain_identities.add_policy(create_policy(
                 "policy1",
-                vec![Permission::PermitKey(hex::encode(PUB_KEY))],
+                vec![Permission::PermitKey(pub_key.as_hex())],
             ));
             on_chain_identities.add_role(create_role("transactor.batch_signer", "policy1"));
 
@@ -327,7 +335,7 @@ mod tests {
             let mut on_chain_identities = TestIdentitySource::default();
             on_chain_identities.add_policy(create_policy(
                 "policy1",
-                vec![Permission::DenyKey(hex::encode(PUB_KEY))],
+                vec![Permission::DenyKey(pub_key.as_hex())],
             ));
             on_chain_identities.add_role(create_role("transactor.batch_signer", "policy1"));
 
@@ -343,13 +351,15 @@ mod tests {
     ///     1. Set policy to permit signing key. Batch should be allowed.
     ///     2. Set policy to permit some other key. Batch should be rejected.
     fn transactor_transaction_signer_role() {
-        let batch = create_batches(1, 1, PUB_KEY).into_iter().nth(0).unwrap();
+        let signer = new_signer();
+        let pub_key = signer.public_key().expect("Failed to get pub key");
+        let batch = create_batches(1, 1, &*signer).into_iter().nth(0).unwrap();
 
         {
             let mut on_chain_identities = TestIdentitySource::default();
             on_chain_identities.add_policy(create_policy(
                 "policy1",
-                vec![Permission::PermitKey(hex::encode(PUB_KEY))],
+                vec![Permission::PermitKey(pub_key.as_hex())],
             ));
             on_chain_identities.add_role(create_role("transactor.transaction_signer", "policy1"));
 
@@ -378,13 +388,15 @@ mod tests {
     ///     1. Set policy to permit signing key. Batch should be allowed.
     ///     2. Set policy to permit some other key. Batch should be rejected.
     fn transactor_transaction_signer_transaction_family() {
-        let batch = create_batches(1, 1, PUB_KEY).into_iter().nth(0).unwrap();
+        let signer = new_signer();
+        let pub_key = signer.public_key().expect("Failed to get pub key");
+        let batch = create_batches(1, 1, &*signer).into_iter().nth(0).unwrap();
 
         {
             let mut on_chain_identities = TestIdentitySource::default();
             on_chain_identities.add_policy(create_policy(
                 "policy1",
-                vec![Permission::PermitKey(hex::encode(PUB_KEY))],
+                vec![Permission::PermitKey(pub_key.as_hex())],
             ));
             on_chain_identities.add_role(create_role(
                 "transactor.transaction_signer.intkey",
@@ -418,9 +430,13 @@ mod tests {
         PermissionVerifier::new(Box::new(Arc::new(Mutex::new(identity_source))))
     }
 
-    fn create_batches(count: u8, txns_per_batch: u8, pub_key: &[u8]) -> Vec<Batch> {
-        let signer = HashSigner::new(pub_key.into());
+    fn new_signer() -> Box<dyn Signer> {
+        let context = Secp256k1Context::new();
+        let key = context.new_random_private_key();
+        context.new_signer(key)
+    }
 
+    fn create_batches(count: u8, txns_per_batch: u8, signer: &dyn Signer) -> Vec<Batch> {
         (0..count)
             .map(|i| {
                 let txns = (0..txns_per_batch)
@@ -433,12 +449,12 @@ mod tests {
                             .with_payload_hash_method(HashMethod::SHA512)
                             .with_payload(vec![])
                             .with_nonce(vec![i, j])
-                            .build(&signer)
+                            .build(signer)
                     })
                     .collect::<Result<_, _>>()
                     .expect("Failed to build transactions");
 
-                BatchBuilder::new().with_transactions(txns).build(&signer)
+                BatchBuilder::new().with_transactions(txns).build(signer)
             })
             .collect::<Result<_, _>>()
             .expect("Failed to build batches")
