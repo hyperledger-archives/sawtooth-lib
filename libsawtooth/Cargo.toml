@@ -36,6 +36,13 @@ sha2 = "0.8"
 transact = "0.2"
 uluru = { version = "0.4", optional = true }
 
+[dev-dependencies]
+rand = "0.4"
+
+[build-dependencies]
+protoc-rust = "2.0"
+glob = "0.2"
+
 [features]
 default = []
 
@@ -65,10 +72,3 @@ validator-internals = [
   "openssl",
   "uluru",
 ]
-
-[build-dependencies]
-protoc-rust = "2.0"
-glob = "0.2"
-
-[dev-dependencies]
-rand = "0.4"
