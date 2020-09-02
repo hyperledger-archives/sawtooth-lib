@@ -23,8 +23,9 @@ pub mod identity;
 pub mod setting;
 mod transaction;
 
+use cylinder::SigningError;
+
 use crate::protos::ProtoConversionError;
-use crate::signing::Error as SigningError;
 
 /// Errors that may occur when building a protocol object
 #[derive(Debug)]

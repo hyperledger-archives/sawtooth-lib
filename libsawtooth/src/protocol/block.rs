@@ -17,6 +17,7 @@
 
 //! Sawtooth block protocol
 
+use cylinder::Signer;
 use protobuf::Message;
 use transact::protocol::batch::Batch;
 
@@ -24,7 +25,6 @@ use crate::protos::{
     block::{Block as BlockProto, BlockHeader as BlockHeaderProto},
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
-use crate::signing::Signer;
 
 use super::ProtocolBuildError;
 
@@ -352,10 +352,12 @@ impl BlockBuilder {
             ProtocolBuildError::MissingField("'batches' field is required".to_string())
         })?;
 
+        let signer_public_key = signer.public_key()?.as_slice().to_vec();
+
         let header = BlockHeader {
             block_num,
             previous_block_id,
-            signer_public_key: signer.public_key().into(),
+            signer_public_key,
             batch_ids: batches
                 .iter()
                 .map(|batch| batch.header_signature().to_string())
@@ -365,7 +367,7 @@ impl BlockBuilder {
         };
 
         let header_bytes = header.clone().into_bytes()?;
-        let header_signature = hex::encode(signer.sign(&header_bytes)?);
+        let header_signature = signer.sign(&header_bytes)?.as_hex();
 
         let block = Block {
             header: header_bytes,
@@ -387,12 +389,11 @@ impl BlockBuilder {
 mod tests {
     use super::*;
 
+    use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
     use transact::protocol::{
         batch::BatchBuilder,
         transaction::{HashMethod, TransactionBuilder},
     };
-
-    use crate::signing::hash::HashSigner;
 
     const BLOCK_NUM: u64 = 0;
     const PREVIOUS_BLOCK_ID: &str = "0123";
@@ -406,18 +407,18 @@ mod tests {
     /// 3. Verify that the resulting block pair is correct
     #[test]
     fn builder_chain() {
-        let signer = HashSigner::default();
+        let signer = new_signer();
 
         let pair = BlockBuilder::new()
             .with_block_num(BLOCK_NUM)
             .with_previous_block_id(PREVIOUS_BLOCK_ID.into())
             .with_consensus(CONSENSUS.into())
             .with_state_root_hash(STATE_ROOT_HASH.into())
-            .with_batches(vec![batch_1(), batch_2()])
-            .build_pair(&signer)
+            .with_batches(vec![batch_1(&*signer), batch_2(&*signer)])
+            .build_pair(&*signer)
             .expect("Failed to build block pair");
 
-        check_pair(&signer, &pair);
+        check_pair(&*signer, &pair);
     }
 
     /// Verify that the `BlockBuilder` can be successfully used with separate calls to its methods.
@@ -427,20 +428,20 @@ mod tests {
     /// 3. Verify that the resulting block pair is correct
     #[test]
     fn builder_separate() {
-        let signer = HashSigner::default();
+        let signer = new_signer();
 
         let mut builder = BlockBuilder::new();
         builder = builder.with_block_num(BLOCK_NUM);
         builder = builder.with_previous_block_id(PREVIOUS_BLOCK_ID.into());
         builder = builder.with_consensus(CONSENSUS.into());
         builder = builder.with_state_root_hash(STATE_ROOT_HASH.into());
-        builder = builder.with_batches(vec![batch_1(), batch_2()]);
+        builder = builder.with_batches(vec![batch_1(&*signer), batch_2(&*signer)]);
 
         let pair = builder
-            .build_pair(&signer)
+            .build_pair(&*signer)
             .expect("Failed to build block pair");
 
-        check_pair(&signer, &pair);
+        check_pair(&*signer, &pair);
     }
 
     /// Verify that the consensus field can be excluded from the `BlockBuilder`.
@@ -449,14 +450,14 @@ mod tests {
     /// 2. Verify that a block without a `consensus` value set builds succesfully
     #[test]
     fn builder_defaults() {
-        let signer = HashSigner::default();
+        let signer = new_signer();
 
         BlockBuilder::new()
             .with_block_num(BLOCK_NUM)
             .with_previous_block_id(PREVIOUS_BLOCK_ID.into())
             .with_state_root_hash(STATE_ROOT_HASH.into())
-            .with_batches(vec![batch_1(), batch_2()])
-            .build_pair(&signer)
+            .with_batches(vec![batch_1(&*signer), batch_2(&*signer)])
+            .build_pair(&*new_signer())
             .expect("Failed to build block pair");
     }
 
@@ -469,13 +470,13 @@ mod tests {
     /// 5. Attempt to build a block without setting `batches` and verify that it fails.
     #[test]
     fn builder_missing_fields() {
-        let signer = HashSigner::default();
+        let signer = new_signer();
 
         match BlockBuilder::new()
             .with_previous_block_id(PREVIOUS_BLOCK_ID.into())
             .with_state_root_hash(STATE_ROOT_HASH.into())
-            .with_batches(vec![batch_1(), batch_2()])
-            .build_pair(&signer)
+            .with_batches(vec![batch_1(&*signer), batch_2(&*signer)])
+            .build_pair(&*signer)
         {
             Err(ProtocolBuildError::MissingField(_)) => {}
             res => panic!(
@@ -487,8 +488,8 @@ mod tests {
         match BlockBuilder::new()
             .with_block_num(BLOCK_NUM)
             .with_state_root_hash(STATE_ROOT_HASH.into())
-            .with_batches(vec![batch_1(), batch_2()])
-            .build_pair(&signer)
+            .with_batches(vec![batch_1(&*signer), batch_2(&*signer)])
+            .build_pair(&*signer)
         {
             Err(ProtocolBuildError::MissingField(_)) => {}
             res => panic!(
@@ -500,8 +501,8 @@ mod tests {
         match BlockBuilder::new()
             .with_block_num(BLOCK_NUM)
             .with_previous_block_id(PREVIOUS_BLOCK_ID.into())
-            .with_batches(vec![batch_1(), batch_2()])
-            .build_pair(&signer)
+            .with_batches(vec![batch_1(&*signer), batch_2(&*signer)])
+            .build_pair(&*signer)
         {
             Err(ProtocolBuildError::MissingField(_)) => {}
             res => panic!(
@@ -514,7 +515,7 @@ mod tests {
             .with_block_num(BLOCK_NUM)
             .with_previous_block_id(PREVIOUS_BLOCK_ID.into())
             .with_state_root_hash(STATE_ROOT_HASH.into())
-            .build_pair(&signer)
+            .build_pair(&*signer)
         {
             Err(ProtocolBuildError::MissingField(_)) => {}
             res => panic!(
@@ -525,14 +526,18 @@ mod tests {
     }
 
     fn check_pair(signer: &dyn Signer, pair: &BlockPair) {
+        let signer_pub_key = signer
+            .public_key()
+            .expect("Failed to get signer public key");
+
         assert_eq!(pair.header().block_num(), BLOCK_NUM);
         assert_eq!(pair.header().previous_block_id(), PREVIOUS_BLOCK_ID);
-        assert_eq!(pair.header().signer_public_key(), signer.public_key());
+        assert_eq!(pair.header().signer_public_key(), signer_pub_key.as_slice());
         assert_eq!(
             pair.header().batch_ids(),
             &[
-                batch_1().header_signature().to_string(),
-                batch_2().header_signature().to_string()
+                batch_1(signer).header_signature().to_string(),
+                batch_2(signer).header_signature().to_string()
             ]
         );
         assert_eq!(pair.header().consensus(), CONSENSUS);
@@ -545,12 +550,10 @@ mod tests {
                 .expect("Failed to get header bytes")
                 .as_slice()
         );
-        assert_eq!(pair.block().batches(), &[batch_1(), batch_2()]);
+        assert_eq!(pair.block().batches(), &[batch_1(signer), batch_2(signer)]);
     }
 
-    fn batch_1() -> Batch {
-        let signer = HashSigner::default();
-
+    fn batch_1(signer: &dyn Signer) -> Batch {
         let txn = TransactionBuilder::new()
             .with_family_name("test".into())
             .with_family_version("1.0".into())
@@ -559,18 +562,16 @@ mod tests {
             .with_payload_hash_method(HashMethod::SHA512)
             .with_payload(vec![])
             .with_nonce(vec![1])
-            .build(&signer)
+            .build(signer)
             .expect("Failed to build txn");
 
         BatchBuilder::new()
             .with_transactions(vec![txn])
-            .build(&signer)
+            .build(signer)
             .expect("Failed to build batch1")
     }
 
-    fn batch_2() -> Batch {
-        let signer = HashSigner::default();
-
+    fn batch_2(signer: &dyn Signer) -> Batch {
         let txn = TransactionBuilder::new()
             .with_family_name("test".into())
             .with_family_version("1.0".into())
@@ -579,12 +580,18 @@ mod tests {
             .with_payload_hash_method(HashMethod::SHA512)
             .with_payload(vec![])
             .with_nonce(vec![2])
-            .build(&signer)
+            .build(signer)
             .expect("Failed to build txn");
 
         BatchBuilder::new()
             .with_transactions(vec![txn])
-            .build(&signer)
+            .build(signer)
             .expect("Failed to build batch1")
+    }
+
+    fn new_signer() -> Box<dyn Signer> {
+        let context = Secp256k1Context::new();
+        let key = context.new_random_private_key();
+        context.new_signer(key)
     }
 }

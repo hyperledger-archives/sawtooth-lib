@@ -385,23 +385,22 @@ impl std::fmt::Display for ValidationRuleEnforcerError {
 mod tests {
     use super::*;
 
+    use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
     use transact::protocol::{
         batch::{Batch, BatchBuilder},
         transaction::{HashMethod, TransactionBuilder},
     };
 
-    use crate::signing::hash::HashSigner;
-
-    const PUB_KEY: &[u8] = b"pub_key";
-
     /// Test that if no validation rules are set, the block is valid.
     #[test]
     fn test_no_setting() {
-        let batches = make_batches(&["intkey"], PUB_KEY);
+        let signer = new_signer();
+        let pub_key = signer.public_key().expect("Failed to get pub key");
+        let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
             rules: vec![],
-            local_signer_key: PUB_KEY.into(),
+            local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
 
@@ -417,11 +416,13 @@ mod tests {
     ///     2. Invalid Block, to many intkey transactions.
     #[test]
     fn test_n_of_x() {
-        let batches = make_batches(&["intkey"], PUB_KEY);
+        let signer = new_signer();
+        let pub_key = signer.public_key().expect("Failed to get pub key");
+        let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
             rules: parse_rules("NofX:1,intkey").expect("Failed to parse rules"),
-            local_signer_key: PUB_KEY.into(),
+            local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
         assert!(enforcer
@@ -431,7 +432,7 @@ mod tests {
 
         let mut enforcer = ValidationRuleEnforcer {
             rules: parse_rules("NofX:0,intkey").expect("Failed to parse rules"),
-            local_signer_key: PUB_KEY.into(),
+            local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
         assert!(!enforcer
@@ -446,11 +447,13 @@ mod tests {
     ///     2. Invalid Block, does not have an blockinfo txn at the 0th postion
     #[test]
     fn test_x_at_y() {
-        let batches = make_batches(&["intkey"], PUB_KEY);
+        let signer = new_signer();
+        let pub_key = signer.public_key().expect("Failed to get pub key");
+        let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
             rules: parse_rules("XatY:intkey,0").expect("Failed to parse rules"),
-            local_signer_key: PUB_KEY.into(),
+            local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
         assert!(enforcer
@@ -460,7 +463,7 @@ mod tests {
 
         let mut enforcer = ValidationRuleEnforcer {
             rules: parse_rules("XatY:blockinfo,0").expect("Failed to parse rules"),
-            local_signer_key: PUB_KEY.into(),
+            local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
         assert!(!enforcer
@@ -476,11 +479,13 @@ mod tests {
     ///        signer.
     #[test]
     fn test_local() {
-        let batches = make_batches(&["intkey"], PUB_KEY);
+        let signer = new_signer();
+        let pub_key = signer.public_key().expect("Failed to get pub key");
+        let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
             rules: parse_rules("local:0").expect("Failed to parse rules"),
-            local_signer_key: PUB_KEY.into(),
+            local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
         assert!(enforcer
@@ -503,12 +508,14 @@ mod tests {
     /// Block should be valid.
     #[test]
     fn test_all_at_once() {
-        let batches = make_batches(&["intkey"], PUB_KEY);
+        let signer = new_signer();
+        let pub_key = signer.public_key().expect("Failed to get pub key");
+        let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
             rules: parse_rules("NofX:1,intkey;XatY:intkey,0;local:0")
                 .expect("Failed to parse rules"),
-            local_signer_key: PUB_KEY.into(),
+            local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
         assert!(enforcer
@@ -521,12 +528,14 @@ mod tests {
     /// Block is invalid, because there are too many intkey transactions
     #[test]
     fn test_all_at_once_bad_number_of_intkey() {
-        let batches = make_batches(&["intkey"], PUB_KEY);
+        let signer = new_signer();
+        let pub_key = signer.public_key().expect("Failed to get pub key");
+        let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
             rules: parse_rules("NofX:0,intkey;XatY:intkey,0;local:0")
                 .expect("Failed to parse rules"),
-            local_signer_key: PUB_KEY.into(),
+            local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
         assert!(!enforcer
@@ -540,12 +549,14 @@ mod tests {
     /// position.
     #[test]
     fn test_all_at_once_bad_family_at_index() {
-        let batches = make_batches(&["intkey"], PUB_KEY);
+        let signer = new_signer();
+        let pub_key = signer.public_key().expect("Failed to get pub key");
+        let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
             rules: parse_rules("NofX:1,intkey;XatY:blockinfo,0;local:0")
                 .expect("Failed to parse rules"),
-            local_signer_key: PUB_KEY.into(),
+            local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
         assert!(!enforcer
@@ -559,7 +570,7 @@ mod tests {
     /// signed by the expected signer.
     #[test]
     fn test_all_at_once_signer_key() {
-        let batches = make_batches(&["intkey"], PUB_KEY);
+        let batches = make_batches(&["intkey"], &*new_signer());
 
         let mut enforcer = ValidationRuleEnforcer {
             rules: parse_rules("NofX:1,intkey;XatY:intkey,0;local:0")
@@ -573,9 +584,7 @@ mod tests {
         assert!(!enforcer.validate(true));
     }
 
-    fn make_batches(families: &[&str], pubkey: &[u8]) -> Vec<Batch> {
-        let signer = HashSigner::new(pubkey.into());
-
+    fn make_batches(families: &[&str], signer: &dyn Signer) -> Vec<Batch> {
         let transactions = families
             .iter()
             .map(|family| {
@@ -586,14 +595,20 @@ mod tests {
                     .with_outputs(vec![])
                     .with_payload_hash_method(HashMethod::SHA512)
                     .with_payload(vec![])
-                    .build(&signer)
+                    .build(signer)
             })
             .collect::<Result<Vec<_>, _>>()
             .expect("Failed to build transactions");
 
         vec![BatchBuilder::new()
             .with_transactions(transactions)
-            .build(&signer)
+            .build(signer)
             .expect("Failed to build batch")]
+    }
+
+    fn new_signer() -> Box<dyn Signer> {
+        let context = Secp256k1Context::new();
+        let key = context.new_random_private_key();
+        context.new_signer(key)
     }
 }

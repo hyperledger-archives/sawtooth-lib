@@ -180,6 +180,7 @@ mod test {
 
     use std::collections::HashMap;
 
+    use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
     use transact::protocol::{
         batch::BatchBuilder,
         transaction::{HashMethod, Transaction, TransactionBuilder},
@@ -188,7 +189,6 @@ mod test {
     use crate::journal::block_store::InMemoryBlockStore;
     use crate::journal::NULL_BLOCK_IDENTIFIER;
     use crate::protocol::block::{BlockBuilder, BlockPair};
-    use crate::signing::hash::HashSigner;
 
     /// Creates Chains of blocks that match this diagram
     /// chain4                    B4-4  - B5-4
@@ -882,14 +882,14 @@ mod test {
             .with_previous_block_id(previous_block_id.into())
             .with_state_root_hash("".into())
             .with_batches(batches)
-            .build_pair(&HashSigner::default())
+            .build_pair(&*new_signer())
             .expect("Failed to build block pair")
     }
 
     fn create_batch(transactions: Vec<Transaction>) -> Batch {
         BatchBuilder::new()
             .with_transactions(transactions)
-            .build(&HashSigner::default())
+            .build(&*new_signer())
             .expect("Failed to build batch")
     }
 
@@ -909,8 +909,14 @@ mod test {
             .with_payload_hash_method(HashMethod::SHA512)
             .with_payload(vec![])
             .with_nonce(nonce)
-            .build(&HashSigner::default())
+            .build(&*new_signer())
             .expect("Failed to build transaction")
+    }
+
+    fn new_signer() -> Box<dyn Signer> {
+        let context = Secp256k1Context::new();
+        let key = context.new_random_private_key();
+        context.new_signer(key)
     }
 
     fn setup_state() -> (BlockManager, HashMap<String, BlockPair>) {
