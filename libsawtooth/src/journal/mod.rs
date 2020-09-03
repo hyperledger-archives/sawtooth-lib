@@ -19,7 +19,6 @@ pub mod block_scheduler;
 pub mod block_store;
 pub mod block_validator;
 pub mod block_wrapper;
-pub mod candidate_block;
 pub mod chain;
 pub mod chain_commit_state;
 pub mod chain_head_lock;
