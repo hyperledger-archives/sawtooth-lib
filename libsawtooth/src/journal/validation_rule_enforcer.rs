@@ -35,6 +35,8 @@ pub struct ValidationRuleEnforcer {
 impl ValidationRuleEnforcer {
     /// Creates a new validation rule enforcer by reading the rules from state
     ///
+    /// Any invalid rules (ones that cannot be parsed into a known rule) are ignored.
+    ///
     /// # Arguments
     ///
     /// * `settings_view` - The view of state used to read the block validation rules setting
@@ -48,7 +50,6 @@ impl ValidationRuleEnforcer {
             .get_setting_str(BLOCK_VALIDATION_RULES, None)
             .map_err(|err| ValidationRuleEnforcerError::Internal(err.to_string()))?
             .map(|rules_str| parse_rules(&rules_str))
-            .transpose()?
             .unwrap_or_default();
 
         Ok(Self {
@@ -58,11 +59,12 @@ impl ValidationRuleEnforcer {
         })
     }
 
-    /// Adds the given batches to a running-list and returns a boolean to indicate if all batches
-    /// received so-far follow the rules.
+    /// Checks if the given batches, combined with those already added to the
+    /// `ValidationRuleEnforcer`, follow the rules. If the batches follow the rules, they are saved
+    /// by the `ValidationRuleEnforcer`.
     ///
     /// If not enough batches/transactions have been added to verify rules based on the position of
-    /// batches/transactions, those rules are ignored.
+    /// batches/transactions, those rules are ignored when validating the batches.
     pub fn add_batches<'a, I: IntoIterator<Item = &'a Batch>>(
         &mut self,
         batches: I,
@@ -71,17 +73,27 @@ impl ValidationRuleEnforcer {
             return Ok(true);
         }
 
-        // Store the info from all transactions
-        batches
+        // Pull the transaction info out of the batches
+        let mut txn_info = batches
             .into_iter()
             .flat_map(|batch| batch.transactions())
             .cloned()
-            .try_for_each(|txn| {
-                self.txn_info.push(TxnInfo::try_from(txn)?);
-                Ok(())
-            })?;
+            .map(TxnInfo::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
 
-        Ok(self.validate(false))
+        // Validate the old + new transaction info; store the transaction info if valid.
+        let is_valid = self.rules.iter().all(|rule| {
+            rule.validate(
+                self.txn_info.iter().chain(txn_info.iter()),
+                &self.local_signer_key,
+                false,
+            )
+        });
+        if is_valid {
+            self.txn_info.append(&mut txn_info);
+        }
+
+        Ok(is_valid)
     }
 
     /// Returns whether or not the added batches follow the rules. If `final_validation` is true,
@@ -95,11 +107,20 @@ impl ValidationRuleEnforcer {
 }
 
 /// Parses the whole rules string, which is in the form "<rule1>;<rule2>;*"
-fn parse_rules(rules_str: &str) -> Result<Vec<Rule>, ValidationRuleEnforcerError> {
+fn parse_rules(rules_str: &str) -> Vec<Rule> {
     if rules_str.is_empty() {
-        Ok(vec![])
+        vec![]
     } else {
-        rules_str.split(';').map(Rule::from_str).collect()
+        rules_str
+            .split(';')
+            .filter_map(|s| {
+                Rule::from_str(s)
+                    .map_err(|err| {
+                        warn!("Ignoring invalid rule \"{}\": {}", s, err);
+                    })
+                    .ok()
+            })
+            .collect()
     }
 }
 
@@ -127,16 +148,16 @@ impl Rule {
     /// * `local_signer_key` - The key used for validating the `Local` rule
     /// * `final_validation` - If `true`, the `XatY` and `Local` rules will fail when there is no
     ///   transactions at the required position
-    pub fn validate(
+    pub fn validate<'a, I: IntoIterator<Item = &'a TxnInfo>>(
         &self,
-        txn_info: &[TxnInfo],
+        txn_info: I,
         local_signer_key: &[u8],
         final_validation: bool,
     ) -> bool {
         match self {
             Self::NofX { family_name, limit } => {
                 let count = txn_info
-                    .iter()
+                    .into_iter()
                     .filter(|info| &info.family_name == family_name)
                     .count();
                 if count > *limit {
@@ -153,7 +174,7 @@ impl Rule {
                 family_name,
                 position,
             } => {
-                let txn_family_name = match txn_info.get(*position) {
+                let txn_family_name = match txn_info.into_iter().nth(*position) {
                     Some(info) => &info.family_name,
                     None if final_validation => {
                         debug!(
@@ -168,7 +189,7 @@ impl Rule {
                     debug!(
                         "Transaction at position {} is not of the correct type; expected {}, \
                          found {}",
-                        position, family_name, txn_info[*position].family_name
+                        position, family_name, txn_family_name
                     );
                     false
                 } else {
@@ -176,8 +197,9 @@ impl Rule {
                 }
             }
             Self::Local { indices } => {
+                let mut txn_info = txn_info.into_iter();
                 for index in indices {
-                    let signer_key = match txn_info.get(*index) {
+                    let signer_key = match txn_info.by_ref().nth(*index) {
                         Some(info) => info.signer_public_key.as_slice(),
                         None if final_validation => {
                             debug!("Transaction at index {} is required by local rule", index);
@@ -201,7 +223,7 @@ impl Rule {
 }
 
 impl FromStr for Rule {
-    type Err = ValidationRuleEnforcerError;
+    type Err = RuleParseError;
 
     /// Parses a rule string, which is in the form "<rule_type>:<rule_arg1>,<rule_arg2>,*"
     fn from_str(rule_str: &str) -> Result<Self, Self::Err> {
@@ -212,15 +234,12 @@ impl FromStr for Rule {
         let rule_args = rule_parts
             .next()
             .ok_or_else(|| {
-                ValidationRuleEnforcerError::InvalidRule(format!(
-                    "empty arguments string for rule: {}",
-                    rule_str
-                ))
+                RuleParseError(format!("empty arguments string for rule: {}", rule_str))
             })?
             .split(',')
             .map(|arg| {
                 if arg.is_empty() {
-                    Err(ValidationRuleEnforcerError::InvalidRule(format!(
+                    Err(RuleParseError(format!(
                         "empty argument for rule: {}",
                         rule_str
                     )))
@@ -230,7 +249,7 @@ impl FromStr for Rule {
             })
             .collect::<Result<Vec<_>, _>>()?;
         if rule_args.is_empty() {
-            return Err(ValidationRuleEnforcerError::InvalidRule(format!(
+            return Err(RuleParseError(format!(
                 "no arguments provided for rule: {}",
                 rule_str
             )));
@@ -245,25 +264,15 @@ impl FromStr for Rule {
             "NofX" => {
                 let limit = rule_args
                     .get(0)
-                    .ok_or_else(|| {
-                        ValidationRuleEnforcerError::InvalidRule(
-                            "found NofX rule with no arguments".into(),
-                        )
-                    })?
+                    .ok_or_else(|| RuleParseError("found NofX rule with no arguments".into()))?
                     .trim()
                     .parse()
-                    .map_err(|_| {
-                        ValidationRuleEnforcerError::InvalidRule(
-                            "found NofX rule with non-integer limit".into(),
-                        )
-                    })?;
+                    .map_err(|_| RuleParseError("found NofX rule with non-integer limit".into()))?;
 
                 let family_name = rule_args
                     .get(1)
                     .ok_or_else(|| {
-                        ValidationRuleEnforcerError::InvalidRule(
-                            "found NofX rule with no family name argument".into(),
-                        )
+                        RuleParseError("found NofX rule with no family name argument".into())
                     })?
                     .trim()
                     .to_string();
@@ -282,27 +291,19 @@ impl FromStr for Rule {
             "XatY" => {
                 let family_name = rule_args
                     .get(0)
-                    .ok_or_else(|| {
-                        ValidationRuleEnforcerError::InvalidRule(
-                            "found XatY rule with no arguments".into(),
-                        )
-                    })?
+                    .ok_or_else(|| RuleParseError("found XatY rule with no arguments".into()))?
                     .trim()
                     .to_string();
 
                 let position = rule_args
                     .get(1)
                     .ok_or_else(|| {
-                        ValidationRuleEnforcerError::InvalidRule(
-                            "found XatY rule with no position argument".into(),
-                        )
+                        RuleParseError("found XatY rule with no position argument".into())
                     })?
                     .trim()
                     .parse()
                     .map_err(|_| {
-                        ValidationRuleEnforcerError::InvalidRule(
-                            "found XatY rule with non-integer position".into(),
-                        )
+                        RuleParseError("found XatY rule with non-integer position".into())
                     })?;
 
                 Ok(Rule::XatY {
@@ -321,16 +322,11 @@ impl FromStr for Rule {
                     .map(|s| s.trim().parse())
                     .collect::<Result<_, _>>()
                     .map_err(|_| {
-                        ValidationRuleEnforcerError::InvalidRule(
-                            "found local rule with non-integer index".into(),
-                        )
+                        RuleParseError("found local rule with non-integer index".into())
                     })?;
                 Ok(Rule::Local { indices })
             }
-            rule_type => Err(ValidationRuleEnforcerError::InvalidRule(format!(
-                "unknown rule type: {}",
-                rule_type
-            ))),
+            rule_type => Err(RuleParseError(format!("unknown rule type: {}", rule_type))),
         }
     }
 }
@@ -364,7 +360,6 @@ impl TryFrom<Transaction> for TxnInfo {
 pub enum ValidationRuleEnforcerError {
     Internal(String),
     InvalidBatches(String),
-    InvalidRule(String),
 }
 
 impl std::error::Error for ValidationRuleEnforcerError {}
@@ -374,10 +369,19 @@ impl std::fmt::Display for ValidationRuleEnforcerError {
         match self {
             Self::Internal(msg) => f.write_str(msg),
             Self::InvalidBatches(msg) => write!(f, "invalid batches were provided: {}", msg),
-            Self::InvalidRule(msg) => {
-                write!(f, "block validation rule configuration is invalid: {}", msg)
-            }
         }
+    }
+}
+
+/// Error that may occur when parsing rules.
+#[derive(Debug)]
+pub struct RuleParseError(pub String);
+
+impl std::error::Error for RuleParseError {}
+
+impl std::fmt::Display for RuleParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str(&self.0)
     }
 }
 
@@ -421,7 +425,7 @@ mod tests {
         let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("NofX:1,intkey").expect("Failed to parse rules"),
+            rules: parse_rules("NofX:1,intkey"),
             local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
@@ -431,14 +435,13 @@ mod tests {
         assert!(enforcer.validate(true));
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("NofX:0,intkey").expect("Failed to parse rules"),
+            rules: parse_rules("NofX:0,intkey"),
             local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
         assert!(!enforcer
             .add_batches(&batches)
             .expect("Failed to add batches"));
-        assert!(!enforcer.validate(true));
     }
 
     /// Test that if XatY Rule is set, the validation rule is checked
@@ -452,7 +455,7 @@ mod tests {
         let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("XatY:intkey,0").expect("Failed to parse rules"),
+            rules: parse_rules("XatY:intkey,0"),
             local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
@@ -462,7 +465,7 @@ mod tests {
         assert!(enforcer.validate(true));
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("XatY:blockinfo,0").expect("Failed to parse rules"),
+            rules: parse_rules("XatY:blockinfo,0"),
             local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
@@ -484,7 +487,7 @@ mod tests {
         let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("local:0").expect("Failed to parse rules"),
+            rules: parse_rules("local:0"),
             local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
@@ -494,7 +497,7 @@ mod tests {
         assert!(enforcer.validate(true));
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("local:0").expect("Failed to parse rules"),
+            rules: parse_rules("local:0"),
             local_signer_key: b"another_pub_key".to_vec(),
             txn_info: vec![],
         };
@@ -513,8 +516,7 @@ mod tests {
         let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("NofX:1,intkey;XatY:intkey,0;local:0")
-                .expect("Failed to parse rules"),
+            rules: parse_rules("NofX:1,intkey;XatY:intkey,0;local:0"),
             local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
@@ -533,8 +535,7 @@ mod tests {
         let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("NofX:0,intkey;XatY:intkey,0;local:0")
-                .expect("Failed to parse rules"),
+            rules: parse_rules("NofX:0,intkey;XatY:intkey,0;local:0"),
             local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
@@ -554,8 +555,7 @@ mod tests {
         let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("NofX:1,intkey;XatY:blockinfo,0;local:0")
-                .expect("Failed to parse rules"),
+            rules: parse_rules("NofX:1,intkey;XatY:blockinfo,0;local:0"),
             local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
@@ -573,8 +573,7 @@ mod tests {
         let batches = make_batches(&["intkey"], &*new_signer());
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("NofX:1,intkey;XatY:intkey,0;local:0")
-                .expect("Failed to parse rules"),
+            rules: parse_rules("NofX:1,intkey;XatY:intkey,0;local:0"),
             local_signer_key: b"not_same_pubkey".to_vec(),
             txn_info: vec![],
         };
