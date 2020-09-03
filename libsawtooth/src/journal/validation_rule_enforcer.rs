@@ -35,6 +35,8 @@ pub struct ValidationRuleEnforcer {
 impl ValidationRuleEnforcer {
     /// Creates a new validation rule enforcer by reading the rules from state
     ///
+    /// Any invalid rules (ones that cannot be parsed into a known rule) are ignored.
+    ///
     /// # Arguments
     ///
     /// * `settings_view` - The view of state used to read the block validation rules setting
@@ -48,7 +50,6 @@ impl ValidationRuleEnforcer {
             .get_setting_str(BLOCK_VALIDATION_RULES, None)
             .map_err(|err| ValidationRuleEnforcerError::Internal(err.to_string()))?
             .map(|rules_str| parse_rules(&rules_str))
-            .transpose()?
             .unwrap_or_default();
 
         Ok(Self {
@@ -106,11 +107,20 @@ impl ValidationRuleEnforcer {
 }
 
 /// Parses the whole rules string, which is in the form "<rule1>;<rule2>;*"
-fn parse_rules(rules_str: &str) -> Result<Vec<Rule>, ValidationRuleEnforcerError> {
+fn parse_rules(rules_str: &str) -> Vec<Rule> {
     if rules_str.is_empty() {
-        Ok(vec![])
+        vec![]
     } else {
-        rules_str.split(';').map(Rule::from_str).collect()
+        rules_str
+            .split(';')
+            .filter_map(|s| {
+                Rule::from_str(s)
+                    .map_err(|err| {
+                        warn!("Ignoring invalid rule \"{}\": {}", s, err);
+                    })
+                    .ok()
+            })
+            .collect()
     }
 }
 
@@ -415,7 +425,7 @@ mod tests {
         let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("NofX:1,intkey").expect("Failed to parse rules"),
+            rules: parse_rules("NofX:1,intkey"),
             local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
@@ -425,7 +435,7 @@ mod tests {
         assert!(enforcer.validate(true));
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("NofX:0,intkey").expect("Failed to parse rules"),
+            rules: parse_rules("NofX:0,intkey"),
             local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
@@ -445,7 +455,7 @@ mod tests {
         let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("XatY:intkey,0").expect("Failed to parse rules"),
+            rules: parse_rules("XatY:intkey,0"),
             local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
@@ -455,7 +465,7 @@ mod tests {
         assert!(enforcer.validate(true));
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("XatY:blockinfo,0").expect("Failed to parse rules"),
+            rules: parse_rules("XatY:blockinfo,0"),
             local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
@@ -477,7 +487,7 @@ mod tests {
         let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("local:0").expect("Failed to parse rules"),
+            rules: parse_rules("local:0"),
             local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
@@ -487,7 +497,7 @@ mod tests {
         assert!(enforcer.validate(true));
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("local:0").expect("Failed to parse rules"),
+            rules: parse_rules("local:0"),
             local_signer_key: b"another_pub_key".to_vec(),
             txn_info: vec![],
         };
@@ -506,8 +516,7 @@ mod tests {
         let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("NofX:1,intkey;XatY:intkey,0;local:0")
-                .expect("Failed to parse rules"),
+            rules: parse_rules("NofX:1,intkey;XatY:intkey,0;local:0"),
             local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
@@ -526,8 +535,7 @@ mod tests {
         let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("NofX:0,intkey;XatY:intkey,0;local:0")
-                .expect("Failed to parse rules"),
+            rules: parse_rules("NofX:0,intkey;XatY:intkey,0;local:0"),
             local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
@@ -547,8 +555,7 @@ mod tests {
         let batches = make_batches(&["intkey"], &*signer);
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("NofX:1,intkey;XatY:blockinfo,0;local:0")
-                .expect("Failed to parse rules"),
+            rules: parse_rules("NofX:1,intkey;XatY:blockinfo,0;local:0"),
             local_signer_key: pub_key.as_slice().into(),
             txn_info: vec![],
         };
@@ -566,8 +573,7 @@ mod tests {
         let batches = make_batches(&["intkey"], &*new_signer());
 
         let mut enforcer = ValidationRuleEnforcer {
-            rules: parse_rules("NofX:1,intkey;XatY:intkey,0;local:0")
-                .expect("Failed to parse rules"),
+            rules: parse_rules("NofX:1,intkey;XatY:intkey,0;local:0"),
             local_signer_key: b"not_same_pubkey".to_vec(),
             txn_info: vec![],
         };
