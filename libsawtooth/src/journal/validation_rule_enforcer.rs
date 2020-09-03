@@ -213,7 +213,7 @@ impl Rule {
 }
 
 impl FromStr for Rule {
-    type Err = ValidationRuleEnforcerError;
+    type Err = RuleParseError;
 
     /// Parses a rule string, which is in the form "<rule_type>:<rule_arg1>,<rule_arg2>,*"
     fn from_str(rule_str: &str) -> Result<Self, Self::Err> {
@@ -224,15 +224,12 @@ impl FromStr for Rule {
         let rule_args = rule_parts
             .next()
             .ok_or_else(|| {
-                ValidationRuleEnforcerError::InvalidRule(format!(
-                    "empty arguments string for rule: {}",
-                    rule_str
-                ))
+                RuleParseError(format!("empty arguments string for rule: {}", rule_str))
             })?
             .split(',')
             .map(|arg| {
                 if arg.is_empty() {
-                    Err(ValidationRuleEnforcerError::InvalidRule(format!(
+                    Err(RuleParseError(format!(
                         "empty argument for rule: {}",
                         rule_str
                     )))
@@ -242,7 +239,7 @@ impl FromStr for Rule {
             })
             .collect::<Result<Vec<_>, _>>()?;
         if rule_args.is_empty() {
-            return Err(ValidationRuleEnforcerError::InvalidRule(format!(
+            return Err(RuleParseError(format!(
                 "no arguments provided for rule: {}",
                 rule_str
             )));
@@ -257,25 +254,15 @@ impl FromStr for Rule {
             "NofX" => {
                 let limit = rule_args
                     .get(0)
-                    .ok_or_else(|| {
-                        ValidationRuleEnforcerError::InvalidRule(
-                            "found NofX rule with no arguments".into(),
-                        )
-                    })?
+                    .ok_or_else(|| RuleParseError("found NofX rule with no arguments".into()))?
                     .trim()
                     .parse()
-                    .map_err(|_| {
-                        ValidationRuleEnforcerError::InvalidRule(
-                            "found NofX rule with non-integer limit".into(),
-                        )
-                    })?;
+                    .map_err(|_| RuleParseError("found NofX rule with non-integer limit".into()))?;
 
                 let family_name = rule_args
                     .get(1)
                     .ok_or_else(|| {
-                        ValidationRuleEnforcerError::InvalidRule(
-                            "found NofX rule with no family name argument".into(),
-                        )
+                        RuleParseError("found NofX rule with no family name argument".into())
                     })?
                     .trim()
                     .to_string();
@@ -294,27 +281,19 @@ impl FromStr for Rule {
             "XatY" => {
                 let family_name = rule_args
                     .get(0)
-                    .ok_or_else(|| {
-                        ValidationRuleEnforcerError::InvalidRule(
-                            "found XatY rule with no arguments".into(),
-                        )
-                    })?
+                    .ok_or_else(|| RuleParseError("found XatY rule with no arguments".into()))?
                     .trim()
                     .to_string();
 
                 let position = rule_args
                     .get(1)
                     .ok_or_else(|| {
-                        ValidationRuleEnforcerError::InvalidRule(
-                            "found XatY rule with no position argument".into(),
-                        )
+                        RuleParseError("found XatY rule with no position argument".into())
                     })?
                     .trim()
                     .parse()
                     .map_err(|_| {
-                        ValidationRuleEnforcerError::InvalidRule(
-                            "found XatY rule with non-integer position".into(),
-                        )
+                        RuleParseError("found XatY rule with non-integer position".into())
                     })?;
 
                 Ok(Rule::XatY {
@@ -333,16 +312,11 @@ impl FromStr for Rule {
                     .map(|s| s.trim().parse())
                     .collect::<Result<_, _>>()
                     .map_err(|_| {
-                        ValidationRuleEnforcerError::InvalidRule(
-                            "found local rule with non-integer index".into(),
-                        )
+                        RuleParseError("found local rule with non-integer index".into())
                     })?;
                 Ok(Rule::Local { indices })
             }
-            rule_type => Err(ValidationRuleEnforcerError::InvalidRule(format!(
-                "unknown rule type: {}",
-                rule_type
-            ))),
+            rule_type => Err(RuleParseError(format!("unknown rule type: {}", rule_type))),
         }
     }
 }
@@ -376,7 +350,6 @@ impl TryFrom<Transaction> for TxnInfo {
 pub enum ValidationRuleEnforcerError {
     Internal(String),
     InvalidBatches(String),
-    InvalidRule(String),
 }
 
 impl std::error::Error for ValidationRuleEnforcerError {}
@@ -386,10 +359,19 @@ impl std::fmt::Display for ValidationRuleEnforcerError {
         match self {
             Self::Internal(msg) => f.write_str(msg),
             Self::InvalidBatches(msg) => write!(f, "invalid batches were provided: {}", msg),
-            Self::InvalidRule(msg) => {
-                write!(f, "block validation rule configuration is invalid: {}", msg)
-            }
         }
+    }
+}
+
+/// Error that may occur when parsing rules.
+#[derive(Debug)]
+pub struct RuleParseError(pub String);
+
+impl std::error::Error for RuleParseError {}
+
+impl std::fmt::Display for RuleParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str(&self.0)
     }
 }
 
