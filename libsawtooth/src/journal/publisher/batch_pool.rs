@@ -53,6 +53,14 @@ impl PendingBatchesPool {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.batches.len()
+    }
+
+    pub fn limit(&self) -> usize {
+        self.limit.get()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.batches.is_empty()
     }
