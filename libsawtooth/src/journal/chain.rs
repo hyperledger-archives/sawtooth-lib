@@ -521,10 +521,12 @@ impl ChainController {
 
             let exit_flag = Arc::new(AtomicBool::new(false));
 
-            let block_validator = self
+            let mut block_validator = self
                 .block_validator
                 .take()
                 .expect("Unable to take block validator");
+
+            block_validator.start();
 
             let mut chain_thread = ChainThread::new(
                 request_receiver,
@@ -1048,12 +1050,15 @@ impl ChainThread {
             {
                 Err(mpsc::RecvTimeoutError::Timeout) => {
                     if self.exit.load(Ordering::Relaxed) {
-                        break Ok(());
+                        break;
                     } else {
                         continue;
                     }
                 }
-                Err(_) => break Err(ChainControllerError::BrokenQueue),
+                Err(err) => {
+                    error!("Request queue broke: {}", err);
+                    break;
+                }
                 Ok(block_id) => block_id,
             };
 
@@ -1076,7 +1081,7 @@ impl ChainThread {
                     }
 
                     if self.exit.load(Ordering::Relaxed) {
-                        break Ok(());
+                        break;
                     }
                 }
                 ChainControllerRequest::CommitBlock(block) => {
@@ -1133,6 +1138,8 @@ impl ChainThread {
                 }
             }
         }
+        self.block_validator.stop();
+        Ok(())
     }
 }
 
