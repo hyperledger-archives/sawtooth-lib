@@ -34,7 +34,7 @@ use std::sync::RwLock;
 use std::thread;
 use std::time::Duration;
 
-use transact::protocol::batch::Batch;
+use transact::protocol::batch::BatchPair;
 use transact::state::Write;
 
 use crate::{
@@ -143,8 +143,8 @@ struct ForkResolutionResult<'a> {
     pub new_chain: Vec<BlockPair>,
     pub current_chain: Vec<BlockPair>,
 
-    pub committed_batches: Vec<Batch>,
-    pub uncommitted_batches: Vec<Batch>,
+    pub committed_batches: Vec<BatchPair>,
+    pub uncommitted_batches: Vec<BatchPair>,
 
     pub transaction_count: usize,
 }
@@ -189,18 +189,47 @@ impl ChainControllerState {
             )?
             .collect::<Vec<_>>();
 
-        let committed_batches: Vec<Batch> = new_chain.iter().fold(vec![], |mut batches, block| {
-            batches.append(&mut block.block().batches().to_vec());
-            batches
-        });
-        let uncommitted_batches: Vec<Batch> =
-            current_chain.iter().fold(vec![], |mut batches, block| {
-                batches.append(&mut block.block().batches().to_vec());
-                batches
-            });
+        let committed_batches = new_chain
+            .iter()
+            .try_fold::<_, _, Result<_, ChainControllerError>>(vec![], |mut batches, block| {
+                let mut new_batches = block
+                    .block()
+                    .batches()
+                    .iter()
+                    .cloned()
+                    .map(|batch| batch.into_pair())
+                    .collect::<Result<_, _>>()
+                    .map_err(|err| {
+                        ChainControllerError::ChainUpdateError(format!(
+                            "Failed to parse batches from committed block: {}",
+                            err,
+                        ))
+                    })?;
+                batches.append(&mut new_batches);
+                Ok(batches)
+            })?;
+        let uncommitted_batches = current_chain
+            .iter()
+            .try_fold::<_, _, Result<_, ChainControllerError>>(vec![], |mut batches, block| {
+                let mut new_batches = block
+                    .block()
+                    .batches()
+                    .iter()
+                    .cloned()
+                    .map(|batch| batch.into_pair())
+                    .collect::<Result<_, _>>()
+                    .map_err(|err| {
+                        ChainControllerError::ChainUpdateError(format!(
+                            "Failed to parse batches from uncommitted block: {}",
+                            err,
+                        ))
+                    })?;
+                batches.append(&mut new_batches);
+                Ok(batches)
+            })?;
 
         let transaction_count = committed_batches.iter().fold(0, |mut txn_count, batch| {
-            txn_count += batch.transactions().len();
+            txn_count += batch.batch().transactions().len();
             txn_count
         });
 
