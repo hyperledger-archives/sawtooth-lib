@@ -40,7 +40,7 @@ use std::convert::TryFrom;
 use std::iter::FromIterator;
 use std::sync::{
     mpsc::{channel, Receiver, Sender},
-    Arc, Mutex,
+    Arc, Mutex, RwLock,
 };
 use std::thread;
 
@@ -105,7 +105,7 @@ pub struct BlockPublisher {
     merkle_state: MerkleState,
     /// Bounded pool of pending batches to add to blocks. This is shared between the publisher
     /// itself and its background thread.
-    pending_batches: Arc<Mutex<PendingBatchesPool>>,
+    pending_batches: Arc<RwLock<PendingBatchesPool>>,
     /// Creates schedulers that the publisher will use for executing transactions
     scheduler_factory: Box<dyn SchedulerFactory>,
     /// Used to sign blocks created by the publisher
@@ -133,7 +133,7 @@ impl BlockPublisher {
     /// Checks if the batch with the given ID is in the publisher's pending batches pool
     pub fn has_batch(&self, batch_id: &str) -> Result<bool, BlockPublisherError> {
         self.pending_batches
-            .lock()
+            .read()
             .map(|pending_batches| pending_batches.contains(batch_id))
             .map_err(|_| BlockPublisherError::Internal("Pending batches lock poisoned".into()))
     }
@@ -258,7 +258,7 @@ impl BlockPublisher {
         // Schedule as many batches as the candidate block and the number of batches in the pool
         // allow
         {
-            let pending_batches = self.pending_batches.lock().map_err(|_| {
+            let pending_batches = self.pending_batches.read().map_err(|_| {
                 BlockPublisherError::Internal("Pending Batches lock poisoned".into())
             })?;
             for batch in pending_batches.iter() {
@@ -345,7 +345,7 @@ impl BlockPublisher {
                     .map(|batch| batch.header_signature()),
             );
             self.pending_batches
-                .lock()
+                .write()
                 .map_err(|_| BlockPublisherError::Internal("Pending Batches lock poisoned".into()))?
                 .update(published_batch_ids);
 
@@ -728,7 +728,7 @@ fn schedule_batches(
 fn start_publisher_thread(
     backpressure_sender: Sender<BackpressureMessage>,
     batch_observers: Vec<Box<dyn BatchObserver>>,
-    pending_batches: Arc<Mutex<PendingBatchesPool>>,
+    pending_batches: Arc<RwLock<PendingBatchesPool>>,
     candidate_block: Arc<Mutex<Option<CandidateBlock>>>,
     commit_store: CommitStore,
     state_view_factory: StateViewFactory,
@@ -791,7 +791,7 @@ fn start_publisher_thread(
                         }
 
                         // Add the batch to the pool
-                        match pending_batches.lock() {
+                        match pending_batches.write() {
                             Ok(mut pending_batches) => {
                                 // If the batch is already in the pool, don't do anything further
                                 // with the batch

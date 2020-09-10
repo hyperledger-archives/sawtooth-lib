@@ -14,7 +14,7 @@
 
 //! Constructor for `BlockPublisher`
 
-use std::sync::{mpsc::channel, Arc, Mutex};
+use std::sync::{mpsc::channel, Arc, Mutex, RwLock};
 
 use cylinder::Signer;
 use transact::{
@@ -148,7 +148,7 @@ impl BlockPublisherBuilder {
         })?;
 
         let candidate_block = Arc::new(Mutex::new(None));
-        let pending_batches = Arc::new(Mutex::new(PendingBatchesPool::default()));
+        let pending_batches = Arc::new(RwLock::new(PendingBatchesPool::default()));
 
         let (internal_sender, internal_receiver) = channel();
         let (backpressure_sender, backpressure_receiver) = channel();
