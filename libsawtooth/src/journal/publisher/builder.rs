@@ -18,7 +18,8 @@ use std::sync::{mpsc::channel, Arc, Mutex};
 
 use cylinder::Signer;
 use transact::{
-    execution::executor::Executor, scheduler::SchedulerFactory, state::merkle::MerkleState,
+    execution::executor::ExecutionTaskSubmitter, scheduler::SchedulerFactory,
+    state::merkle::MerkleState,
 };
 
 use crate::journal::{block_manager::BlockManager, commit_store::CommitStore};
@@ -37,7 +38,7 @@ pub struct BlockPublisherBuilder {
     block_broadcaster: Option<Box<dyn BlockBroadcaster>>,
     block_manager: Option<BlockManager>,
     commit_store: Option<CommitStore>,
-    executor: Option<Executor>,
+    execution_task_submitter: Option<ExecutionTaskSubmitter>,
     merkle_state: Option<MerkleState>,
     scheduler_factory: Option<Box<dyn SchedulerFactory>>,
     signer: Option<Box<dyn Signer>>,
@@ -84,8 +85,11 @@ impl BlockPublisherBuilder {
     }
 
     /// Sets the executor that will be used by the publisher
-    pub fn with_executor(mut self, executor: Executor) -> Self {
-        self.executor = Some(executor);
+    pub fn with_excution_task_submitter(
+        mut self,
+        execution_task_submitter: ExecutionTaskSubmitter,
+    ) -> Self {
+        self.execution_task_submitter = Some(execution_task_submitter);
         self
     }
 
@@ -127,8 +131,8 @@ impl BlockPublisherBuilder {
         let commit_store = self
             .commit_store
             .ok_or_else(|| BlockPublisherError::StartupFailed("No commit store provided".into()))?;
-        let executor = self
-            .executor
+        let execution_task_submitter = self
+            .execution_task_submitter
             .ok_or_else(|| BlockPublisherError::StartupFailed("No executor provided".into()))?;
         let merkle_state = self
             .merkle_state
@@ -173,7 +177,7 @@ impl BlockPublisherBuilder {
             block_manager,
             candidate_block,
             commit_store,
-            executor,
+            execution_task_submitter,
             internal_sender,
             internal_thread_handle,
             merkle_state,

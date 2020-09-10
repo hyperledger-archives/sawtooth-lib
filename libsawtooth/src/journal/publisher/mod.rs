@@ -46,7 +46,7 @@ use std::thread;
 
 use cylinder::Signer;
 use transact::{
-    execution::executor::Executor,
+    execution::executor::ExecutionTaskSubmitter,
     protocol::batch::{Batch, BatchPair},
     scheduler::{BatchExecutionResult, Scheduler, SchedulerError, SchedulerFactory},
     state::{merkle::MerkleState, Write},
@@ -95,7 +95,7 @@ pub struct BlockPublisher {
     /// committed in a previous block.
     commit_store: CommitStore,
     /// Executes transactions on behalf of `Scheduler`s
-    executor: Executor,
+    execution_task_submitter: ExecutionTaskSubmitter,
     /// Used to send a shutdown signal to the publisher's background thread
     internal_sender: Sender<BlockPublisherMessage>,
     /// Used to wait for the publisher's background thread to shutdown
@@ -199,8 +199,8 @@ impl BlockPublisher {
                 warn!("Batch execution result receiver dropped while sending results");
             }
         }))?;
-        self.executor
-            .execute(scheduler.take_task_iterator()?, scheduler.new_notifier()?)?;
+        self.execution_task_submitter
+            .submit(scheduler.take_task_iterator()?, scheduler.new_notifier()?)?;
 
         // Initialize the candidate block
         let settings_view = self
