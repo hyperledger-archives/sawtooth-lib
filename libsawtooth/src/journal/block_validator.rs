@@ -15,10 +15,14 @@
  * ------------------------------------------------------------------------------
  */
 
-#![allow(unknown_lints)]
+use transact::execution::executor::ExecutionTaskSubmitter;
+use transact::protocol::receipt::TransactionResult;
+use transact::scheduler::{BatchExecutionResult, SchedulerError, SchedulerFactory};
+use transact::state::{StateChange, Write};
 
+use std::convert::TryFrom;
 use std::sync::{
-    atomic::{AtomicBool, AtomicUsize, Ordering},
+    atomic::{AtomicBool, Ordering},
     mpsc::{channel, Receiver, RecvTimeoutError, Sender},
     Arc, Mutex,
 };
@@ -26,7 +30,6 @@ use std::thread;
 use std::time::Duration;
 
 use crate::{
-    execution::execution_platform::{ExecutionPlatform, NULL_STATE_HASH},
     journal::{
         block_manager::BlockManager,
         block_scheduler::BlockScheduler,
@@ -40,18 +43,16 @@ use crate::{
     },
     permissions::verifier::PermissionVerifier,
     protocol::block::BlockPair,
-    scheduler::TxnExecutionResult,
+    protos::transaction_receipt::TransactionReceipt,
     state::{
-        identity_view::IdentityView, settings_view::SettingsView,
+        identity_view::IdentityView, merkle::CborMerkleState, settings_view::SettingsView,
         state_view_factory::StateViewFactory,
     },
 };
 
 const BLOCK_VALIDATION_RESULT_CACHE_SIZE: usize = 512;
 
-const BLOCKVALIDATION_QUEUE_RECV_TIMEOUT: u64 = 100;
-
-const BLOCK_VALIDATOR_THREAD_NUM: u64 = 2;
+const BLOCK_VALIDATION_QUEUE_RECV_TIMEOUT: u64 = 100;
 
 type BlockValidationResultCache =
     uluru::LRUCache<[uluru::Entry<BlockValidationResult>; BLOCK_VALIDATION_RESULT_CACHE_SIZE]>;
@@ -107,24 +108,27 @@ impl BlockStatusStore for BlockValidationResultStore {
 #[derive(Clone, Debug)]
 pub struct BlockValidationResult {
     pub block_id: String,
-    pub execution_results: Vec<TxnExecutionResult>,
+    pub execution_results: Vec<TransactionReceipt>,
     pub num_transactions: u64,
     pub status: BlockStatus,
+    pub state_changes: Vec<StateChange>,
 }
 
 impl BlockValidationResult {
     #[allow(dead_code)]
     fn new(
         block_id: String,
-        execution_results: Vec<TxnExecutionResult>,
+        execution_results: Vec<TransactionReceipt>,
         num_transactions: u64,
         status: BlockStatus,
+        state_changes: Vec<StateChange>,
     ) -> Self {
         BlockValidationResult {
             block_id,
             execution_results,
             num_transactions,
             status,
+            state_changes,
         }
     }
 }
@@ -165,45 +169,61 @@ impl From<ChainCommitStateError> for ValidationError {
     }
 }
 
+impl From<SchedulerError> for ValidationError {
+    fn from(other: SchedulerError) -> Self {
+        match other {
+            SchedulerError::DuplicateBatch(ref batch_id) => {
+                ValidationError::BlockValidationFailure(format!(
+                    "Validation failure, duplicate batch {}",
+                    batch_id
+                ))
+            }
+            error => ValidationError::BlockValidationError(error.to_string()),
+        }
+    }
+}
+
 type InternalSender = Sender<(BlockPair, Sender<ChainControllerRequest>)>;
 type InternalReceiver = Receiver<(BlockPair, Sender<ChainControllerRequest>)>;
 
-pub struct BlockValidator<TEP: ExecutionPlatform> {
-    channels: Vec<(InternalSender, Option<InternalReceiver>)>,
-    index: Arc<AtomicUsize>,
+pub struct BlockValidator {
+    channel: (InternalSender, Option<InternalReceiver>),
     validation_thread_exit: Arc<AtomicBool>,
     block_scheduler: BlockScheduler<BlockValidationResultStore>,
     block_status_store: BlockValidationResultStore,
     block_manager: BlockManager,
-    transaction_executor: TEP,
+    transaction_executor: Option<ExecutionTaskSubmitter>,
+    scheduler_factory: Option<Box<dyn SchedulerFactory>>,
     view_factory: StateViewFactory,
+    initial_state_hash: String,
+    merkle_state: Option<CborMerkleState>,
 }
 
-impl<TEP: ExecutionPlatform + 'static> BlockValidator<TEP>
-where
-    TEP: Clone,
-{
+impl BlockValidator {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         block_manager: BlockManager,
-        transaction_executor: TEP,
+        transaction_executor: ExecutionTaskSubmitter,
         block_status_store: BlockValidationResultStore,
         view_factory: StateViewFactory,
+        scheduler_factory: Box<dyn SchedulerFactory>,
+        initial_state_hash: String,
+        merkle_state: CborMerkleState,
     ) -> Self {
-        let mut channels = vec![];
-        for _ in 1..BLOCK_VALIDATOR_THREAD_NUM {
-            let (tx, rx) = channel();
-            channels.push((tx, Some(rx)));
-        }
+        let (tx, rx) = channel();
+        let channel = (tx, Some(rx));
+
         BlockValidator {
-            channels,
-            index: Arc::new(AtomicUsize::new(0)),
-            transaction_executor,
+            channel,
+            transaction_executor: Some(transaction_executor),
             validation_thread_exit: Arc::new(AtomicBool::new(false)),
             block_scheduler: BlockScheduler::new(block_manager.clone(), block_status_store.clone()),
             block_status_store,
             block_manager,
+            scheduler_factory: Some(scheduler_factory),
             view_factory,
+            initial_state_hash,
+            merkle_state: Some(merkle_state),
         }
     }
 
@@ -215,6 +235,9 @@ where
         &self,
         rcv: Receiver<(BlockPair, Sender<ChainControllerRequest>)>,
         error_return_sender: Sender<(BlockPair, Sender<ChainControllerRequest>)>,
+        transaction_executor: ExecutionTaskSubmitter,
+        merkle_state: CborMerkleState,
+        scheduler_factory: Box<dyn SchedulerFactory>,
     ) {
         let backgroundthread = thread::Builder::new();
 
@@ -230,7 +253,12 @@ where
 
         let validations = vec![validation1, validation2, validation3];
 
-        let state_validation = BatchesInBlockValidation::new(self.transaction_executor.clone());
+        let state_validation = BatchesInBlockValidation::new(
+            transaction_executor,
+            merkle_state,
+            scheduler_factory,
+            self.initial_state_hash.to_string(),
+        );
 
         let block_validations = BlockValidationProcessor::new(
             self.block_manager.clone(),
@@ -242,7 +270,7 @@ where
         backgroundthread
             .spawn(move || loop {
                 let (block, results_sender) = match rcv
-                    .recv_timeout(Duration::from_millis(BLOCKVALIDATION_QUEUE_RECV_TIMEOUT))
+                    .recv_timeout(Duration::from_millis(BLOCK_VALIDATION_QUEUE_RECV_TIMEOUT))
                 {
                     Err(RecvTimeoutError::Timeout) => {
                         if exit.load(Ordering::Relaxed) {
@@ -279,6 +307,7 @@ where
                                 execution_results: vec![],
                                 num_transactions: 0,
                                 status: BlockStatus::Invalid,
+                                state_changes: vec![],
                             },
                         )) {
                             warn!("During handling block failure: {:?}", err);
@@ -298,29 +327,40 @@ where
     }
 
     pub fn start(&mut self) {
-        let mut channels = vec![];
-        {
-            for (tx, rx) in &mut self.channels {
-                let receiver = rx
-                    .take()
-                    .expect("For a single call of start, there will always be receivers to take");
-                channels.push((receiver, tx.clone()));
-            }
-        }
-        for (rx, tx) in channels {
-            self.setup_thread(rx, tx);
-        }
+        let receiver = {
+            let (_, rx) = &mut self.channel;
+            rx.take()
+                .expect("For a single call of start, there will always be receivers to take")
+        };
+
+        let transaction_executor = self
+            .transaction_executor
+            .take()
+            .expect("setup_thread should never be called twice");
+
+        let merkle_state = self
+            .merkle_state
+            .take()
+            .expect("setup_thread should never be called twice");
+
+        let scheduler_factory = self
+            .scheduler_factory
+            .take()
+            .expect("setup_thread should never be called twice");
+
+        let (tx, _) = &self.channel;
+
+        self.setup_thread(
+            receiver,
+            tx.clone(),
+            transaction_executor,
+            merkle_state,
+            scheduler_factory,
+        );
     }
 
     fn return_sender(&self) -> InternalSender {
-        let index = self.index.load(Ordering::Relaxed);
-        let (ref tx, _) = self.channels[index];
-
-        if index >= self.channels.len() - 1 {
-            self.index.store(0, Ordering::Relaxed);
-        } else {
-            self.index.store(index + 1, Ordering::Relaxed);
-        }
+        let (tx, _) = &self.channel;
         tx.clone()
     }
 
@@ -332,7 +372,7 @@ where
         for block in self.block_scheduler.schedule(blocks.to_vec()) {
             let tx = self.return_sender();
             if let Err(err) = tx.send((block, response_sender.clone())) {
-                warn!("During submit blocks for validation: {:?}", err);
+                warn!("During submit blocks for verification: {:?}", err);
                 self.validation_thread_exit.store(true, Ordering::Relaxed);
             }
         }
@@ -353,55 +393,21 @@ where
     }
 
     pub fn validate_block(&self, block: &BlockPair) -> Result<(), ValidationError> {
-        let validation1: Box<dyn BlockValidation<ReturnValue = ()>> = Box::new(
-            DuplicatesAndDependenciesValidation::new(self.block_manager.clone()),
-        );
-
-        let validation2: Box<dyn BlockValidation<ReturnValue = ()>> =
-            Box::new(OnChainRulesValidation::new(self.view_factory.clone()));
-
-        let validation3: Box<dyn BlockValidation<ReturnValue = ()>> =
-            Box::new(PermissionValidation::new(self.view_factory.clone()));
-
-        let validations = vec![validation1, validation2, validation3];
-
-        let state_validation = BatchesInBlockValidation::new(self.transaction_executor.clone());
-
-        let block_validations = BlockValidationProcessor::new(
-            self.block_manager.clone(),
-            validations,
-            state_validation,
-        );
-
-        let result = block_validations.validate_block(block)?;
-        self.block_status_store.insert(result);
-
-        Ok(())
-    }
-}
-
-impl<TEP: ExecutionPlatform + Clone> Clone for BlockValidator<TEP> {
-    fn clone(&self) -> Self {
-        let transaction_executor = self.transaction_executor.clone();
-        let validation_thread_exit = Arc::clone(&self.validation_thread_exit);
-        let index = Arc::clone(&self.index);
-
-        BlockValidator {
-            channels: self
-                .channels
-                .iter()
-                .map(|s| {
-                    let (tx, _) = s;
-                    (tx.clone(), None)
-                })
-                .collect(),
-            index,
-            transaction_executor,
-            validation_thread_exit,
-            block_scheduler: self.block_scheduler.clone(),
-            block_status_store: self.block_status_store.clone(),
-            block_manager: self.block_manager.clone(),
-            view_factory: self.view_factory.clone(),
+        let (tx, rx) = channel();
+        self.submit_blocks_for_verification(vec![block.clone()], tx);
+        match rx.recv() {
+            Ok(ChainControllerRequest::BlockValidation(block_validation_result)) => {
+                self.block_status_store.insert(block_validation_result);
+                Ok(())
+            }
+            Ok(response) => Err(ValidationError::BlockValidationError(format!(
+                "Received unexpected response: {:?}",
+                response
+            ))),
+            Err(err) => Err(ValidationError::BlockValidationError(format!(
+                "Unable to receive block validation result: {}",
+                err
+            ))),
         }
     }
 }
@@ -410,9 +416,10 @@ trait StateBlockValidation {
     fn validate_block(
         &self,
         block: BlockPair,
-        previous_state_root: Option<&String>,
+        previous_state_root: Option<&[u8]>,
     ) -> Result<BlockValidationResult, ValidationError>;
 }
+
 /// A generic block validation. Returns a ValidationError::BlockValidationFailure on
 /// validation failure. It is a dependent validation if it can return
 /// ValidationError::BlockStoreUpdated and is an independent validation otherwise
@@ -467,19 +474,37 @@ impl<SBV: BlockValidation<ReturnValue = BlockValidationResult>> BlockValidationP
 
 /// Validate that all the batches are valid and all the transactions produce
 /// the expected state hash.
-struct BatchesInBlockValidation<TEP: ExecutionPlatform> {
-    transaction_executor: TEP,
+struct BatchesInBlockValidation {
+    transaction_executor: ExecutionTaskSubmitter,
+    merkle_state: CborMerkleState,
+    scheduler_factory: Box<dyn SchedulerFactory>,
+    initial_state_hash: String,
 }
 
-impl<TEP: ExecutionPlatform> BatchesInBlockValidation<TEP> {
-    fn new(transaction_executor: TEP) -> Self {
+impl BatchesInBlockValidation {
+    fn new(
+        transaction_executor: ExecutionTaskSubmitter,
+        merkle_state: CborMerkleState,
+        scheduler_factory: Box<dyn SchedulerFactory>,
+        initial_state_hash: String,
+    ) -> Self {
         BatchesInBlockValidation {
             transaction_executor,
+            merkle_state,
+            scheduler_factory,
+            initial_state_hash,
         }
     }
 }
 
-impl<TEP: ExecutionPlatform> BlockValidation for BatchesInBlockValidation<TEP> {
+/// Used to combine errors and Batch results
+enum SchedulerEvent {
+    Result(BatchExecutionResult),
+    Error(SchedulerError),
+    Complete,
+}
+
+impl BlockValidation for BatchesInBlockValidation {
     type ReturnValue = BlockValidationResult;
 
     fn validate_block(
@@ -487,104 +512,152 @@ impl<TEP: ExecutionPlatform> BlockValidation for BatchesInBlockValidation<TEP> {
         block: &BlockPair,
         previous_state_root: Option<&[u8]>,
     ) -> Result<BlockValidationResult, ValidationError> {
-        let ending_state_hash = block.header().state_root_hash();
-        let state_root = previous_state_root.unwrap_or(NULL_STATE_HASH);
+        let ending_state_hash = hex::encode(block.header().state_root_hash());
+
+        let state_root = previous_state_root
+            .map(hex::encode)
+            .unwrap_or_else(|| self.initial_state_hash.clone());
+
         let mut scheduler = self
-            .transaction_executor
-            .create_scheduler(state_root)
-            .map_err(|err| {
+            .scheduler_factory
+            .create_scheduler(state_root.to_string())?;
+
+        let (result_tx, result_rx): (Sender<SchedulerEvent>, Receiver<SchedulerEvent>) = channel();
+        let error_tx = result_tx.clone();
+        // Add callback to convert batch result option to scheduler event
+        scheduler.set_result_callback(Box::new(move |batch_result| {
+            let scheduler_event = match batch_result {
+                Some(result) => SchedulerEvent::Result(result),
+                None => SchedulerEvent::Complete,
+            };
+            if result_tx.send(scheduler_event).is_err() {
+                error!("Unable to send batch result; receiver must have dropped");
+            }
+        }))?;
+
+        // add callback to convert error into scheduler event
+        scheduler.set_error_callback(Box::new(move |err| {
+            if error_tx.send(SchedulerEvent::Error(err)).is_err() {
+                error!("Unable to send scheduler error; receiver must have dropped");
+            }
+        }))?;
+
+        for batch in block.block().batches() {
+            let batch_pair = batch.clone().into_pair().map_err(|err| {
                 ValidationError::BlockValidationError(format!(
-                    "Error during validation of block {} batches: {:?}",
-                    block.block().header_signature(),
-                    err,
+                    "Unable to convert block's batch into BatchPair: {:?}",
+                    err
                 ))
             })?;
 
-        let greatest_batch_index = block.block().batches().len() - 1;
-        for (index, batch) in block.block().batches().iter().enumerate() {
-            if index < greatest_batch_index {
-                scheduler
-                    .add_batch(batch.clone(), None, false)
-                    .map_err(|err| {
-                        ValidationError::BlockValidationError(format!(
-                            "While adding a batch to the schedule: {:?}",
-                            err
-                        ))
-                    })?;
-            } else {
-                scheduler
-                    .add_batch(batch.clone(), Some(ending_state_hash), false)
-                    .map_err(|err| {
-                        ValidationError::BlockValidationError(format!(
-                            "While adding the last batch to the schedule: {:?}",
-                            err
-                        ))
-                    })?;
-            }
+            scheduler.add_batch(batch_pair).map_err(|err| {
+                ValidationError::BlockValidationError(format!(
+                    "While adding a batch to the schedule: {:?}",
+                    err
+                ))
+            })?;
         }
-        scheduler.finalize(false).map_err(|err| {
+
+        scheduler.finalize().map_err(|err| {
             ValidationError::BlockValidationError(format!(
                 "During call to scheduler.finalize: {:?}",
                 err
             ))
         })?;
-        let execution_results = scheduler
-            .complete(true)
+
+        self.transaction_executor
+            .submit(scheduler.take_task_iterator()?, scheduler.new_notifier()?)
             .map_err(|err| {
                 ValidationError::BlockValidationError(format!(
-                    "During call to scheduler.complete: {:?}",
+                    "During call to ExecutionTaskSubmitter.submit: {}",
                     err
-                ))
-            })?
-            .ok_or_else(|| {
-                ValidationError::BlockValidationFailure(format!(
-                    "Block {} failed validation: no execution results produced",
-                    block.block().header_signature()
                 ))
             })?;
 
-        if let Some(ref actual_ending_state_hash) = execution_results.ending_state_hash {
-            if ending_state_hash != actual_ending_state_hash.as_slice() {
-                return Err(ValidationError::BlockValidationFailure(format!(
-                "Block {} failed validation: expected state hash {}, validation found state hash {}",
-                block.block().header_signature(),
-                hex::encode(ending_state_hash),
-                hex::encode(actual_ending_state_hash)
-            )));
+        let mut execution_results = vec![];
+        loop {
+            match result_rx.recv() {
+                Ok(SchedulerEvent::Result(result)) => execution_results.push(result),
+                Ok(SchedulerEvent::Complete) => break,
+                Ok(SchedulerEvent::Error(err)) => {
+                    return Err(ValidationError::BlockValidationError(format!(
+                        "During execution: {:?}",
+                        err
+                    )))
+                }
+                Err(err) => {
+                    return Err(ValidationError::BlockValidationError(format!(
+                        "Error while trying to receive scheduler event: {:?}",
+                        err
+                    )))
+                }
             }
-        } else {
-            return Err(ValidationError::BlockValidationFailure(format!(
-                "Block {} failed validation: no ending state hash was produced",
-                block.block().header_signature()
-            )));
         }
 
         let mut results = vec![];
-        for (batch_id, transaction_execution_results) in execution_results.batch_results {
-            if let Some(txn_results) = transaction_execution_results {
-                for r in txn_results {
-                    if !r.is_valid {
-                        return Err(ValidationError::BlockValidationFailure(format!(
-                            "Block {} failed validation: batch {} was invalid due to transaction {}",
-                            block.block().header_signature(),
-                            &batch_id,
-                            &r.signature)));
-                    }
-                    results.push(r);
+        let mut changes = vec![];
+        for batch_result in execution_results {
+            if !batch_result.receipts.is_empty() {
+                for receipt in batch_result.receipts {
+                    match receipt.transaction_result.clone() {
+                        TransactionResult::Invalid { .. } => {
+                            return Err(ValidationError::BlockValidationFailure(format!(
+                                "Block {} failed validation: batch {} was invalid due to \
+                            transaction {}",
+                                block.block().header_signature(),
+                                &batch_result.batch.batch().header_signature(),
+                                &receipt.transaction_id
+                            )));
+                        }
+                        TransactionResult::Valid { state_changes, .. } => {
+                            changes.append(
+                                &mut state_changes.into_iter().map(StateChange::from).collect(),
+                            );
+                            let result = TransactionReceipt::try_from(receipt).map_err(|err| {
+                                ValidationError::BlockValidationError(format!(
+                                    "Unable to convert returned Transact receipt into \
+                                    TransactionReceipt: {}",
+                                    err
+                                ))
+                            })?;
+                            results.push(result);
+                        }
+                    };
                 }
             } else {
                 return Err(ValidationError::BlockValidationFailure(format!(
                     "Block {} failed validation: batch {} did not have transaction results",
                     block.block().header_signature(),
-                    &batch_id
+                    &batch_result.batch.batch().header_signature(),
                 )));
-            }
+            };
         }
+
+        let actual_ending_state_hash = self
+            .merkle_state
+            .compute_state_id(&state_root, &changes)
+            .map_err(|err| {
+                ValidationError::BlockValidationError(format!(
+                    "During ending state hash calculation: {:?}",
+                    err
+                ))
+            })?;
+
+        if ending_state_hash != actual_ending_state_hash {
+            return Err(ValidationError::BlockValidationFailure(format!(
+                "Block {} failed validation: expected state hash {}, validation found state hash {}",
+                block.block().header_signature(),
+                hex::encode(ending_state_hash),
+                hex::encode(actual_ending_state_hash)
+            )));
+        }
+
         Ok(BlockValidationResult {
             block_id: block.block().header_signature().to_string(),
             num_transactions: results.len() as u64,
             execution_results: results,
             status: BlockStatus::Valid,
+            state_changes: changes,
         })
     }
 }
@@ -660,21 +733,20 @@ impl BlockValidation for PermissionValidation {
     fn validate_block(
         &self,
         block: &BlockPair,
-        prev_state_root: Option<&[u8]>,
+        previous_state_root: Option<&[u8]>,
     ) -> Result<(), ValidationError> {
         if block.header().block_num() != 0 {
-            let state_root = prev_state_root.ok_or_else(|| {
+            let state_root = previous_state_root.ok_or_else(|| {
                 ValidationError::BlockValidationError(format!(
-                    "During permission check of block {} block_num is {} but missing a\
-                            previous state root",
+                    "During permission check of block ({}, {}) previous state root was missing",
                     block.block().header_signature(),
-                    block.header().block_num()
+                    block.header().block_num(),
                 ))
             })?;
 
             let identity_view: IdentityView = self
                 .state_view_factory
-                .create_view(state_root)
+                .create_view(&state_root)
                 .map_err(|err| {
                     ValidationError::BlockValidationError(format!(
                         "During permission check of block ({}, {}) state root was not \
@@ -733,19 +805,20 @@ impl BlockValidation for OnChainRulesValidation {
     fn validate_block(
         &self,
         block: &BlockPair,
-        prev_state_root: Option<&[u8]>,
+        previous_state_root: Option<&[u8]>,
     ) -> Result<(), ValidationError> {
         if block.header().block_num() != 0 {
-            let state_root = prev_state_root.ok_or_else(|| {
+            let state_root = previous_state_root.ok_or_else(|| {
                 ValidationError::BlockValidationError(format!(
-                    "During check of on-chain rules for block {}, block num was {}, \
-                            but missing a previous state root",
+                    "During validate_on_chain_rules for block ({}, {}), previous state root was \
+                     missing",
                     block.block().header_signature(),
-                    block.header().block_num()
+                    block.header().block_num(),
                 ))
             })?;
+
             let settings_view: SettingsView =
-                self.view_factory.create_view(state_root).map_err(|err| {
+                self.view_factory.create_view(&state_root).map_err(|err| {
                     ValidationError::BlockValidationError(format!(
                         "During validate_on_chain_rules, error creating settings view: {:?}",
                         err
@@ -798,6 +871,7 @@ mod test {
             vec![],
             0,
             BlockStatus::Valid,
+            vec![],
         )));
 
         let validation_processor =
