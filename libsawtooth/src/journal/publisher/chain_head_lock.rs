@@ -15,55 +15,55 @@
  * ------------------------------------------------------------------------------
  */
 
-use transact::protocol::batch::Batch;
+use std::sync::{Arc, RwLock, RwLockWriteGuard};
 
-use crate::journal::publisher::{PublisherState, SyncPublisher};
+use transact::protocol::batch::BatchPair;
+
 use crate::protocol::block::BlockPair;
 
-use std::sync::RwLockWriteGuard;
+use super::{batch_pool::PendingBatchesPool, BlockPublisher};
 
 /// Abstracts acquiring the lock used by the BlockPublisher without exposing access to the
 /// publisher itself.
 #[derive(Clone)]
 pub struct ChainHeadLock {
-    publisher: Box<dyn SyncPublisher>,
+    lock: Arc<RwLock<PendingBatchesPool>>,
 }
 
 impl ChainHeadLock {
-    pub fn new(publisher: Box<dyn SyncPublisher>) -> Self {
-        ChainHeadLock { publisher }
+    pub fn new(lock: Arc<RwLock<PendingBatchesPool>>) -> Self {
+        ChainHeadLock { lock }
     }
 
     pub fn acquire(&self) -> ChainHeadGuard {
         ChainHeadGuard {
-            state: self
-                .publisher
-                .state()
-                .write()
-                .expect("Lock is not poisoned"),
-            publisher: self.publisher.clone(),
+            state: self.lock.write().expect("Lock is not poisoned"),
         }
     }
 }
 
 /// RAII type that represents having acquired the lock used by the BlockPublisher
 pub struct ChainHeadGuard<'a> {
-    state: RwLockWriteGuard<'a, Box<dyn PublisherState>>,
-    publisher: Box<dyn SyncPublisher>,
+    state: RwLockWriteGuard<'a, PendingBatchesPool>,
 }
 
 impl<'a> ChainHeadGuard<'a> {
     pub fn notify_on_chain_updated(
         &mut self,
         chain_head: BlockPair,
-        committed_batches: Vec<Batch>,
-        uncommitted_batches: Vec<Batch>,
+        committed_batches: Vec<BatchPair>,
+        uncommitted_batches: Vec<BatchPair>,
     ) {
-        self.publisher.on_chain_updated(
+        if let Err(err) = BlockPublisher::on_chain_updated(
             &mut self.state,
             chain_head,
             committed_batches,
             uncommitted_batches,
-        )
+        ) {
+            error!(
+                "An unexpected error occurred when notifying the publisher of a chain update: {}",
+                err
+            );
+        }
     }
 }

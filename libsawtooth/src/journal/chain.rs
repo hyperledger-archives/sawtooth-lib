@@ -39,7 +39,7 @@ use transact::state::Write;
 
 use crate::{
     consensus::notifier::ConsensusNotifier,
-    journal::chain_head_lock::ChainHeadLock,
+    journal::publisher::chain_head_lock::ChainHeadLock,
     journal::{
         block_manager::{BlockManager, BlockManagerError, BlockRef},
         block_validator::{

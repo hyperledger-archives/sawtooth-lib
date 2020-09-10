@@ -33,6 +33,7 @@ pub mod batch_injector;
 pub mod batch_pool;
 mod batch_submitter;
 mod builder;
+pub mod chain_head_lock;
 mod error;
 
 use std::collections::{HashMap, HashSet};
@@ -130,6 +131,10 @@ impl BlockPublisher {
         self.batch_submitter.take()
     }
 
+    pub fn get_chain_head_lock(&self) -> chain_head_lock::ChainHeadLock {
+        chain_head_lock::ChainHeadLock::new(Arc::clone(&self.pending_batches))
+    }
+
     /// Checks if the batch with the given ID is in the publisher's pending batches pool
     pub fn has_batch(&self, batch_id: &str) -> Result<bool, BlockPublisherError> {
         self.pending_batches
@@ -148,16 +153,12 @@ impl BlockPublisher {
     /// * `new_chain_head` - The block that was just committed as the chain head
     /// * `committed_batches` - All batches in the new chain that were not in the previous chain
     /// * `uncommitted_batches` - All batches that were in the old chain but are not in the new one
-    pub fn on_chain_updated(
-        &self,
+    fn on_chain_updated(
+        pending_batches: &mut PendingBatchesPool,
         new_chain_head: BlockPair,
         committed_batches: Vec<BatchPair>,
         uncommitted_batches: Vec<BatchPair>,
     ) -> Result<(), BlockPublisherError> {
-        let mut pending_batches = self
-            .pending_batches
-            .lock()
-            .map_err(|_| BlockPublisherError::Internal("Pending batches lock poisoned".into()))?;
         // Use the new chain head as a sample for calculating the upper bound of the batch pool
         pending_batches.update_limit(new_chain_head.block().batches().len());
         // Rebuild the pending batch pool based on the batches that were committed and uncommitted
