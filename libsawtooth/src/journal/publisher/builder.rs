@@ -83,7 +83,7 @@ impl BlockPublisherBuilder {
     }
 
     /// Sets the executor that will be used by the publisher
-    pub fn with_excution_task_submitter(
+    pub fn with_execution_task_submitter(
         mut self,
         execution_task_submitter: ExecutionTaskSubmitter,
     ) -> Self {
