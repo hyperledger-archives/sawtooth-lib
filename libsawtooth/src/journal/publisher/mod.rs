@@ -50,7 +50,7 @@ use transact::{
     execution::executor::ExecutionTaskSubmitter,
     protocol::batch::{Batch, BatchPair},
     scheduler::{BatchExecutionResult, Scheduler, SchedulerError, SchedulerFactory},
-    state::{merkle::MerkleState, Write},
+    state::Write as _,
 };
 
 use crate::hashlib::sha256_digest_strs;
@@ -62,7 +62,8 @@ use crate::journal::{
 use crate::permissions::verifier::PermissionVerifier;
 use crate::protocol::block::{BlockBuilder, BlockPair};
 use crate::state::{
-    identity_view::IdentityView, settings_view::SettingsView, state_view_factory::StateViewFactory,
+    identity_view::IdentityView, merkle::CborMerkleState, settings_view::SettingsView,
+    state_view_factory::StateViewFactory,
 };
 
 use batch_injector::BatchInjectorFactory;
@@ -103,7 +104,7 @@ pub struct BlockPublisher {
     internal_thread_handle: thread::JoinHandle<()>,
     /// Used to calculate the state root hash that results from executing all of the transactions in
     /// a block; the state root hash is added to the block when it is published.
-    merkle_state: MerkleState,
+    merkle_state: CborMerkleState,
     /// Bounded pool of pending batches to add to blocks. This is shared between the publisher
     /// itself and its background thread.
     pending_batches: Arc<RwLock<PendingBatchesPool>>,

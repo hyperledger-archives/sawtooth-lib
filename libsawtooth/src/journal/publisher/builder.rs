@@ -17,13 +17,10 @@
 use std::sync::{mpsc::channel, Arc, Mutex, RwLock};
 
 use cylinder::Signer;
-use transact::{
-    execution::executor::ExecutionTaskSubmitter, scheduler::SchedulerFactory,
-    state::merkle::MerkleState,
-};
+use transact::{execution::executor::ExecutionTaskSubmitter, scheduler::SchedulerFactory};
 
 use crate::journal::{block_manager::BlockManager, commit_store::CommitStore};
-use crate::state::state_view_factory::StateViewFactory;
+use crate::state::{merkle::CborMerkleState, state_view_factory::StateViewFactory};
 
 use super::{
     batch_injector::DefaultBatchInjectorFactory, start_publisher_thread, BatchInjectorFactory,
@@ -40,7 +37,7 @@ pub struct BlockPublisherBuilder {
     block_manager: Option<BlockManager>,
     commit_store: Option<CommitStore>,
     execution_task_submitter: Option<ExecutionTaskSubmitter>,
-    merkle_state: Option<MerkleState>,
+    merkle_state: Option<CborMerkleState>,
     scheduler_factory: Option<Box<dyn SchedulerFactory>>,
     signer: Option<Box<dyn Signer>>,
     state_view_factory: Option<StateViewFactory>,
@@ -95,7 +92,7 @@ impl BlockPublisherBuilder {
     }
 
     /// Sets the Merkle state that will be used by the publisher
-    pub fn with_merkle_state(mut self, merkle_state: MerkleState) -> Self {
+    pub fn with_merkle_state(mut self, merkle_state: CborMerkleState) -> Self {
         self.merkle_state = Some(merkle_state);
         self
     }
