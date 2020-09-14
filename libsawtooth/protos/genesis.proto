@@ -1,4 +1,4 @@
-// Copyright 2020 Cargill Incorporated
+// Copyright 2017 Intel Corporation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,21 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+// -----------------------------------------------------------------------------
 
-pub const NULL_BLOCK_IDENTIFIER: &str = "0000000000000000";
+syntax = "proto3";
 
-pub mod block_manager;
-pub mod block_scheduler;
-pub mod block_store;
-pub mod block_validator;
-pub mod block_wrapper;
-pub mod candidate_block;
-pub mod chain;
-pub mod chain_commit_state;
-pub mod chain_head_lock;
-pub mod chain_id_manager;
-pub mod commit_store;
-pub mod fork_cache;
-pub mod genesis;
-pub mod publisher;
-pub mod validation_rule_enforcer;
+option java_multiple_files = true;
+option java_package = "sawtooth.sdk.protobuf";
+option go_package = "genesis_pb2";
+
+import "batch.proto";
+
+message GenesisData {
+    // The list of batches that will be applied during the genesis process
+    repeated Batch batches = 1;
+}

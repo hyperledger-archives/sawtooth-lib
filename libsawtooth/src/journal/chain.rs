@@ -64,6 +64,16 @@ pub enum ChainReadError {
     GeneralReadError(String),
 }
 
+impl std::error::Error for ChainReadError {}
+
+impl std::fmt::Display for ChainReadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            ChainReadError::GeneralReadError(msg) => write!(f, "unable to read chain: {}", msg),
+        }
+    }
+}
+
 pub trait ChainReader: Send + Sync {
     fn chain_head(&self) -> Result<Option<BlockPair>, ChainReadError>;
     fn count_committed_transactions(&self) -> Result<usize, ChainReadError>;
