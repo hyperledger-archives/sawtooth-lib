@@ -18,8 +18,11 @@ use reqwest::blocking::Client;
 use serde::Deserialize;
 use std::collections::VecDeque;
 
-use crate::client::Batch as ClientBatch;
 use crate::client::SawtoothClient;
+use crate::client::{
+    Batch as ClientBatch, Header as ClientHeader, Transaction as ClientTransaction,
+    TransactionHeader as ClientTransactionHeader,
+};
 
 pub use super::error::SawtoothClientError;
 
@@ -37,9 +40,42 @@ impl RestApiSawtoothClient {
     }
 }
 
-/// Implement the sawthooth client trait and define the function to list all existing batches
-/// in the current blockchain.
+/// Implement the sawthooth client trait for the REST API sawtooth client
 impl SawtoothClient for RestApiSawtoothClient {
+    /// Get the batch with the given batch_id from the current blockchain
+    fn get_batch(&self, batch_id: String) -> Result<Option<ClientBatch>, SawtoothClientError> {
+        let url = format!("{}/batches/{}", &self.url, &batch_id);
+        let request = Client::new().get(&url);
+        let response = request
+            .send()
+            .map_err(|err| SawtoothClientError::new_with_source("request failed", err.into()))?;
+
+        if response.status().is_success() {
+            let batch: SingleBatch = response.json().map_err(|err| {
+                SawtoothClientError::new_with_source(
+                    "failed to deserialize response body",
+                    err.into(),
+                )
+            })?;
+            let clientbatch: ClientBatch = batch.data.into();
+            Ok(Some(clientbatch))
+        } else if response.status().as_u16() == 404 {
+            Ok(None)
+        } else {
+            let status = response.status();
+            let msg: ErrorResponse = response.json().map_err(|err| {
+                SawtoothClientError::new_with_source(
+                    "failed to deserialize error response body",
+                    err.into(),
+                )
+            })?;
+            Err(SawtoothClientError::new(&format!(
+                "failed to get batch with given batch_id: {}: {}",
+                status, msg
+            )))
+        }
+    }
+    /// List all batches in the current blockchain
     fn list_batches(
         &self,
     ) -> Result<
@@ -107,11 +143,7 @@ impl Iterator for BatchIter {
             }
         };
         let front = self.cache.pop_front()?;
-        let batch = ClientBatch {
-            signer_public_key: front.header.signer_public_key,
-            header_signature: front.header_signature,
-            txns: front.transactions.len(),
-        };
+        let batch: ClientBatch = front.into();
         Some(Ok(batch))
     }
 }
@@ -128,6 +160,7 @@ pub struct Page {
 pub struct Batch {
     pub header: Header,
     pub header_signature: String,
+    pub trace: bool,
     pub transactions: Vec<Transaction>,
 }
 
@@ -135,10 +168,97 @@ pub struct Batch {
 #[derive(Debug, Deserialize)]
 pub struct Header {
     signer_public_key: String,
+    transaction_ids: Vec<String>,
 }
 
-/// A struct that represents a transaction in a batch, used for deserializing JSON objects.
+/// A struct that represents a transaction, used for deserializing JSON objects.
 #[derive(Debug, Deserialize)]
 pub struct Transaction {
+    header: TransactionHeader,
     pub header_signature: String,
+    payload: String,
+}
+
+/// A struct that represents a header in a transaction, used for deserializing JSON objects.
+#[derive(Debug, Deserialize)]
+pub struct TransactionHeader {
+    batcher_public_key: String,
+    dependencies: Vec<String>,
+    family_name: String,
+    family_version: String,
+    inputs: Vec<String>,
+    nonce: String,
+    outputs: Vec<String>,
+    payload_sha512: String,
+    signer_public_key: String,
+}
+
+/// A struct that represents the data returned by the REST API when retrieving a single batch.
+/// Used for deserializing JSON objects.
+#[derive(Debug, Deserialize)]
+pub struct SingleBatch {
+    data: Batch,
+}
+
+impl Into<ClientBatch> for Batch {
+    fn into(self) -> ClientBatch {
+        let mut txns = Vec::new();
+        for t in self.transactions {
+            let new_transaction: ClientTransaction = t.into();
+            txns.push(new_transaction);
+        }
+        ClientBatch {
+            header: self.header.into(),
+            header_signature: self.header_signature,
+            trace: self.trace,
+            transactions: txns,
+        }
+    }
+}
+
+impl Into<ClientHeader> for Header {
+    fn into(self) -> ClientHeader {
+        ClientHeader {
+            signer_public_key: self.signer_public_key,
+            transaction_ids: self.transaction_ids,
+        }
+    }
+}
+
+impl Into<ClientTransaction> for Transaction {
+    fn into(self) -> ClientTransaction {
+        ClientTransaction {
+            header: self.header.into(),
+            header_signature: self.header_signature,
+            payload: self.payload,
+        }
+    }
+}
+
+impl Into<ClientTransactionHeader> for TransactionHeader {
+    fn into(self) -> ClientTransactionHeader {
+        ClientTransactionHeader {
+            batcher_public_key: self.batcher_public_key,
+            dependencies: self.dependencies,
+            family_name: self.family_name,
+            family_version: self.family_version,
+            inputs: self.inputs,
+            nonce: self.nonce,
+            outputs: self.outputs,
+            payload_sha512: self.payload_sha512,
+            signer_public_key: self.signer_public_key,
+        }
+    }
+}
+
+/// Used for deserializing error responses from the Sawtooth REST API.
+#[derive(Debug, Deserialize)]
+struct ErrorResponse {
+    message: String,
+}
+
+impl std::fmt::Display for ErrorResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
 }

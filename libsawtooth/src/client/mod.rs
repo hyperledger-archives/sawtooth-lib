@@ -21,6 +21,8 @@ pub use error::SawtoothClientError;
 
 /// A trait that can be used to interact with a sawtooth node.
 pub trait SawtoothClient {
+    /// Get a single batch in the current blockchain.
+    fn get_batch(&self, batch_id: String) -> Result<Option<Batch>, SawtoothClientError>;
     /// Get all existing batches in the current blockchain.
     fn list_batches(
         &self,
@@ -28,8 +30,33 @@ pub trait SawtoothClient {
 }
 
 /// A struct that represents a batch.
+#[derive(Debug)]
 pub struct Batch {
-    pub signer_public_key: String,
+    pub header: Header,
     pub header_signature: String,
-    pub txns: usize,
+    pub trace: bool,
+    pub transactions: Vec<Transaction>,
+}
+#[derive(Debug)]
+pub struct Header {
+    pub signer_public_key: String,
+    pub transaction_ids: Vec<String>,
+}
+#[derive(Debug)]
+pub struct Transaction {
+    pub header: TransactionHeader,
+    pub header_signature: String,
+    pub payload: String,
+}
+#[derive(Debug)]
+pub struct TransactionHeader {
+    pub batcher_public_key: String,
+    pub dependencies: Vec<String>,
+    pub family_name: String,
+    pub family_version: String,
+    pub inputs: Vec<String>,
+    pub nonce: String,
+    pub outputs: Vec<String>,
+    pub payload_sha512: String,
+    pub signer_public_key: String,
 }
