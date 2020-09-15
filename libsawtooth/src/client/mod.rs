@@ -27,6 +27,13 @@ pub trait SawtoothClient {
     fn list_batches(
         &self,
     ) -> Result<Box<dyn Iterator<Item = Result<Batch, SawtoothClientError>>>, SawtoothClientError>;
+    /// Get all existing transactions in the current blockchain.
+    fn list_transactions(
+        &self,
+    ) -> Result<
+        Box<dyn Iterator<Item = Result<Transaction, SawtoothClientError>>>,
+        SawtoothClientError,
+    >;
 }
 
 /// A struct that represents a batch.

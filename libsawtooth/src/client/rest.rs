@@ -86,6 +86,17 @@ impl SawtoothClient for RestApiSawtoothClient {
 
         Ok(Box::new(BatchIter::new(&url).unwrap()))
     }
+    /// List all transactions in the current blockchain.
+    fn list_transactions(
+        &self,
+    ) -> Result<
+        Box<dyn Iterator<Item = Result<ClientTransaction, SawtoothClientError>>>,
+        SawtoothClientError,
+    > {
+        let url = format!("{}/transactions", &self.url);
+
+        Ok(Box::new(TransactionIter::new(&url).unwrap()))
+    }
 }
 
 /// Iterator used for parsing and deserializing batches.
@@ -148,10 +159,74 @@ impl Iterator for BatchIter {
     }
 }
 
+/// Iterator used for parsing and deserializing transactions.
+struct TransactionIter {
+    next: Option<String>,
+    cache: VecDeque<Transaction>,
+}
+
+impl TransactionIter {
+    /// Create a new 'TransactionIter' which will make a call to the REST API and load the initial
+    /// cache with the first page of transactions.
+    fn new(url: &str) -> Result<Self, SawtoothClientError> {
+        let mut new_iter = Self {
+            next: Some(url.to_string()),
+            cache: VecDeque::with_capacity(0),
+        };
+        new_iter.reload_cache()?;
+        Ok(new_iter)
+    }
+
+    /// If another page of transactions exisits, use the 'next' url from the current page and
+    /// reload the cache with the next page of transactions.
+    fn reload_cache(&mut self) -> Result<(), SawtoothClientError> {
+        if let Some(url) = &self.next.take() {
+            let request = Client::new().get(url);
+            let response = request.send().map_err(|err| {
+                SawtoothClientError::new_with_source("request failed", err.into())
+            })?;
+
+            let page: TransactionPage = response.json().map_err(|err| {
+                SawtoothClientError::new_with_source(
+                    "failed to deserialize response body",
+                    err.into(),
+                )
+            })?;
+
+            self.cache = page.data.into();
+
+            self.next = page.next;
+        }
+        Ok(())
+    }
+}
+
+impl Iterator for TransactionIter {
+    type Item = Result<ClientTransaction, SawtoothClientError>;
+    /// Return the next transaction from the cache, if the cache is empty reload it.
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.cache.is_empty() && self.next.is_some() {
+            if let Err(err) = self.reload_cache() {
+                return Some(Err(err));
+            }
+        };
+        let front = self.cache.pop_front()?;
+        let transaction: ClientTransaction = front.into();
+        Some(Ok(transaction))
+    }
+}
+
 /// A struct that represents a page of batches, used for deserializing JSON objects.
 #[derive(Debug, Deserialize)]
 pub struct Page {
     data: Vec<Batch>,
+    next: Option<String>,
+}
+
+/// A struct that represents a page of transactions, used for deserializing JSON objects.
+#[derive(Debug, Deserialize)]
+struct TransactionPage {
+    data: Vec<Transaction>,
     next: Option<String>,
 }
 
