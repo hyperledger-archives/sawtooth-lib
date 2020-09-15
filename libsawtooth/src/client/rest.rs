@@ -18,11 +18,13 @@ use base64::decode;
 use reqwest::blocking::Client;
 use serde::Deserialize;
 use std::collections::VecDeque;
+use std::time::Duration;
 
 use crate::client::SawtoothClient;
 use crate::client::{
     Batch as ClientBatch, Block as ClientBlock, BlockHeader as ClientBlockHeader,
-    Header as ClientHeader, SingleState as ClientSingleState, State as ClientState,
+    Header as ClientHeader, InvalidTransaction as ClientInvalidTransaction,
+    SingleState as ClientSingleState, State as ClientState, Status as ClientStatus,
     Transaction as ClientTransaction, TransactionHeader as ClientTransactionHeader,
 };
 
@@ -126,6 +128,26 @@ impl SawtoothClient for RestApiSawtoothClient {
         Ok(Box::new(
             PagingIter::new(&url)?.map(|item: Result<State, _>| item.map(convert_state)?),
         ))
+    }
+    /// List the committed status of one or more batches with the given batch_ids.
+    fn list_batch_status(
+        &self,
+        batch_ids: Vec<&str>,
+        wait: Option<Duration>,
+    ) -> Result<Option<Vec<ClientStatus>>, SawtoothClientError> {
+        let mut url = format!("{}/batch_statuses?", &self.url);
+
+        if let Some(time) = wait {
+            let wait_time = time.as_secs();
+            url = url + &format!("wait={}&", wait_time);
+        }
+
+        let ids = batch_ids.join(",");
+        url = url + &format!("id={}", ids);
+
+        let error_msg = &format!("unable to get the status for batches: {}", ids);
+
+        Ok(get::<StatusList>(&url, error_msg)?.map(convert_status_list))?.transpose()
     }
 }
 
@@ -317,6 +339,28 @@ struct Single<T: Sized> {
     data: T,
 }
 
+/// A struct that represnts a list of batch statuses, used for deserializing JSON objects.
+#[derive(Debug, Deserialize)]
+struct StatusList {
+    data: Vec<Status>,
+}
+
+/// A struct that represents a batch status, used for deserializing JSON objects.
+#[derive(Debug, Deserialize)]
+struct Status {
+    id: String,
+    invalid_transactions: Vec<InvalidTransaction>,
+    status: String,
+}
+
+/// A struct that represents an invalid transaction used for deserializing JSON objects.
+#[derive(Debug, Deserialize)]
+struct InvalidTransaction {
+    id: String,
+    message: String,
+    extended_data: String,
+}
+
 impl Into<ClientBatch> for Batch {
     fn into(self) -> ClientBatch {
         let mut txns = Vec::new();
@@ -408,6 +452,31 @@ fn convert_single_state(state: SingleState) -> Result<ClientSingleState, Sawtoot
         })?,
         head: state.head,
     })
+}
+
+fn convert_status_list(status_list: StatusList) -> Result<Vec<ClientStatus>, SawtoothClientError> {
+    let mut statuses = Vec::new();
+    for stat in status_list.data {
+        let mut txns = Vec::new();
+        for invalid_txn in stat.invalid_transactions {
+            txns.push(ClientInvalidTransaction {
+                id: invalid_txn.id,
+                message: invalid_txn.message,
+                extended_data: decode(invalid_txn.extended_data).map_err(|err| {
+                    SawtoothClientError::new_with_source(
+                        "failed to decode extended data",
+                        err.into(),
+                    )
+                })?,
+            });
+        }
+        statuses.push(ClientStatus {
+            id: stat.id,
+            invalid_transactions: txns,
+            status: stat.status,
+        });
+    }
+    Ok(statuses)
 }
 
 /// Used for deserializing error responses from the Sawtooth REST API.

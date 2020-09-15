@@ -19,6 +19,8 @@ pub mod rest;
 
 pub use error::SawtoothClientError;
 
+use std::time::Duration;
+
 /// A trait that can be used to interact with a sawtooth node.
 pub trait SawtoothClient {
     /// Get a single batch in the current blockchain.
@@ -51,6 +53,12 @@ pub trait SawtoothClient {
     fn list_states(
         &self,
     ) -> Result<Box<dyn Iterator<Item = Result<State, SawtoothClientError>>>, SawtoothClientError>;
+    /// Get the committed statuses for one or more batches in the current blockchain.
+    fn list_batch_status(
+        &self,
+        batch_ids: Vec<&str>,
+        wait: Option<Duration>,
+    ) -> Result<Option<Vec<Status>>, SawtoothClientError>;
 }
 
 /// A struct that represents a batch.
@@ -108,4 +116,16 @@ pub struct State {
 pub struct SingleState {
     pub data: Vec<u8>,
     pub head: String,
+}
+#[derive(Debug)]
+pub struct Status {
+    pub id: String,
+    pub invalid_transactions: Vec<InvalidTransaction>,
+    pub status: String,
+}
+#[derive(Debug)]
+pub struct InvalidTransaction {
+    pub id: String,
+    pub message: String,
+    pub extended_data: Vec<u8>,
 }
