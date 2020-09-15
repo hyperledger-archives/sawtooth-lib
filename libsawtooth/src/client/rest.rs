@@ -218,7 +218,7 @@ impl Iterator for TransactionIter {
 
 /// A struct that represents a page of batches, used for deserializing JSON objects.
 #[derive(Debug, Deserialize)]
-pub struct Page {
+struct Page {
     data: Vec<Batch>,
     next: Option<String>,
 }
@@ -232,31 +232,31 @@ struct TransactionPage {
 
 /// A struct that represents a batch, used for deserializing JSON objects.
 #[derive(Debug, Deserialize)]
-pub struct Batch {
-    pub header: Header,
-    pub header_signature: String,
-    pub trace: bool,
-    pub transactions: Vec<Transaction>,
+struct Batch {
+    header: Header,
+    header_signature: String,
+    trace: bool,
+    transactions: Vec<Transaction>,
 }
 
 /// A struct that represents a header in a batch, used for deserializing JSON objects.
 #[derive(Debug, Deserialize)]
-pub struct Header {
+struct Header {
     signer_public_key: String,
     transaction_ids: Vec<String>,
 }
 
 /// A struct that represents a transaction, used for deserializing JSON objects.
 #[derive(Debug, Deserialize)]
-pub struct Transaction {
+struct Transaction {
     header: TransactionHeader,
-    pub header_signature: String,
+    header_signature: String,
     payload: String,
 }
 
 /// A struct that represents a header in a transaction, used for deserializing JSON objects.
 #[derive(Debug, Deserialize)]
-pub struct TransactionHeader {
+struct TransactionHeader {
     batcher_public_key: String,
     dependencies: Vec<String>,
     family_name: String,
@@ -271,7 +271,7 @@ pub struct TransactionHeader {
 /// A struct that represents the data returned by the REST API when retrieving a single batch.
 /// Used for deserializing JSON objects.
 #[derive(Debug, Deserialize)]
-pub struct SingleBatch {
+struct SingleBatch {
     data: Batch,
 }
 
