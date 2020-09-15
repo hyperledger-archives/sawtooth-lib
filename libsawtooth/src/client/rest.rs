@@ -126,7 +126,7 @@ impl BatchIter {
                 SawtoothClientError::new_with_source("request failed", err.into())
             })?;
 
-            let page: Page = response.json().map_err(|err| {
+            let page: BatchPage = response.json().map_err(|err| {
                 SawtoothClientError::new_with_source(
                     "failed to deserialize response body",
                     err.into(),
@@ -218,7 +218,7 @@ impl Iterator for TransactionIter {
 
 /// A struct that represents a page of batches, used for deserializing JSON objects.
 #[derive(Debug, Deserialize)]
-struct Page {
+struct BatchPage {
     data: Vec<Batch>,
     next: Option<String>,
 }
