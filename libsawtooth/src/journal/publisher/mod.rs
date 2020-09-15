@@ -373,7 +373,12 @@ impl BlockPublisher {
 
             let block_id = block.block().header_signature().to_string();
 
-            self.block_broadcaster.broadcast(block)?;
+            let publishing_details = BlockPublishingDetails {
+                injected_batch_ids: candidate_block.injected_batch_ids.into_iter().collect(),
+            };
+
+            self.block_broadcaster
+                .broadcast(block, publishing_details)?;
 
             Ok(block_id)
         } else {
@@ -988,8 +993,25 @@ pub trait BatchObserver: Send + Sync {
     fn notify_batch_pending(&self, batch: &Batch);
 }
 
+/// Details about the block collected during the publishing process.
+pub struct BlockPublishingDetails {
+    /// The batch IDs of those that have been injected by publishing validator.
+    injected_batch_ids: Vec<String>,
+}
+
+impl BlockPublishingDetails {
+    /// Return the IDs of the batches that were injected during the publishing process.
+    pub fn injected_batch_ids(&self) -> &[String] {
+        &self.injected_batch_ids
+    }
+}
+
 /// Broadcasts blocks to the network
 pub trait BlockBroadcaster: Send {
     /// Broadcast the block to the network
-    fn broadcast(&self, block: BlockPair) -> Result<(), BlockPublisherError>;
+    fn broadcast(
+        &self,
+        block: BlockPair,
+        publishing_details: BlockPublishingDetails,
+    ) -> Result<(), BlockPublisherError>;
 }
