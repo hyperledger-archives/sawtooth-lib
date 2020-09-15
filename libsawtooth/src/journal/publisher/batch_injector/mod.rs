@@ -23,7 +23,6 @@ use crate::protocol::block::BlockPair;
 
 use super::BlockPublisherError;
 
-#[allow(unused_imports)]
 pub(super) use default_factory::DefaultBatchInjectorFactory;
 
 /// Generates batches to be injected into a block

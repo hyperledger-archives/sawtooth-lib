@@ -26,8 +26,9 @@ use crate::journal::{block_manager::BlockManager, commit_store::CommitStore};
 use crate::state::state_view_factory::StateViewFactory;
 
 use super::{
-    start_publisher_thread, BatchInjectorFactory, BatchObserver, BatchSubmitter, BlockBroadcaster,
-    BlockPublisher, BlockPublisherError, PendingBatchesPool,
+    batch_injector::DefaultBatchInjectorFactory, start_publisher_thread, BatchInjectorFactory,
+    BatchObserver, BatchSubmitter, BlockBroadcaster, BlockPublisher, BlockPublisherError,
+    PendingBatchesPool,
 };
 
 /// Constructs a new `BlockPublisher`
@@ -119,9 +120,6 @@ impl BlockPublisherBuilder {
 
     /// Creates and starts the block publisher
     pub fn start(self) -> Result<BlockPublisher, BlockPublisherError> {
-        let batch_injector_factory = self.batch_injector_factory.ok_or_else(|| {
-            BlockPublisherError::StartupFailed("No batch injector factory provided".into())
-        })?;
         let block_broadcaster = self.block_broadcaster.ok_or_else(|| {
             BlockPublisherError::StartupFailed("No block broadcaster provided".into())
         })?;
@@ -146,6 +144,13 @@ impl BlockPublisherBuilder {
         let state_view_factory = self.state_view_factory.ok_or_else(|| {
             BlockPublisherError::StartupFailed("No state view factory provided".into())
         })?;
+
+        let batch_injector_factory = self.batch_injector_factory.unwrap_or_else(|| {
+            Box::new(DefaultBatchInjectorFactory::new(
+                signer.clone(),
+                state_view_factory.clone(),
+            ))
+        });
 
         let candidate_block = Arc::new(Mutex::new(None));
         let pending_batches = Arc::new(RwLock::new(PendingBatchesPool::default()));
