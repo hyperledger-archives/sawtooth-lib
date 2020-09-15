@@ -24,6 +24,20 @@ features := '\
     --no-default-features \
     '
 
+check:
+    #!/usr/bin/env sh
+    set -e
+    for feature in $(echo {{features}})
+    do
+        for crate in $(echo {{crates}})
+        do
+            cmd="cargo check --tests --manifest-path=$crate/Cargo.toml $feature"
+            echo "\033[1m$cmd\033[0m"
+            $cmd
+        done
+    done
+    echo "\n\033[92mBuild Success\033[0m\n"
+
 build:
     #!/usr/bin/env sh
     set -e
