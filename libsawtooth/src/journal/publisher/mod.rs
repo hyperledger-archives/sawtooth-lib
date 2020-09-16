@@ -191,96 +191,12 @@ impl BlockPublisher {
             .lock()
             .map_err(|_| BlockPublisherError::Internal("Candidate block lock poisoned".into()))?;
 
-        // Check if a block is already in progress
         if candidate_block.is_some() {
-            return Err(BlockInitializationError::BlockInProgress.into());
+            Err(BlockInitializationError::BlockInProgress.into())
+        } else {
+            *candidate_block = Some(self.new_candidate_block(previous_block)?);
+            Ok(())
         }
-
-        // Initialize the scheduler
-        let mut scheduler = self
-            .scheduler_factory
-            .create_scheduler(hex::encode(previous_block.header().state_root_hash()))?;
-        let (sender, receiver) = channel();
-        scheduler.set_result_callback(Box::new(move |batch_result| {
-            if sender.send(batch_result).is_err() {
-                warn!("Batch execution result receiver dropped while sending results");
-            }
-        }))?;
-        self.execution_task_submitter
-            .submit(scheduler.take_task_iterator()?, scheduler.new_notifier()?)?;
-
-        // Initialize the candidate block
-        let settings_view = self
-            .state_view_factory
-            .create_view::<SettingsView>(previous_block.header().state_root_hash())?;
-        let max_batches_per_block = settings_view
-            .get_setting_u32(MAX_BATCHES_PER_BLOCK_SETTING, None)?
-            .map(|i| i as usize);
-        let validation_rule_enforcer =
-            ValidationRuleEnforcer::new(&settings_view, self.signer.public_key()?.into_bytes())
-                .map_err(|err| BlockPublisherError::Internal(err.to_string()))?;
-        let identity_view = self
-            .state_view_factory
-            .create_view::<IdentityView>(previous_block.header().state_root_hash())?;
-        let permission_verifier = PermissionVerifier::new(Box::new(identity_view));
-        let previous_block_reference = self
-            .block_manager
-            .ref_block(previous_block.block().header_signature())
-            .map_err(|err| match err {
-                BlockManagerError::UnknownBlock => {
-                    BlockInitializationError::MissingPredecessor.into()
-                }
-                err => BlockPublisherError::Internal(err.to_string()),
-            })?;
-        let mut new_candidate_block = CandidateBlock::new(
-            receiver,
-            max_batches_per_block,
-            permission_verifier,
-            previous_block,
-            previous_block_reference,
-            scheduler,
-            validation_rule_enforcer,
-        );
-
-        // Get batches to inject at the beginning of the block and schedule them
-        let injected_batches = self
-            .batch_injector_factory
-            .create_injectors(&new_candidate_block.previous_block)?
-            .into_iter()
-            .try_fold::<_, _, Result<_, BlockPublisherError>>(vec![], |mut batches, injector| {
-                for batch in injector.block_start(&new_candidate_block.previous_block)? {
-                    new_candidate_block
-                        .injected_batch_ids
-                        .insert(batch.batch().header_signature().to_string());
-                    batches.push(batch);
-                }
-                Ok(batches)
-            })?;
-        schedule_batches(
-            injected_batches,
-            &self.commit_store,
-            &mut new_candidate_block,
-        )?;
-
-        // Schedule as many batches as the candidate block and the number of batches in the pool
-        // allow
-        {
-            let pending_batches = self.pending_batches.read().map_err(|_| {
-                BlockPublisherError::Internal("Pending Batches lock poisoned".into())
-            })?;
-            for batch in pending_batches.iter() {
-                if new_candidate_block.can_schedule_batch() {
-                    schedule_batch(batch.clone(), &self.commit_store, &mut new_candidate_block)?;
-                } else {
-                    break;
-                }
-            }
-        }
-
-        // Save the candidate block
-        *candidate_block = Some(new_candidate_block);
-
-        Ok(())
     }
 
     /// Completes the in-progress block and returns a summary of the batches in the block
@@ -431,6 +347,101 @@ impl BlockPublisher {
         }
     }
 
+    /// Creates a new candidate block on top of an existing block and schedules as many transactions
+    /// as the block and pending batches pool allow
+    ///
+    /// # Arguments
+    ///
+    /// * `previous_block` - The block that the new one will be built on top of
+    ///
+    /// # Errors
+    ///
+    /// * Returns a `MissingPredecessor` error if the previous block is not known to the
+    ///   [`BlockManager`](../block_manager/struct.BlockManager.html)
+    fn new_candidate_block(
+        &self,
+        previous_block: BlockPair,
+    ) -> Result<CandidateBlock, BlockPublisherError> {
+        // Initialize the scheduler
+        let mut scheduler = self
+            .scheduler_factory
+            .create_scheduler(hex::encode(previous_block.header().state_root_hash()))?;
+        let (sender, receiver) = channel();
+        scheduler.set_result_callback(Box::new(move |batch_result| {
+            if sender.send(batch_result).is_err() {
+                warn!("Batch execution result receiver dropped while sending results");
+            }
+        }))?;
+        self.execution_task_submitter
+            .submit(scheduler.take_task_iterator()?, scheduler.new_notifier()?)?;
+
+        // Initialize the candidate block
+        let settings_view = self
+            .state_view_factory
+            .create_view::<SettingsView>(previous_block.header().state_root_hash())?;
+        let max_batches_per_block = settings_view
+            .get_setting_u32(MAX_BATCHES_PER_BLOCK_SETTING, None)?
+            .map(|i| i as usize);
+        let validation_rule_enforcer =
+            ValidationRuleEnforcer::new(&settings_view, self.signer.public_key()?.into_bytes())
+                .map_err(|err| BlockPublisherError::Internal(err.to_string()))?;
+        let identity_view = self
+            .state_view_factory
+            .create_view::<IdentityView>(previous_block.header().state_root_hash())?;
+        let permission_verifier = PermissionVerifier::new(Box::new(identity_view));
+        let previous_block_reference = self
+            .block_manager
+            .ref_block(previous_block.block().header_signature())
+            .map_err(|err| match err {
+                BlockManagerError::UnknownBlock => {
+                    BlockInitializationError::MissingPredecessor.into()
+                }
+                err => BlockPublisherError::Internal(err.to_string()),
+            })?;
+        let mut candidate_block = CandidateBlock::new(
+            receiver,
+            max_batches_per_block,
+            permission_verifier,
+            previous_block,
+            previous_block_reference,
+            scheduler,
+            validation_rule_enforcer,
+        );
+
+        // Get batches to inject at the beginning of the block and schedule them
+        let injected_batches = self
+            .batch_injector_factory
+            .create_injectors(&candidate_block.previous_block)?
+            .into_iter()
+            .try_fold::<_, _, Result<_, BlockPublisherError>>(vec![], |mut batches, injector| {
+                for batch in injector.block_start(&candidate_block.previous_block)? {
+                    candidate_block
+                        .injected_batch_ids
+                        .insert(batch.batch().header_signature().to_string());
+                    batches.push(batch);
+                }
+                Ok(batches)
+            })?;
+        schedule_batches(injected_batches, &self.commit_store, &mut candidate_block)?;
+
+        // Schedule as many batches as the candidate block and the number of batches in the pool
+        // allow
+        {
+            let pending_batches = self.pending_batches.read().map_err(|_| {
+                BlockPublisherError::Internal("Pending Batches lock poisoned".into())
+            })?;
+            for batch in pending_batches.iter() {
+                if candidate_block.can_schedule_batch() {
+                    schedule_batch(batch.clone(), &self.commit_store, &mut candidate_block)?;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        Ok(candidate_block)
+    }
+
     /// Completes the in-progress block and saves the results
     ///
     /// This is a helper method for the `summarize_block` and `finalize_block` methods that does the
@@ -447,7 +458,7 @@ impl BlockPublisher {
     ///   * The summary of the batches
     fn complete_candidate_block(
         &self,
-        candidate_block: &mut CandidateBlock,
+        mut candidate_block: &mut CandidateBlock,
     ) -> Result<(), BlockPublisherError> {
         // Check if candidate block is already completed
         if candidate_block.summary.is_some() {
@@ -593,6 +604,23 @@ impl BlockPublisher {
                     Ok((executed_batches, state_changes))
                 },
             )?;
+
+        // If only injected batches (or no batches at all) were valid, the candidate block needs to
+        // be restarted because this one was empty
+        let num_non_injected_valid_batches = executed_batches
+            .iter()
+            .filter(|batch| {
+                !candidate_block
+                    .injected_batch_ids
+                    .contains(batch.header_signature())
+            })
+            .count();
+        if num_non_injected_valid_batches == 0 {
+            let mut new_candidate_block =
+                self.new_candidate_block(candidate_block.previous_block.clone())?;
+            std::mem::swap(candidate_block, &mut new_candidate_block);
+            return Err(BlockCompletionError::BlockEmpty.into());
+        }
 
         // Save the batches that were executed and the resulting state root hash of the state
         // changes
