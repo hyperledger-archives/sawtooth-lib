@@ -20,7 +20,8 @@ use std::collections::VecDeque;
 
 use crate::client::SawtoothClient;
 use crate::client::{
-    Batch as ClientBatch, Header as ClientHeader, Transaction as ClientTransaction,
+    Batch as ClientBatch, Block as ClientBlock, BlockHeader as ClientBlockHeader,
+    Header as ClientHeader, Transaction as ClientTransaction,
     TransactionHeader as ClientTransactionHeader,
 };
 
@@ -84,7 +85,9 @@ impl SawtoothClient for RestApiSawtoothClient {
     > {
         let url = format!("{}/batches", &self.url);
 
-        Ok(Box::new(BatchIter::new(&url).unwrap()))
+        Ok(Box::new(PagingIter::new(&url)?.map(
+            |item: Result<Batch, _>| item.map(|batch| batch.into()),
+        )))
     }
     /// List all transactions in the current blockchain.
     fn list_transactions(
@@ -95,19 +98,40 @@ impl SawtoothClient for RestApiSawtoothClient {
     > {
         let url = format!("{}/transactions", &self.url);
 
-        Ok(Box::new(TransactionIter::new(&url).unwrap()))
+        Ok(Box::new(PagingIter::new(&url)?.map(
+            |item: Result<Transaction, _>| item.map(|txn| txn.into()),
+        )))
+    }
+    /// List all blocks in the current blockchain
+    fn list_blocks(
+        &self,
+    ) -> Result<
+        Box<dyn Iterator<Item = Result<ClientBlock, SawtoothClientError>>>,
+        SawtoothClientError,
+    > {
+        let url = format!("{}/blocks", &self.url);
+
+        Ok(Box::new(PagingIter::new(&url)?.map(
+            |item: Result<Block, _>| item.map(|block| block.into()),
+        )))
     }
 }
 
-/// Iterator used for parsing and deserializing batches.
-struct BatchIter {
+/// Iterator used for parsing and deserializing data returned by the REST API.
+struct PagingIter<T>
+where
+    T: for<'a> serde::de::Deserialize<'a> + Sized,
+{
     next: Option<String>,
-    cache: VecDeque<Batch>,
+    cache: VecDeque<T>,
 }
 
-impl BatchIter {
-    /// Create a new 'BatchIter' which will make a call to the REST API and load the initial
-    /// cache with the first page of batches.
+impl<T> PagingIter<T>
+where
+    T: for<'a> serde::de::Deserialize<'a> + Sized,
+{
+    /// Create a new 'PagingIter' which will make a call to the REST API and load the initial
+    /// cache with the first page of items.
     fn new(url: &str) -> Result<Self, SawtoothClientError> {
         let mut new_iter = Self {
             next: Some(url.to_string()),
@@ -117,8 +141,8 @@ impl BatchIter {
         Ok(new_iter)
     }
 
-    /// If another page of batches exisits, use the 'next' url from the current page and
-    /// reload the cache with the next page of batches.
+    /// If another page of items exists, use the 'next' URL from the current page and
+    /// reload the cache with the next page of items.
     fn reload_cache(&mut self) -> Result<(), SawtoothClientError> {
         if let Some(url) = &self.next.take() {
             let request = Client::new().get(url);
@@ -126,7 +150,7 @@ impl BatchIter {
                 SawtoothClientError::new_with_source("request failed", err.into())
             })?;
 
-            let page: BatchPage = response.json().map_err(|err| {
+            let page: Page<T> = response.json().map_err(|err| {
                 SawtoothClientError::new_with_source(
                     "failed to deserialize response body",
                     err.into(),
@@ -135,98 +159,33 @@ impl BatchIter {
 
             self.cache = page.data.into();
 
-            self.next = page.next;
+            self.next = page.next.map(String::from);
         }
         Ok(())
     }
 }
 
-impl Iterator for BatchIter {
-    type Item = Result<ClientBatch, SawtoothClientError>;
-    /// Return the next batch from the cache, if the cache is empty reload it.
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.cache.is_empty() && self.next.is_some() {
-            if let Err(err) = self.reload_cache() {
-                return Some(Err(SawtoothClientError::new_with_source(
-                    "Unable to load iterator cache: {}",
-                    err.into(),
-                )));
-            }
-        };
-        let front = self.cache.pop_front()?;
-        let batch: ClientBatch = front.into();
-        Some(Ok(batch))
-    }
-}
-
-/// Iterator used for parsing and deserializing transactions.
-struct TransactionIter {
-    next: Option<String>,
-    cache: VecDeque<Transaction>,
-}
-
-impl TransactionIter {
-    /// Create a new 'TransactionIter' which will make a call to the REST API and load the initial
-    /// cache with the first page of transactions.
-    fn new(url: &str) -> Result<Self, SawtoothClientError> {
-        let mut new_iter = Self {
-            next: Some(url.to_string()),
-            cache: VecDeque::with_capacity(0),
-        };
-        new_iter.reload_cache()?;
-        Ok(new_iter)
-    }
-
-    /// If another page of transactions exisits, use the 'next' url from the current page and
-    /// reload the cache with the next page of transactions.
-    fn reload_cache(&mut self) -> Result<(), SawtoothClientError> {
-        if let Some(url) = &self.next.take() {
-            let request = Client::new().get(url);
-            let response = request.send().map_err(|err| {
-                SawtoothClientError::new_with_source("request failed", err.into())
-            })?;
-
-            let page: TransactionPage = response.json().map_err(|err| {
-                SawtoothClientError::new_with_source(
-                    "failed to deserialize response body",
-                    err.into(),
-                )
-            })?;
-
-            self.cache = page.data.into();
-
-            self.next = page.next;
-        }
-        Ok(())
-    }
-}
-
-impl Iterator for TransactionIter {
-    type Item = Result<ClientTransaction, SawtoothClientError>;
-    /// Return the next transaction from the cache, if the cache is empty reload it.
+impl<T> Iterator for PagingIter<T>
+where
+    T: for<'a> serde::de::Deserialize<'a> + Sized,
+{
+    type Item = Result<T, SawtoothClientError>;
+    /// Return the next item from the cache, if the cache is empty reload it.
     fn next(&mut self) -> Option<Self::Item> {
         if self.cache.is_empty() && self.next.is_some() {
             if let Err(err) = self.reload_cache() {
                 return Some(Err(err));
             }
         };
-        let front = self.cache.pop_front()?;
-        let transaction: ClientTransaction = front.into();
-        Some(Ok(transaction))
+        self.cache.pop_front().map(Ok)
     }
 }
 
-/// A struct that represents a page of batches, used for deserializing JSON objects.
+/// A struct that represents a page of items, used for deserializing JSON objects.
 #[derive(Debug, Deserialize)]
-struct BatchPage {
-    data: Vec<Batch>,
-    next: Option<String>,
-}
-
-/// A struct that represents a page of transactions, used for deserializing JSON objects.
-#[derive(Debug, Deserialize)]
-struct TransactionPage {
-    data: Vec<Transaction>,
+struct Page<T: Sized> {
+    #[serde(bound(deserialize = "T: Deserialize<'de>"))]
+    data: Vec<T>,
     next: Option<String>,
 }
 
@@ -266,6 +225,25 @@ struct TransactionHeader {
     outputs: Vec<String>,
     payload_sha512: String,
     signer_public_key: String,
+}
+
+/// A struct that represents a block, used for deserializing JSON objects.
+#[derive(Debug, Deserialize)]
+struct Block {
+    header: BlockHeader,
+    header_signature: String,
+    batches: Vec<Batch>,
+}
+
+/// A struct that represents a header in a block, used for deserializing JSON objects.
+#[derive(Debug, Deserialize)]
+struct BlockHeader {
+    batch_ids: Vec<String>,
+    block_num: String,
+    consensus: String,
+    previous_block_id: String,
+    signer_public_key: String,
+    state_root_hash: String,
 }
 
 /// A struct that represents the data returned by the REST API when retrieving a single batch.
@@ -322,6 +300,30 @@ impl Into<ClientTransactionHeader> for TransactionHeader {
             outputs: self.outputs,
             payload_sha512: self.payload_sha512,
             signer_public_key: self.signer_public_key,
+        }
+    }
+}
+
+impl Into<ClientBlock> for Block {
+    fn into(self) -> ClientBlock {
+        let clientbatches = self.batches.into_iter().map(|batch| batch.into()).collect();
+        ClientBlock {
+            header: self.header.into(),
+            header_signature: self.header_signature,
+            batches: clientbatches,
+        }
+    }
+}
+
+impl Into<ClientBlockHeader> for BlockHeader {
+    fn into(self) -> ClientBlockHeader {
+        ClientBlockHeader {
+            batch_ids: self.batch_ids,
+            block_num: self.block_num,
+            consensus: self.consensus,
+            previous_block_id: self.previous_block_id,
+            signer_public_key: self.signer_public_key,
+            state_root_hash: self.state_root_hash,
         }
     }
 }
