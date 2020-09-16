@@ -52,7 +52,7 @@ impl SawtoothClient for RestApiSawtoothClient {
             .map_err(|err| SawtoothClientError::new_with_source("request failed", err.into()))?;
 
         if response.status().is_success() {
-            let batch: SingleBatch = response.json().map_err(|err| {
+            let batch: Single<Batch> = response.json().map_err(|err| {
                 SawtoothClientError::new_with_source(
                     "failed to deserialize response body",
                     err.into(),
@@ -246,11 +246,12 @@ struct BlockHeader {
     state_root_hash: String,
 }
 
-/// A struct that represents the data returned by the REST API when retrieving a single batch.
+/// A struct that represents the data returned by the REST API when retrieving a single item.
 /// Used for deserializing JSON objects.
 #[derive(Debug, Deserialize)]
-struct SingleBatch {
-    data: Batch,
+struct Single<T: Sized> {
+    #[serde(bound(deserialize = "T: Deserialize<'de>"))]
+    data: T,
 }
 
 impl Into<ClientBatch> for Batch {
