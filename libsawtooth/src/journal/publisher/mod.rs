@@ -260,17 +260,18 @@ impl BlockPublisher {
                 }
             }
 
-            // Remove all batches from the pool that were published in this block
-            let published_batch_ids = HashSet::from_iter(
+            // Remove all batches from the pool that were executed for this block
+            let executed_batch_ids = HashSet::from_iter(
                 candidate_block
-                    .executed_batches
+                    .valid_batches
                     .iter()
+                    .chain(candidate_block.invalid_batches.iter())
                     .map(|batch| batch.header_signature()),
             );
             self.pending_batches
                 .write()
                 .map_err(|_| BlockPublisherError::Internal("Pending Batches lock poisoned".into()))?
-                .update(published_batch_ids);
+                .update(executed_batch_ids);
 
             let state_root_hash = candidate_block.state_root_hash.ok_or_else(|| {
                 BlockPublisherError::Internal(
@@ -289,7 +290,7 @@ impl BlockPublisher {
                 )
                 .with_consensus(consensus_data)
                 .with_state_root_hash(hex::decode(state_root_hash)?)
-                .with_batches(candidate_block.executed_batches)
+                .with_batches(candidate_block.valid_batches)
                 .build_pair(&*self.signer)?;
 
             let block_id = block.block().header_signature().to_string();
@@ -545,16 +546,16 @@ impl BlockPublisher {
             );
         }
 
-        // Parse the batch results into batches and state changes
-        let (executed_batches, state_changes) = candidate_block
+        // Parse the batch results into valid batches, invalid batches, and state changes
+        let (valid_batches, invalid_batches, state_changes) = candidate_block
             // Get all batch execution results in the order they were originally scheduled in
             .scheduled_batch_ids
             .iter()
             .filter_map(|id| batch_results.remove(id))
             // Split batches and state changes
             .try_fold::<_, _, Result<_, BlockPublisherError>>(
-                (vec![], vec![]),
-                |(mut executed_batches, mut state_changes),
+                (vec![], vec![], vec![]),
+                |(mut valid_batches, mut invalid_batches, mut state_changes),
                  BatchExecutionResult { batch, receipts }| {
                     let mut batch_is_invalid = false;
 
@@ -594,20 +595,21 @@ impl BlockPublisher {
                             "Batch contains invalid transaction(s), dropping batch: {}",
                             batch.batch().header_signature()
                         );
+                        invalid_batches.push(batch.take().0);
                     } else {
                         if batch.batch().trace() {
                             trace!("TRACE {}: executed", batch.batch().header_signature());
                         }
-                        executed_batches.push(batch.take().0);
+                        valid_batches.push(batch.take().0);
                     }
 
-                    Ok((executed_batches, state_changes))
+                    Ok((valid_batches, invalid_batches, state_changes))
                 },
             )?;
 
         // If only injected batches (or no batches at all) were valid, the candidate block needs to
         // be restarted because this one was empty
-        let num_non_injected_valid_batches = executed_batches
+        let num_non_injected_valid_batches = valid_batches
             .iter()
             .filter(|batch| {
                 !candidate_block
@@ -624,7 +626,8 @@ impl BlockPublisher {
 
         // Save the batches that were executed and the resulting state root hash of the state
         // changes
-        candidate_block.executed_batches = executed_batches;
+        candidate_block.valid_batches = valid_batches;
+        candidate_block.invalid_batches = invalid_batches;
         candidate_block.state_root_hash = Some(self.merkle_state.compute_state_id(
             &hex::encode(candidate_block.previous_block.header().state_root_hash()),
             &state_changes,
@@ -632,7 +635,7 @@ impl BlockPublisher {
 
         // Compute and save the summary
         let batch_ids = candidate_block
-            .executed_batches
+            .valid_batches
             .iter()
             .map(|batch| batch.header_signature().to_string())
             .collect::<Vec<_>>();
@@ -958,9 +961,12 @@ struct CandidateBlock {
     /// Used to receive batch execution results from the scheduler. This channel is consumed when
     /// the block is completed (summarized/finalized) or cancelled.
     batch_results: Receiver<Option<BatchExecutionResult>>,
-    /// Saves all batches that were executed and will be put in the block on finalization. This is
+    /// Saves all batches that were valid and will be put in the block on finalization. This is
     /// populated when the block is completed (summarized/finalized).
-    executed_batches: Vec<Batch>,
+    valid_batches: Vec<Batch>,
+    /// Saves all batches that were invalid so they can be removed from the pending batches pool.
+    /// This is populated when the block is completed (summarized/finalized).
+    invalid_batches: Vec<Batch>,
     /// Saves the state root hash that will be put in the block on finalization. This is populated
     /// when the block is completed (summarized/finalized).
     state_root_hash: Option<String>,
@@ -993,7 +999,8 @@ impl CandidateBlock {
             scheduled_txn_ids: Default::default(),
 
             batch_results,
-            executed_batches: Default::default(),
+            valid_batches: Default::default(),
+            invalid_batches: Default::default(),
             state_root_hash: Default::default(),
             summary: Default::default(),
         }
