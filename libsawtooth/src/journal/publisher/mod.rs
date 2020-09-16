@@ -48,7 +48,10 @@ use std::thread;
 use cylinder::Signer;
 use transact::{
     execution::executor::ExecutionTaskSubmitter,
-    protocol::batch::{Batch, BatchPair},
+    protocol::{
+        batch::{Batch, BatchPair},
+        receipt::TransactionResult,
+    },
     scheduler::{BatchExecutionResult, Scheduler, SchedulerError, SchedulerFactory},
     state::Write as _,
 };
@@ -102,6 +105,8 @@ pub struct BlockPublisher {
     internal_sender: Sender<BlockPublisherMessage>,
     /// Used to wait for the publisher's background thread to shutdown
     internal_thread_handle: thread::JoinHandle<()>,
+    /// Observers that will be notified when a transaction is invalid
+    invalid_transaction_observers: Vec<Box<dyn InvalidTransactionObserver>>,
     /// Used to calculate the state root hash that results from executing all of the transactions in
     /// a block; the state root hash is added to the block when it is published.
     merkle_state: CborMerkleState,
@@ -536,31 +541,58 @@ impl BlockPublisher {
             .iter()
             .filter_map(|id| batch_results.remove(id))
             // Split batches and state changes
-            .fold(
+            .try_fold::<_, _, Result<_, BlockPublisherError>>(
                 (vec![], vec![]),
                 |(mut executed_batches, mut state_changes),
                  BatchExecutionResult { batch, receipts }| {
+                    let mut batch_is_invalid = false;
+
                     for receipt in receipts {
-                        match Vec::try_from(receipt) {
-                            Ok(mut changes) => state_changes.append(&mut changes),
-                            Err(_) => {
-                                debug!(
-                                    "Batch contains invalid transaction, dropping batch: {}",
-                                    batch.batch().header_signature()
+                        // If the transaction was invalid notify the observers and mark the batch
+                        // as invalid
+                        if let TransactionResult::Invalid {
+                            error_message,
+                            error_data,
+                        } = receipt.transaction_result
+                        {
+                            for observer in &self.invalid_transaction_observers {
+                                observer.notify_transaction_invalid(
+                                    &receipt.transaction_id,
+                                    &error_message,
+                                    &error_data,
                                 );
-                                return (executed_batches, state_changes);
                             }
+                            batch_is_invalid = true;
+                        } else {
+                            // Convert the receipt to a list of state changes and add them to the
+                            // running list of state changes
+                            Vec::try_from(receipt)
+                                .map(|mut changes| state_changes.append(&mut changes))
+                                .map_err(|err| {
+                                    BlockPublisherError::Internal(format!(
+                                        "Could not convert valid transaction receipt into state \
+                                     changes: {}",
+                                        err,
+                                    ))
+                                })?;
                         }
                     }
 
-                    if batch.batch().trace() {
-                        trace!("TRACE {}: executed", batch.batch().header_signature());
+                    if batch_is_invalid {
+                        debug!(
+                            "Batch contains invalid transaction(s), dropping batch: {}",
+                            batch.batch().header_signature()
+                        );
+                    } else {
+                        if batch.batch().trace() {
+                            trace!("TRACE {}: executed", batch.batch().header_signature());
+                        }
+                        executed_batches.push(batch.take().0);
                     }
-                    executed_batches.push(batch.take().0);
 
-                    (executed_batches, state_changes)
+                    Ok((executed_batches, state_changes))
                 },
-            );
+            )?;
 
         // Save the batches that were executed and the resulting state root hash of the state
         // changes
@@ -991,6 +1023,17 @@ impl From<BatchPair> for BlockPublisherMessage {
 pub trait BatchObserver: Send + Sync {
     /// Notifies the observer of the given batch
     fn notify_batch_pending(&self, batch: &Batch);
+}
+
+/// Notified by the block publisher whenever an executed transaction is invalid
+pub trait InvalidTransactionObserver: Send + Sync {
+    /// Notifies the observer that the given transaction is invalid
+    fn notify_transaction_invalid(
+        &self,
+        transaction_id: &str,
+        error_message: &str,
+        error_data: &[u8],
+    );
 }
 
 /// Details about the block collected during the publishing process.

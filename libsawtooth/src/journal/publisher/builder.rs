@@ -25,7 +25,7 @@ use crate::state::{merkle::CborMerkleState, state_view_factory::StateViewFactory
 use super::{
     batch_injector::DefaultBatchInjectorFactory, start_publisher_thread, BatchInjectorFactory,
     BatchObserver, BatchSubmitter, BlockBroadcaster, BlockPublisher, BlockPublisherError,
-    PendingBatchesPool,
+    InvalidTransactionObserver, PendingBatchesPool,
 };
 
 /// Constructs a new `BlockPublisher`
@@ -37,6 +37,7 @@ pub struct BlockPublisherBuilder {
     block_manager: Option<BlockManager>,
     commit_store: Option<CommitStore>,
     execution_task_submitter: Option<ExecutionTaskSubmitter>,
+    invalid_transaction_observers: Vec<Box<dyn InvalidTransactionObserver>>,
     merkle_state: Option<CborMerkleState>,
     scheduler_factory: Option<Box<dyn SchedulerFactory>>,
     signer: Option<Box<dyn Signer>>,
@@ -88,6 +89,15 @@ impl BlockPublisherBuilder {
         execution_task_submitter: ExecutionTaskSubmitter,
     ) -> Self {
         self.execution_task_submitter = Some(execution_task_submitter);
+        self
+    }
+
+    /// Sets the invalid transaction observers that will be notified by the publisher
+    pub fn with_invalid_transaction_observers(
+        mut self,
+        invalid_transaction_observers: Vec<Box<dyn InvalidTransactionObserver>>,
+    ) -> Self {
+        self.invalid_transaction_observers = invalid_transaction_observers;
         self
     }
 
@@ -182,6 +192,7 @@ impl BlockPublisherBuilder {
             execution_task_submitter,
             internal_sender,
             internal_thread_handle,
+            invalid_transaction_observers: self.invalid_transaction_observers,
             merkle_state,
             scheduler_factory,
             signer,
