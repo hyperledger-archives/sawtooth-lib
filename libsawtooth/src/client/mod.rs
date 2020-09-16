@@ -34,6 +34,10 @@ pub trait SawtoothClient {
         Box<dyn Iterator<Item = Result<Transaction, SawtoothClientError>>>,
         SawtoothClientError,
     >;
+    /// Get all existing blocks in the current blockchain.
+    fn list_blocks(
+        &self,
+    ) -> Result<Box<dyn Iterator<Item = Result<Block, SawtoothClientError>>>, SawtoothClientError>;
 }
 
 /// A struct that represents a batch.
@@ -66,4 +70,19 @@ pub struct TransactionHeader {
     pub outputs: Vec<String>,
     pub payload_sha512: String,
     pub signer_public_key: String,
+}
+#[derive(Debug)]
+pub struct Block {
+    pub header: BlockHeader,
+    pub header_signature: String,
+    pub batches: Vec<Batch>,
+}
+#[derive(Debug)]
+pub struct BlockHeader {
+    pub batch_ids: Vec<String>,
+    pub block_num: String,
+    pub consensus: String,
+    pub previous_block_id: String,
+    pub signer_public_key: String,
+    pub state_root_hash: String,
 }

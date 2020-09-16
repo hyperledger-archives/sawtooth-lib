@@ -20,7 +20,8 @@ use std::collections::VecDeque;
 
 use crate::client::SawtoothClient;
 use crate::client::{
-    Batch as ClientBatch, Header as ClientHeader, Transaction as ClientTransaction,
+    Batch as ClientBatch, Block as ClientBlock, BlockHeader as ClientBlockHeader,
+    Header as ClientHeader, Transaction as ClientTransaction,
     TransactionHeader as ClientTransactionHeader,
 };
 
@@ -99,6 +100,19 @@ impl SawtoothClient for RestApiSawtoothClient {
 
         Ok(Box::new(PagingIter::new(&url)?.map(
             |item: Result<Transaction, _>| item.map(|txn| txn.into()),
+        )))
+    }
+    /// List all blocks in the current blockchain
+    fn list_blocks(
+        &self,
+    ) -> Result<
+        Box<dyn Iterator<Item = Result<ClientBlock, SawtoothClientError>>>,
+        SawtoothClientError,
+    > {
+        let url = format!("{}/blocks", &self.url);
+
+        Ok(Box::new(PagingIter::new(&url)?.map(
+            |item: Result<Block, _>| item.map(|block| block.into()),
         )))
     }
 }
@@ -213,6 +227,25 @@ struct TransactionHeader {
     signer_public_key: String,
 }
 
+/// A struct that represents a block, used for deserializing JSON objects.
+#[derive(Debug, Deserialize)]
+struct Block {
+    header: BlockHeader,
+    header_signature: String,
+    batches: Vec<Batch>,
+}
+
+/// A struct that represents a header in a block, used for deserializing JSON objects.
+#[derive(Debug, Deserialize)]
+struct BlockHeader {
+    batch_ids: Vec<String>,
+    block_num: String,
+    consensus: String,
+    previous_block_id: String,
+    signer_public_key: String,
+    state_root_hash: String,
+}
+
 /// A struct that represents the data returned by the REST API when retrieving a single batch.
 /// Used for deserializing JSON objects.
 #[derive(Debug, Deserialize)]
@@ -267,6 +300,30 @@ impl Into<ClientTransactionHeader> for TransactionHeader {
             outputs: self.outputs,
             payload_sha512: self.payload_sha512,
             signer_public_key: self.signer_public_key,
+        }
+    }
+}
+
+impl Into<ClientBlock> for Block {
+    fn into(self) -> ClientBlock {
+        let clientbatches = self.batches.into_iter().map(|batch| batch.into()).collect();
+        ClientBlock {
+            header: self.header.into(),
+            header_signature: self.header_signature,
+            batches: clientbatches,
+        }
+    }
+}
+
+impl Into<ClientBlockHeader> for BlockHeader {
+    fn into(self) -> ClientBlockHeader {
+        ClientBlockHeader {
+            batch_ids: self.batch_ids,
+            block_num: self.block_num,
+            consensus: self.consensus,
+            previous_block_id: self.previous_block_id,
+            signer_public_key: self.signer_public_key,
+            state_root_hash: self.state_root_hash,
         }
     }
 }
