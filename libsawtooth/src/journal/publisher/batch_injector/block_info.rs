@@ -30,8 +30,8 @@ use super::BatchInjector;
 const FAMILY_NAME: &str = "block_info";
 /// Current version of the block info transaction family
 const FAMILY_VERSION: &str = "1.0";
-/// State namespace of the block info transaction family (00b10c00)
-const NAMESPACE: [u8; 4] = [0, 177, 12, 0];
+/// State namespace of the block info transaction family
+const NAMESPACE: [u8; 4] = [0x00, 0xb1, 0x0c, 0x00];
 
 /// The batch injector for block info transactions
 pub struct BlockInfoInjector {
