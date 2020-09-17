@@ -29,9 +29,9 @@ use super::BatchInjector;
 /// Name of the block info transaction family
 const FAMILY_NAME: &str = "block_info";
 /// Current version of the block info transaction family
-const FAMILY_VERSION: &str = "0.1";
-/// State namespace of the block info transaction family (00b10c00)
-const NAMESPACE: [u8; 4] = [0, 177, 12, 0];
+const FAMILY_VERSION: &str = "1.0";
+/// State namespace of the block info transaction family
+const NAMESPACE: [u8; 4] = [0x00, 0xb1, 0x0c, 0x00];
 
 /// The batch injector for block info transactions
 pub struct BlockInfoInjector {
@@ -63,8 +63,8 @@ impl BatchInjector for BlockInfoInjector {
         let batch = TransactionBuilder::new()
             .with_family_name(FAMILY_NAME.into())
             .with_family_version(FAMILY_VERSION.into())
-            .with_inputs(vec![NAMESPACE.to_vec()])
-            .with_outputs(vec![NAMESPACE.to_vec()])
+            .with_inputs(vec![NAMESPACE.to_vec(), compute_config_address()])
+            .with_outputs(vec![NAMESPACE.to_vec(), compute_config_address()])
             .with_payload_hash_method(HashMethod::SHA512)
             .with_payload(txn_payload)
             .into_batch_builder(&*self.signer)
@@ -74,4 +74,11 @@ impl BatchInjector for BlockInfoInjector {
 
         Ok(vec![batch])
     }
+}
+
+/// Computes the block info configuration address
+fn compute_config_address() -> Vec<u8> {
+    let mut address = vec![0x00, 0xb1, 0x0c, 0x01];
+    address.extend((0..31).map(|_| 0x00));
+    address
 }
