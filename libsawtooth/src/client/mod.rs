@@ -39,6 +39,8 @@ pub trait SawtoothClient {
         Box<dyn Iterator<Item = Result<Transaction, SawtoothClientError>>>,
         SawtoothClientError,
     >;
+    /// Get a single block in the current blockchain.
+    fn get_block(&self, block_id: String) -> Result<Option<Block>, SawtoothClientError>;
     /// Get all existing blocks in the current blockchain.
     fn list_blocks(
         &self,
