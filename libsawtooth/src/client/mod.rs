@@ -27,6 +27,11 @@ pub trait SawtoothClient {
     fn list_batches(
         &self,
     ) -> Result<Box<dyn Iterator<Item = Result<Batch, SawtoothClientError>>>, SawtoothClientError>;
+    /// Get a single transaction in the current blockchain.
+    fn get_transaction(
+        &self,
+        transaction_id: String,
+    ) -> Result<Option<Transaction>, SawtoothClientError>;
     /// Get all existing transactions in the current blockchain.
     fn list_transactions(
         &self,
