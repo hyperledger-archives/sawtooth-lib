@@ -46,35 +46,9 @@ impl SawtoothClient for RestApiSawtoothClient {
     /// Get the batch with the given batch_id from the current blockchain
     fn get_batch(&self, batch_id: String) -> Result<Option<ClientBatch>, SawtoothClientError> {
         let url = format!("{}/batches/{}", &self.url, &batch_id);
-        let request = Client::new().get(&url);
-        let response = request
-            .send()
-            .map_err(|err| SawtoothClientError::new_with_source("request failed", err.into()))?;
+        let error_msg = &format!("unable to get batch {}", batch_id);
 
-        if response.status().is_success() {
-            let batch: Single<Batch> = response.json().map_err(|err| {
-                SawtoothClientError::new_with_source(
-                    "failed to deserialize response body",
-                    err.into(),
-                )
-            })?;
-            let clientbatch: ClientBatch = batch.data.into();
-            Ok(Some(clientbatch))
-        } else if response.status().as_u16() == 404 {
-            Ok(None)
-        } else {
-            let status = response.status();
-            let msg: ErrorResponse = response.json().map_err(|err| {
-                SawtoothClientError::new_with_source(
-                    "failed to deserialize error response body",
-                    err.into(),
-                )
-            })?;
-            Err(SawtoothClientError::new(&format!(
-                "failed to get batch with given batch_id: {}: {}",
-                status, msg
-            )))
-        }
+        Ok(get::<Batch>(&url, error_msg)?.map(|batch| batch.into()))
     }
     /// List all batches in the current blockchain
     fn list_batches(
@@ -113,6 +87,38 @@ impl SawtoothClient for RestApiSawtoothClient {
 
         Ok(Box::new(PagingIter::new(&url)?.map(
             |item: Result<Block, _>| item.map(|block| block.into()),
+        )))
+    }
+}
+
+/// used for deserializing single objects returned by the REST API.
+fn get<T>(url: &str, error_msg: &str) -> Result<Option<T>, SawtoothClientError>
+where
+    T: for<'a> serde::de::Deserialize<'a> + Sized,
+{
+    let request = Client::new().get(url);
+    let response = request
+        .send()
+        .map_err(|err| SawtoothClientError::new_with_source("request failed", err.into()))?;
+
+    if response.status().is_success() {
+        let obj: Single<T> = response.json().map_err(|err| {
+            SawtoothClientError::new_with_source("failed to deserialize response body", err.into())
+        })?;
+        Ok(Some(obj.data))
+    } else if response.status().as_u16() == 404 {
+        Ok(None)
+    } else {
+        let status = response.status();
+        let msg: ErrorResponse = response.json().map_err(|err| {
+            SawtoothClientError::new_with_source(
+                "failed to deserialize error response body",
+                err.into(),
+            )
+        })?;
+        Err(SawtoothClientError::new(&format!(
+            "{} {} {}",
+            error_msg, status, msg
         )))
     }
 }
