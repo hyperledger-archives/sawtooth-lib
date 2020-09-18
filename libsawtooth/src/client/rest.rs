@@ -348,11 +348,16 @@ impl Into<ClientBlockHeader> for BlockHeader {
 /// Used for deserializing error responses from the Sawtooth REST API.
 #[derive(Debug, Deserialize)]
 struct ErrorResponse {
+    error: ErrData,
+}
+
+#[derive(Debug, Deserialize)]
+struct ErrData {
     message: String,
 }
 
 impl std::fmt::Display for ErrorResponse {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.message)
+        write!(f, "{}", self.error.message)
     }
 }
