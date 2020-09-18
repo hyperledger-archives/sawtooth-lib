@@ -14,6 +14,7 @@
 
 //! A client for interacting with sawtooth services.
 
+use base64::decode;
 use reqwest::blocking::Client;
 use serde::Deserialize;
 use std::collections::VecDeque;
@@ -21,7 +22,7 @@ use std::collections::VecDeque;
 use crate::client::SawtoothClient;
 use crate::client::{
     Batch as ClientBatch, Block as ClientBlock, BlockHeader as ClientBlockHeader,
-    Header as ClientHeader, Transaction as ClientTransaction,
+    Header as ClientHeader, State as ClientState, Transaction as ClientTransaction,
     TransactionHeader as ClientTransactionHeader,
 };
 
@@ -105,6 +106,19 @@ impl SawtoothClient for RestApiSawtoothClient {
         Ok(Box::new(PagingIter::new(&url)?.map(
             |item: Result<Block, _>| item.map(|block| block.into()),
         )))
+    }
+    /// List all state entries in the current blockchain
+    fn list_states(
+        &self,
+    ) -> Result<
+        Box<dyn Iterator<Item = Result<ClientState, SawtoothClientError>>>,
+        SawtoothClientError,
+    > {
+        let url = format!("{}/state", &self.url);
+
+        Ok(Box::new(
+            PagingIter::new(&url)?.map(|item: Result<State, _>| item.map(convert_state)?),
+        ))
     }
 }
 
@@ -269,6 +283,13 @@ struct BlockHeader {
     state_root_hash: String,
 }
 
+/// A struct that represents a state, used for deserializing JSON objects.
+#[derive(Debug, Deserialize)]
+pub struct State {
+    pub address: String,
+    pub data: String,
+}
+
 /// A struct that represents the data returned by the REST API when retrieving a single item.
 /// Used for deserializing JSON objects.
 #[derive(Debug, Deserialize)]
@@ -350,6 +371,15 @@ impl Into<ClientBlockHeader> for BlockHeader {
             state_root_hash: self.state_root_hash,
         }
     }
+}
+
+fn convert_state(state: State) -> Result<ClientState, SawtoothClientError> {
+    Ok(ClientState {
+        address: state.address,
+        data: decode(state.data).map_err(|err| {
+            SawtoothClientError::new_with_source("failed to decode state data", err.into())
+        })?,
+    })
 }
 
 /// Used for deserializing error responses from the Sawtooth REST API.
