@@ -63,6 +63,16 @@ impl SawtoothClient for RestApiSawtoothClient {
             |item: Result<Batch, _>| item.map(|batch| batch.into()),
         )))
     }
+    /// Get the transaction with the given transaction_id from the current blockchain
+    fn get_transaction(
+        &self,
+        transaction_id: String,
+    ) -> Result<Option<ClientTransaction>, SawtoothClientError> {
+        let url = format!("{}/transactions/{}", &self.url, &transaction_id);
+        let error_msg = &format!("unable to get transaction {}", transaction_id);
+
+        Ok(get::<Transaction>(&url, error_msg)?.map(|txn| txn.into()))
+    }
     /// List all transactions in the current blockchain.
     fn list_transactions(
         &self,
