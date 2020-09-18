@@ -86,6 +86,13 @@ impl SawtoothClient for RestApiSawtoothClient {
             |item: Result<Transaction, _>| item.map(|txn| txn.into()),
         )))
     }
+    /// Get the block with the given block_id from the current blockchain
+    fn get_block(&self, block_id: String) -> Result<Option<ClientBlock>, SawtoothClientError> {
+        let url = format!("{}/blocks/{}", &self.url, &block_id);
+        let error_msg = &format!("unable to get block {}", block_id);
+
+        Ok(get::<Block>(&url, error_msg)?.map(|block| block.into()))
+    }
     /// List all blocks in the current blockchain
     fn list_blocks(
         &self,
