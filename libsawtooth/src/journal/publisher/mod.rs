@@ -865,35 +865,13 @@ fn start_publisher_thread(
                             Ok(mut pending_batches) => {
                                 // If the batch is already in the pool, don't do anything further
                                 // with the batch
-                                if pending_batches.append(batch.clone()) {
-                                    // Notify batch observers
-                                    for observer in &batch_observers {
-                                        observer.notify_batch_pending(batch.batch());
-                                    }
+                                if !pending_batches.append(batch.clone()) {
+                                    continue;
+                                }
 
-                                    // If currently building a block and it's not already full,
-                                    // schedule the batch
-                                    match candidate_block.lock() {
-                                        Ok(mut candidate_block) => {
-                                            if let Some(mut candidate_block) =
-                                                candidate_block.as_mut()
-                                            {
-                                                if candidate_block.can_schedule_batch() {
-                                                    if let Err(err) = schedule_batch(
-                                                        batch,
-                                                        &commit_store,
-                                                        &mut candidate_block,
-                                                    ) {
-                                                        error!("Failed to schedule batch: {}", err);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        Err(_) => {
-                                            error!("Candidate block lock poisoned");
-                                            break;
-                                        }
-                                    }
+                                // Notify batch observers
+                                for observer in &batch_observers {
+                                    observer.notify_batch_pending(batch.batch());
                                 }
 
                                 // Notify the batch submitter if the batches pool has filled up or
@@ -916,6 +894,28 @@ fn start_publisher_thread(
                             }
                             Err(_) => {
                                 error!("Pending batches pool lock poisoned");
+                                break;
+                            }
+                        }
+
+                        // If currently building a block and it's not already full, schedule the
+                        // batch
+                        match candidate_block.lock() {
+                            Ok(mut candidate_block) => {
+                                if let Some(mut candidate_block) = candidate_block.as_mut() {
+                                    if candidate_block.can_schedule_batch() {
+                                        if let Err(err) = schedule_batch(
+                                            batch,
+                                            &commit_store,
+                                            &mut candidate_block,
+                                        ) {
+                                            error!("Failed to schedule batch: {}", err);
+                                        }
+                                    }
+                                }
+                            }
+                            Err(_) => {
+                                error!("Candidate block lock poisoned");
                                 break;
                             }
                         }
