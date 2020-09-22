@@ -196,7 +196,7 @@ where
 
             self.cache = page.data.into();
 
-            self.next = page.next.map(String::from);
+            self.next = page.paging.next.map(String::from);
         }
         Ok(())
     }
@@ -223,6 +223,11 @@ where
 struct Page<T: Sized> {
     #[serde(bound(deserialize = "T: Deserialize<'de>"))]
     data: Vec<T>,
+    paging: PageInfo,
+}
+
+#[derive(Debug, Deserialize)]
+struct PageInfo {
     next: Option<String>,
 }
 
