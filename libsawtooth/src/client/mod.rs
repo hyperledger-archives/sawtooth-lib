@@ -45,6 +45,8 @@ pub trait SawtoothClient {
     fn list_blocks(
         &self,
     ) -> Result<Box<dyn Iterator<Item = Result<Block, SawtoothClientError>>>, SawtoothClientError>;
+    /// Get a single state entry from the current blockchain.
+    fn get_state(&self, address: String) -> Result<Option<SingleState>, SawtoothClientError>;
     /// Get all existing state entries in the current blockchain.
     fn list_states(
         &self,
@@ -101,4 +103,9 @@ pub struct BlockHeader {
 pub struct State {
     pub address: String,
     pub data: Vec<u8>,
+}
+#[derive(Debug)]
+pub struct SingleState {
+    pub data: Vec<u8>,
+    pub head: String,
 }

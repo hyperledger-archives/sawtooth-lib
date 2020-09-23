@@ -22,8 +22,8 @@ use std::collections::VecDeque;
 use crate::client::SawtoothClient;
 use crate::client::{
     Batch as ClientBatch, Block as ClientBlock, BlockHeader as ClientBlockHeader,
-    Header as ClientHeader, State as ClientState, Transaction as ClientTransaction,
-    TransactionHeader as ClientTransactionHeader,
+    Header as ClientHeader, SingleState as ClientSingleState, State as ClientState,
+    Transaction as ClientTransaction, TransactionHeader as ClientTransactionHeader,
 };
 
 pub use super::error::SawtoothClientError;
@@ -49,7 +49,7 @@ impl SawtoothClient for RestApiSawtoothClient {
         let url = format!("{}/batches/{}", &self.url, &batch_id);
         let error_msg = &format!("unable to get batch {}", batch_id);
 
-        Ok(get::<Batch>(&url, error_msg)?.map(|batch| batch.into()))
+        Ok(get::<Single<Batch>>(&url, error_msg)?.map(|singlebatch| singlebatch.data.into()))
     }
     /// List all batches in the current blockchain
     fn list_batches(
@@ -72,7 +72,7 @@ impl SawtoothClient for RestApiSawtoothClient {
         let url = format!("{}/transactions/{}", &self.url, &transaction_id);
         let error_msg = &format!("unable to get transaction {}", transaction_id);
 
-        Ok(get::<Transaction>(&url, error_msg)?.map(|txn| txn.into()))
+        Ok(get::<Single<Transaction>>(&url, error_msg)?.map(|singletxn| singletxn.data.into()))
     }
     /// List all transactions in the current blockchain.
     fn list_transactions(
@@ -92,7 +92,7 @@ impl SawtoothClient for RestApiSawtoothClient {
         let url = format!("{}/blocks/{}", &self.url, &block_id);
         let error_msg = &format!("unable to get block {}", block_id);
 
-        Ok(get::<Block>(&url, error_msg)?.map(|block| block.into()))
+        Ok(get::<Single<Block>>(&url, error_msg)?.map(|singleblock| singleblock.data.into()))
     }
     /// List all blocks in the current blockchain
     fn list_blocks(
@@ -106,6 +106,13 @@ impl SawtoothClient for RestApiSawtoothClient {
         Ok(Box::new(PagingIter::new(&url)?.map(
             |item: Result<Block, _>| item.map(|block| block.into()),
         )))
+    }
+    /// Get the state entry with the given address from the current blockchain
+    fn get_state(&self, address: String) -> Result<Option<ClientSingleState>, SawtoothClientError> {
+        let url = format!("{}/state/{}", &self.url, &address);
+        let error_msg = &format!("unable to get state at address {}", address);
+
+        Ok(get::<SingleState>(&url, error_msg)?.map(convert_single_state))?.transpose()
     }
     /// List all state entries in the current blockchain
     fn list_states(
@@ -133,10 +140,10 @@ where
         .map_err(|err| SawtoothClientError::new_with_source("request failed", err.into()))?;
 
     if response.status().is_success() {
-        let obj: Single<T> = response.json().map_err(|err| {
+        let obj: T = response.json().map_err(|err| {
             SawtoothClientError::new_with_source("failed to deserialize response body", err.into())
         })?;
-        Ok(Some(obj.data))
+        Ok(Some(obj))
     } else if response.status().as_u16() == 404 {
         Ok(None)
     } else {
@@ -229,6 +236,13 @@ struct Page<T: Sized> {
 #[derive(Debug, Deserialize)]
 struct PageInfo {
     next: Option<String>,
+}
+
+/// A struct that represents a single state object, used for deserializing JSON objects.
+#[derive(Debug, Deserialize)]
+struct SingleState {
+    data: String,
+    head: String,
 }
 
 /// A struct that represents a batch, used for deserializing JSON objects.
@@ -384,6 +398,15 @@ fn convert_state(state: State) -> Result<ClientState, SawtoothClientError> {
         data: decode(state.data).map_err(|err| {
             SawtoothClientError::new_with_source("failed to decode state data", err.into())
         })?,
+    })
+}
+
+fn convert_single_state(state: SingleState) -> Result<ClientSingleState, SawtoothClientError> {
+    Ok(ClientSingleState {
+        data: decode(state.data).map_err(|err| {
+            SawtoothClientError::new_with_source("failed to decode state data", err.into())
+        })?,
+        head: state.head,
     })
 }
 
