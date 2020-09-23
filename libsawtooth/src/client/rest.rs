@@ -22,8 +22,8 @@ use std::collections::VecDeque;
 use crate::client::SawtoothClient;
 use crate::client::{
     Batch as ClientBatch, Block as ClientBlock, BlockHeader as ClientBlockHeader,
-    Header as ClientHeader, State as ClientState, Transaction as ClientTransaction,
-    TransactionHeader as ClientTransactionHeader,
+    Header as ClientHeader, SingleState as ClientSingleState, State as ClientState,
+    Transaction as ClientTransaction, TransactionHeader as ClientTransactionHeader,
 };
 
 pub use super::error::SawtoothClientError;
@@ -106,6 +106,13 @@ impl SawtoothClient for RestApiSawtoothClient {
         Ok(Box::new(PagingIter::new(&url)?.map(
             |item: Result<Block, _>| item.map(|block| block.into()),
         )))
+    }
+    /// Get the state entry with the given address from the current blockchain
+    fn get_state(&self, address: String) -> Result<Option<ClientSingleState>, SawtoothClientError> {
+        let url = format!("{}/state/{}", &self.url, &address);
+        let error_msg = &format!("unable to get state at address {}", address);
+
+        Ok(get::<SingleState>(&url, error_msg)?.map(convert_single_state))?.transpose()
     }
     /// List all state entries in the current blockchain
     fn list_states(
@@ -229,6 +236,13 @@ struct Page<T: Sized> {
 #[derive(Debug, Deserialize)]
 struct PageInfo {
     next: Option<String>,
+}
+
+/// A struct that represents a single state object, used for deserializing JSON objects.
+#[derive(Debug, Deserialize)]
+struct SingleState {
+    data: String,
+    head: String,
 }
 
 /// A struct that represents a batch, used for deserializing JSON objects.
@@ -384,6 +398,15 @@ fn convert_state(state: State) -> Result<ClientState, SawtoothClientError> {
         data: decode(state.data).map_err(|err| {
             SawtoothClientError::new_with_source("failed to decode state data", err.into())
         })?,
+    })
+}
+
+fn convert_single_state(state: SingleState) -> Result<ClientSingleState, SawtoothClientError> {
+    Ok(ClientSingleState {
+        data: decode(state.data).map_err(|err| {
+            SawtoothClientError::new_with_source("failed to decode state data", err.into())
+        })?,
+        head: state.head,
     })
 }
 
