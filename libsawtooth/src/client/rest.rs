@@ -49,7 +49,7 @@ impl SawtoothClient for RestApiSawtoothClient {
         let url = format!("{}/batches/{}", &self.url, &batch_id);
         let error_msg = &format!("unable to get batch {}", batch_id);
 
-        Ok(get::<Batch>(&url, error_msg)?.map(|batch| batch.into()))
+        Ok(get::<Single<Batch>>(&url, error_msg)?.map(|singlebatch| singlebatch.data.into()))
     }
     /// List all batches in the current blockchain
     fn list_batches(
@@ -72,7 +72,7 @@ impl SawtoothClient for RestApiSawtoothClient {
         let url = format!("{}/transactions/{}", &self.url, &transaction_id);
         let error_msg = &format!("unable to get transaction {}", transaction_id);
 
-        Ok(get::<Transaction>(&url, error_msg)?.map(|txn| txn.into()))
+        Ok(get::<Single<Transaction>>(&url, error_msg)?.map(|singletxn| singletxn.data.into()))
     }
     /// List all transactions in the current blockchain.
     fn list_transactions(
@@ -92,7 +92,7 @@ impl SawtoothClient for RestApiSawtoothClient {
         let url = format!("{}/blocks/{}", &self.url, &block_id);
         let error_msg = &format!("unable to get block {}", block_id);
 
-        Ok(get::<Block>(&url, error_msg)?.map(|block| block.into()))
+        Ok(get::<Single<Block>>(&url, error_msg)?.map(|singleblock| singleblock.data.into()))
     }
     /// List all blocks in the current blockchain
     fn list_blocks(
@@ -133,10 +133,10 @@ where
         .map_err(|err| SawtoothClientError::new_with_source("request failed", err.into()))?;
 
     if response.status().is_success() {
-        let obj: Single<T> = response.json().map_err(|err| {
+        let obj: T = response.json().map_err(|err| {
             SawtoothClientError::new_with_source("failed to deserialize response body", err.into())
         })?;
-        Ok(Some(obj.data))
+        Ok(Some(obj))
     } else if response.status().as_u16() == 404 {
         Ok(None)
     } else {
