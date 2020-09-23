@@ -532,7 +532,7 @@ impl Iterator for CommitStoreByHeightIterator {
         if block.is_some() {
             self.next = match self.direction {
                 ByHeightDirection::Increasing => self.next.map(|next| next + 1),
-                ByHeightDirection::Decreasing => self.next.map(|next| next - 1),
+                ByHeightDirection::Decreasing => self.next.and_then(|next| next.checked_sub(1)),
             }
         }
         block
