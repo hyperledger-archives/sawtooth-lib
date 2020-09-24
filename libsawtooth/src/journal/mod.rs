@@ -26,4 +26,5 @@ pub mod commit_store;
 pub mod fork_cache;
 pub mod genesis;
 pub mod publisher;
+pub mod state_verifier;
 pub mod validation_rule_enforcer;
