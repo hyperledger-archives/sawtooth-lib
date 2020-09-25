@@ -1,5 +1,23 @@
 # Release Notes
 
+## Changes in libsawtooth 0.6.1
+
+### Experimental Changes
+
+- Add the `sawtooth::journal::state_verifier` module with its function
+  `verify_state` to recompute any missing state root hashes.
+- Fix a deadlock in the block publisher's spawned thread.
+- Fix an integer underflow bug in the commit store.
+- Add the following capabilities to the Sawtooth client:
+  - Get transaction
+  - Get block
+  - Get state
+  - List states
+- Fix deserialization of errors in the REST API client by using the proper
+  deserialization struct.
+- Fix deserialization of paging in the REST API client's paged iterator by using
+  the proper deserialization struct.
+
 ## Changes in libsawtooth 0.6.0
 
 ### Highlights
