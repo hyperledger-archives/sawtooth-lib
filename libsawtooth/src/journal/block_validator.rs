@@ -114,25 +114,6 @@ pub struct BlockValidationResult {
     pub state_changes: Vec<StateChange>,
 }
 
-impl BlockValidationResult {
-    #[allow(dead_code)]
-    fn new(
-        block_id: String,
-        execution_results: Vec<TransactionReceipt>,
-        num_transactions: u64,
-        status: BlockStatus,
-        state_changes: Vec<StateChange>,
-    ) -> Self {
-        BlockValidationResult {
-            block_id,
-            execution_results,
-            num_transactions,
-            status,
-            state_changes,
-        }
-    }
-}
-
 pub trait BlockStatusStore: Clone + Send + Sync {
     fn status(&self, block_id: &str) -> BlockStatus;
 }
@@ -866,13 +847,13 @@ mod test {
         let validation2: Box<dyn BlockValidation<ReturnValue = ()>> =
             Box::new(Mock2::new(Ok(()), Ok(())));
         let validations = vec![validation1, validation2];
-        let state_block_validation = Mock1::new(Ok(BlockValidationResult::new(
-            "".into(),
-            vec![],
-            0,
-            BlockStatus::Valid,
-            vec![],
-        )));
+        let state_block_validation = Mock1::new(Ok(BlockValidationResult {
+            block_id: "".into(),
+            execution_results: vec![],
+            num_transactions: 0,
+            status: BlockStatus::Valid,
+            state_changes: vec![],
+        }));
 
         let validation_processor =
             BlockValidationProcessor::new(block_manager, validations, state_block_validation);
