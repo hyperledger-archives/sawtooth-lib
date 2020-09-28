@@ -350,7 +350,7 @@ impl BlockValidator {
         blocks: Vec<BlockPair>,
         response_sender: Sender<ChainControllerRequest>,
     ) {
-        for block in self.block_scheduler.schedule(blocks.to_vec()) {
+        for block in self.block_scheduler.schedule(blocks) {
             let tx = self.return_sender();
             if let Err(err) = tx.send((block, response_sender.clone())) {
                 warn!("During submit blocks for verification: {:?}", err);
