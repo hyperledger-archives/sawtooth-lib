@@ -114,25 +114,6 @@ pub struct BlockValidationResult {
     pub state_changes: Vec<StateChange>,
 }
 
-impl BlockValidationResult {
-    #[allow(dead_code)]
-    fn new(
-        block_id: String,
-        execution_results: Vec<TransactionReceipt>,
-        num_transactions: u64,
-        status: BlockStatus,
-        state_changes: Vec<StateChange>,
-    ) -> Self {
-        BlockValidationResult {
-            block_id,
-            execution_results,
-            num_transactions,
-            status,
-            state_changes,
-        }
-    }
-}
-
 pub trait BlockStatusStore: Clone + Send + Sync {
     fn status(&self, block_id: &str) -> BlockStatus;
 }
@@ -369,7 +350,7 @@ impl BlockValidator {
         blocks: Vec<BlockPair>,
         response_sender: Sender<ChainControllerRequest>,
     ) {
-        for block in self.block_scheduler.schedule(blocks.to_vec()) {
+        for block in self.block_scheduler.schedule(blocks) {
             let tx = self.return_sender();
             if let Err(err) = tx.send((block, response_sender.clone())) {
                 warn!("During submit blocks for verification: {:?}", err);
@@ -395,7 +376,7 @@ impl BlockValidator {
     pub fn validate_block(&self, block: &BlockPair) -> Result<(), ValidationError> {
         let (tx, rx) = channel();
         self.submit_blocks_for_verification(vec![block.clone()], tx);
-        match rx.recv() {
+        let res = match rx.recv() {
             Ok(ChainControllerRequest::BlockValidation(block_validation_result)) => {
                 self.block_status_store.insert(block_validation_result);
                 Ok(())
@@ -408,7 +389,11 @@ impl BlockValidator {
                 "Unable to receive block validation result: {}",
                 err
             ))),
-        }
+        };
+
+        self.block_scheduler.done(block.block().header_signature());
+
+        res
     }
 }
 
@@ -866,13 +851,13 @@ mod test {
         let validation2: Box<dyn BlockValidation<ReturnValue = ()>> =
             Box::new(Mock2::new(Ok(()), Ok(())));
         let validations = vec![validation1, validation2];
-        let state_block_validation = Mock1::new(Ok(BlockValidationResult::new(
-            "".into(),
-            vec![],
-            0,
-            BlockStatus::Valid,
-            vec![],
-        )));
+        let state_block_validation = Mock1::new(Ok(BlockValidationResult {
+            block_id: "".into(),
+            execution_results: vec![],
+            num_transactions: 0,
+            status: BlockStatus::Valid,
+            state_changes: vec![],
+        }));
 
         let validation_processor =
             BlockValidationProcessor::new(block_manager, validations, state_block_validation);
