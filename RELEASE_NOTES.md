@@ -1,5 +1,12 @@
 # Release Notes
 
+## Changes in libsawtooth 0.6.2
+
+### Experimental Changes
+
+- Fix an issue with the use of `BlockValidator::validate_block` where the
+  genesis block was never being marked as done in the `BlockScheduler`.
+
 ## Changes in libsawtooth 0.6.1
 
 ### Experimental Changes
