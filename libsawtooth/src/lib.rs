@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(any(feature = "lmdb-store", feature = "validator-internals"))]
+#[cfg(any(
+    feature = "lmdb-store",
+    feature = "validator-internals",
+    feature = "client"
+))]
 #[macro_use]
 extern crate log;
 #[cfg(feature = "validator-internals")]
