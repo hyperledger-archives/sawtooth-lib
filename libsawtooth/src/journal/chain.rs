@@ -845,23 +845,6 @@ fn handle_block_commit(
                 .state_pruning_manager
                 .update_queue(new_roots.as_slice(), current_roots.as_slice());
 
-            state
-                .block_manager
-                .persist(block.block().header_signature(), COMMIT_STORE)
-                .map_err(|err| {
-                    error!("Error persisting new chain head: {:?}", err);
-                    err
-                })?;
-
-            block.block().batches().iter().for_each(|batch| {
-                if batch.trace() {
-                    debug!(
-                        "TRACE: {}: ChainController.on_block_validated",
-                        batch.header_signature()
-                    )
-                }
-            });
-
             for blk in result.new_chain.iter().rev() {
                 let previous_blocks_state_hash = state
                     .block_manager
@@ -906,6 +889,23 @@ fn handle_block_commit(
                     }
                 }
             }
+
+            state
+                .block_manager
+                .persist(block.block().header_signature(), COMMIT_STORE)
+                .map_err(|err| {
+                    error!("Error persisting new chain head: {:?}", err);
+                    err
+                })?;
+
+            block.block().batches().iter().for_each(|batch| {
+                if batch.trace() {
+                    debug!(
+                        "TRACE: {}: ChainController.on_block_validated",
+                        batch.header_signature()
+                    )
+                }
+            });
 
             let total_committed_txns = match state.chain_reader.count_committed_transactions() {
                 Ok(count) => count,
