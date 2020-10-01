@@ -320,6 +320,7 @@ impl BlockPublisher {
             .map_err(|_| BlockPublisherError::Internal("Candidate block lock poisoned".into()))?;
 
         if let Some(mut candidate_block) = candidate_block.take() {
+            candidate_block.scheduler.finalize()?;
             candidate_block.scheduler.cancel()?;
             Ok(())
         } else {
