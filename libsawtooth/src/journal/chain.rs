@@ -853,25 +853,6 @@ fn handle_block_commit(
                     err
                 })?;
 
-            info!("Chain head updated to {}", block.block());
-
-            consensus_notifier.notify_block_commit(block.block().header_signature());
-
-            counter!(
-                "chain.ChainController.committed_transactions_count",
-                result.transaction_count as u64
-            );
-            gauge!(
-                "chain.ChainController.block_num",
-                block.header().block_num() as i64
-            );
-
-            chain_head_guard.notify_on_chain_updated(
-                block.clone(),
-                result.committed_batches,
-                result.uncommitted_batches,
-            );
-
             block.block().batches().iter().for_each(|batch| {
                 if batch.trace() {
                     debug!(
@@ -940,6 +921,25 @@ fn handle_block_commit(
             gauge!(
                 "chain.ChainController.committed_transactions_gauge",
                 total_committed_txns as i64
+            );
+
+            info!("Chain head updated to {}", block.block());
+
+            consensus_notifier.notify_block_commit(block.block().header_signature());
+
+            counter!(
+                "chain.ChainController.committed_transactions_count",
+                result.transaction_count as u64
+            );
+            gauge!(
+                "chain.ChainController.block_num",
+                block.header().block_num() as i64
+            );
+
+            chain_head_guard.notify_on_chain_updated(
+                block.clone(),
+                result.committed_batches,
+                result.uncommitted_batches,
             );
 
             let chain_head_block_num = block.header().block_num();
