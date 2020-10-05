@@ -1,5 +1,21 @@
 # Release Notes
 
+## Changes in libsawtooth 0.6.3
+
+### Experimental Changes
+
+- Fix a bug in the ChainController where, when a block was committed, consensus
+  would be notified and the chain head updated before the state for that block
+  was saved. This caused a race condition where state would be fetched with an
+  invalid state root hash.
+- Finalize the scheduler on cancel_block in the publisher. Before, the scheduler
+  would only be cancelled. This would cause the scheduler to never shutdown.
+- Fix a bug where, on a fork switch with multiple blocks, the new block would be
+  sent to the chain observers with the receipts from another block.
+- Add `list batch status` command to the sawtooth client and REST API backed
+  client. This function retrieves the committed status of one or more batches
+  with the given batch IDs.
+
 ## Changes in libsawtooth 0.6.2
 
 ### Experimental Changes
