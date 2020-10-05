@@ -817,20 +817,6 @@ fn handle_block_commit(
                 continue;
             }
 
-            // Move Ref-C: Consensus has decided this block should become the new chain
-            // head, so the ChainController will maintain ownership of this ext. ref until a
-            // new chain head replaces it.
-            state.chain_head = Some(
-                state
-                    .block_references
-                    .remove(block.block().header_signature())
-                    .ok_or_else(|| {
-                        ChainControllerError::ConsensusError(
-                            "Consensus has already decided on this block".into(),
-                        )
-                    })?,
-            );
-
             let new_roots = result
                 .new_chain
                 .iter()
@@ -844,23 +830,6 @@ fn handle_block_commit(
             state
                 .state_pruning_manager
                 .update_queue(new_roots.as_slice(), current_roots.as_slice());
-
-            state
-                .block_manager
-                .persist(block.block().header_signature(), COMMIT_STORE)
-                .map_err(|err| {
-                    error!("Error persisting new chain head: {:?}", err);
-                    err
-                })?;
-
-            block.block().batches().iter().for_each(|batch| {
-                if batch.trace() {
-                    debug!(
-                        "TRACE: {}: ChainController.on_block_validated",
-                        batch.header_signature()
-                    )
-                }
-            });
 
             for blk in result.new_chain.iter().rev() {
                 let previous_blocks_state_hash = state
@@ -894,7 +863,7 @@ fn handle_block_commit(
                         let receipts: Vec<TransactionReceipt> =
                             validation_results.execution_results;
                         for observer in &mut state.observers {
-                            observer.chain_update(&block, receipts.as_slice());
+                            observer.chain_update(&blk, receipts.as_slice());
                         }
                     }
                     None => {
@@ -906,6 +875,37 @@ fn handle_block_commit(
                     }
                 }
             }
+
+            // Move Ref-C: Consensus has decided this block should become the new chain
+            // head, so the ChainController will maintain ownership of this ext. ref until a
+            // new chain head replaces it.
+            state.chain_head = Some(
+                state
+                    .block_references
+                    .remove(block.block().header_signature())
+                    .ok_or_else(|| {
+                        ChainControllerError::ConsensusError(
+                            "Consensus has already decided on this block".into(),
+                        )
+                    })?,
+            );
+
+            state
+                .block_manager
+                .persist(block.block().header_signature(), COMMIT_STORE)
+                .map_err(|err| {
+                    error!("Error persisting new chain head: {:?}", err);
+                    err
+                })?;
+
+            block.block().batches().iter().for_each(|batch| {
+                if batch.trace() {
+                    debug!(
+                        "TRACE: {}: ChainController.on_block_validated",
+                        batch.header_signature()
+                    )
+                }
+            });
 
             let total_committed_txns = match state.chain_reader.count_committed_transactions() {
                 Ok(count) => count,
