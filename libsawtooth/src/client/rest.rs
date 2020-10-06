@@ -15,10 +15,12 @@
 //! A client for interacting with sawtooth services.
 
 use base64::decode;
-use reqwest::blocking::Client;
+use protobuf::Message;
+use reqwest::{blocking::Client, header};
 use serde::Deserialize;
 use std::collections::VecDeque;
-use std::time::Duration;
+use std::fs::File;
+use std::time::{Duration, Instant};
 
 use crate::client::SawtoothClient;
 use crate::client::{
@@ -27,6 +29,7 @@ use crate::client::{
     SingleState as ClientSingleState, State as ClientState, Status as ClientStatus,
     Transaction as ClientTransaction, TransactionHeader as ClientTransactionHeader,
 };
+use crate::protos::batch::BatchList;
 
 pub use super::error::SawtoothClientError;
 
@@ -149,6 +152,84 @@ impl SawtoothClient for RestApiSawtoothClient {
 
         Ok(get::<StatusList>(&url, error_msg)?.map(convert_status_list))?.transpose()
     }
+    /// Send one or more batches to the sawtooth REST API to be submitted to the validator
+    fn submit_batches(
+        &self,
+        filename: String,
+        wait: Option<Duration>,
+        size_limit: usize,
+    ) -> Result<Vec<String>, SawtoothClientError> {
+        let mut url = format!("{}/batches", &self.url);
+        if let Some(wait_time) = wait {
+            url = url + &format!("?wait={}", wait_time.as_secs().to_string());
+        }
+
+        let mut batch_file = File::open(filename).map_err(|err| {
+            SawtoothClientError::new_with_source("failed to open batch file", err.into())
+        })?;
+
+        let batch_list: BatchList =
+            protobuf::parse_from_reader(&mut batch_file).map_err(|err| {
+                SawtoothClientError::new_with_source("unable to parse file contents", err.into())
+            })?;
+        let len = batch_list.batches.len();
+        let batch_ids = batch_list
+            .batches
+            .iter()
+            .map(|batch| batch.header_signature.clone())
+            .collect();
+
+        let batch_lists = split_batches(batch_list, size_limit);
+
+        let start = Instant::now();
+
+        for list in batch_lists.into_iter() {
+            let submit_list = list.write_to_bytes().map_err(|err| {
+                SawtoothClientError::new_with_source(
+                    "failed to get bytes from batch list",
+                    err.into(),
+                )
+            })?;
+            let request = Client::new()
+                .post(&url)
+                .header(header::CONTENT_TYPE, "application/octet-stream")
+                .body(submit_list);
+            let response = request.send().map_err(|err| {
+                SawtoothClientError::new_with_source("request failed", err.into())
+            })?;
+            if response.status().as_u16() != 202 {
+                let status = response.status();
+                let msg: ErrorResponse = response.json().map_err(|err| {
+                    SawtoothClientError::new_with_source(
+                        "failed to deserialize error response body",
+                        err.into(),
+                    )
+                })?;
+                return Err(SawtoothClientError::new(&format!("{} {}", status, msg)));
+            }
+        }
+        info!(
+            "batches: {},  batch/sec: {}",
+            len,
+            if len == 0 {
+                0.0f64
+            } else {
+                len as f64 / (((start.elapsed()).as_millis() as f64) / 1000f64)
+            }
+        );
+        Ok(batch_ids)
+    }
+}
+
+/// Split a batch list into multiple batch lists of size 'size_limit'
+fn split_batches(batch_list: BatchList, size_limit: usize) -> Vec<BatchList> {
+    let mut batch_lists = Vec::new();
+    for chunk in batch_list.batches.chunks(size_limit) {
+        let mut new_batch_list = BatchList::new();
+        new_batch_list.set_batches(protobuf::RepeatedField::from_vec(chunk.to_vec()));
+        batch_lists.push(new_batch_list);
+    }
+    batch_lists
 }
 
 /// used for deserializing single objects returned by the REST API.

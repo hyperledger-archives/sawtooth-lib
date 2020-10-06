@@ -59,6 +59,19 @@ pub trait SawtoothClient {
         batch_ids: Vec<&str>,
         wait: Option<Duration>,
     ) -> Result<Option<Vec<Status>>, SawtoothClientError>;
+    /// Send one or more batches to the validator.
+    ///
+    /// # Arguments
+    ///
+    /// * `filename` - The name of the file containing the batches to be submitted
+    /// * `wait` - The time, in seconds, to wait for batches to submit
+    /// * `size_limit` - The maximum batch list size, batches are split for processing if they exceed this size
+    fn submit_batches(
+        &self,
+        filename: String,
+        wait: Option<Duration>,
+        size_limit: usize,
+    ) -> Result<Vec<String>, SawtoothClientError>;
 }
 
 /// A struct that represents a batch.
