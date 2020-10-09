@@ -32,12 +32,18 @@ pub struct StatePruningManager {
     state_database: LmdbDatabase,
 }
 
-#[derive(Eq, PartialEq, Debug, Ord)]
+#[derive(Eq, PartialEq, Debug)]
 struct PruneCandidate(u64, Vec<u8>);
+
+impl Ord for PruneCandidate {
+    fn cmp(&self, other: &PruneCandidate) -> Ordering {
+        Ordering::reverse(self.0.cmp(&other.0))
+    }
+}
 
 impl PartialOrd for PruneCandidate {
     fn partial_cmp(&self, other: &PruneCandidate) -> Option<Ordering> {
-        Some(Ordering::reverse(self.0.cmp(&other.0)))
+        Some(self.cmp(other))
     }
 }
 
