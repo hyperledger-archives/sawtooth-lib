@@ -39,11 +39,35 @@ pub struct RestApiSawtoothClient {
     url: String,
 }
 
-impl RestApiSawtoothClient {
-    /// Create a new 'RestApiSawtoothClient' with the given base 'url'. The URL should be the bind
-    /// endpoint of the sawtooth REST API.
-    pub fn new(url: &str) -> Self {
-        Self { url: url.into() }
+/// Builder for building a RestApiSawtoothClient
+#[derive(Default)]
+pub struct RestApiSawtoothClientBuilder {
+    url: Option<String>,
+}
+
+impl RestApiSawtoothClientBuilder {
+    /// Creates a new RestApiSawtoothClientBuilder
+    pub fn new() -> Self {
+        RestApiSawtoothClientBuilder::default()
+    }
+    /// Sets the url
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - The URL of the bind endpoint of the sawtooth REST API.
+    pub fn with_url(mut self, url: &str) -> Self {
+        self.url = Some(url.into());
+        self
+    }
+    /// Builds a RestApiSawtoothClient
+    ///
+    /// Returns an error if the url is not set
+    pub fn build(self) -> Result<RestApiSawtoothClient, SawtoothClientError> {
+        Ok(RestApiSawtoothClient {
+            url: self.url.ok_or_else(|| {
+                SawtoothClientError::new("Error building RestApiSawtoothClient, missing url")
+            })?,
+        })
     }
 }
 
