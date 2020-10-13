@@ -14,7 +14,7 @@
 
 //! A client for interacting with sawtooth services.
 
-use base64::decode;
+use base64::{decode, encode};
 use protobuf::Message;
 use reqwest::{blocking::Client, header};
 use serde::Deserialize;
@@ -37,12 +37,14 @@ pub use super::error::SawtoothClientError;
 /// communication with the REST API.
 pub struct RestApiSawtoothClient {
     url: String,
+    auth: Option<String>,
 }
 
 /// Builder for building a RestApiSawtoothClient
 #[derive(Default)]
 pub struct RestApiSawtoothClientBuilder {
     url: Option<String>,
+    auth: Option<(String, String)>,
 }
 
 impl RestApiSawtoothClientBuilder {
@@ -59,6 +61,15 @@ impl RestApiSawtoothClientBuilder {
         self.url = Some(url.into());
         self
     }
+    /// Sets auth
+    ///
+    /// # Arguments
+    ///
+    /// * `auth` - The credentials of the request authorizer.
+    pub fn with_basic_auth(mut self, username: &str, password: &str) -> Self {
+        self.auth = Some((username.into(), password.into()));
+        self
+    }
     /// Builds a RestApiSawtoothClient
     ///
     /// Returns an error if the url is not set
@@ -67,6 +78,7 @@ impl RestApiSawtoothClientBuilder {
             url: self.url.ok_or_else(|| {
                 SawtoothClientError::new("Error building RestApiSawtoothClient, missing url")
             })?,
+            auth: self.auth.map(|auth| format!("{}:{}", auth.0, auth.1)),
         })
     }
 }
@@ -78,7 +90,8 @@ impl SawtoothClient for RestApiSawtoothClient {
         let url = format!("{}/batches/{}", &self.url, &batch_id);
         let error_msg = &format!("unable to get batch {}", batch_id);
 
-        Ok(get::<Single<Batch>>(&url, error_msg)?.map(|singlebatch| singlebatch.data.into()))
+        Ok(get::<Single<Batch>>(&url, error_msg, self.auth.as_deref())?
+            .map(|singlebatch| singlebatch.data.into()))
     }
     /// List all batches in the current blockchain
     fn list_batches(
@@ -89,7 +102,7 @@ impl SawtoothClient for RestApiSawtoothClient {
     > {
         let url = format!("{}/batches", &self.url);
 
-        Ok(Box::new(PagingIter::new(&url)?.map(
+        Ok(Box::new(PagingIter::new(&url, self.auth.as_deref())?.map(
             |item: Result<Batch, _>| item.map(|batch| batch.into()),
         )))
     }
@@ -101,7 +114,10 @@ impl SawtoothClient for RestApiSawtoothClient {
         let url = format!("{}/transactions/{}", &self.url, &transaction_id);
         let error_msg = &format!("unable to get transaction {}", transaction_id);
 
-        Ok(get::<Single<Transaction>>(&url, error_msg)?.map(|singletxn| singletxn.data.into()))
+        Ok(
+            get::<Single<Transaction>>(&url, error_msg, self.auth.as_deref())?
+                .map(|singletxn| singletxn.data.into()),
+        )
     }
     /// List all transactions in the current blockchain.
     fn list_transactions(
@@ -112,7 +128,7 @@ impl SawtoothClient for RestApiSawtoothClient {
     > {
         let url = format!("{}/transactions", &self.url);
 
-        Ok(Box::new(PagingIter::new(&url)?.map(
+        Ok(Box::new(PagingIter::new(&url, self.auth.as_deref())?.map(
             |item: Result<Transaction, _>| item.map(|txn| txn.into()),
         )))
     }
@@ -121,7 +137,8 @@ impl SawtoothClient for RestApiSawtoothClient {
         let url = format!("{}/blocks/{}", &self.url, &block_id);
         let error_msg = &format!("unable to get block {}", block_id);
 
-        Ok(get::<Single<Block>>(&url, error_msg)?.map(|singleblock| singleblock.data.into()))
+        Ok(get::<Single<Block>>(&url, error_msg, self.auth.as_deref())?
+            .map(|singleblock| singleblock.data.into()))
     }
     /// List all blocks in the current blockchain
     fn list_blocks(
@@ -132,7 +149,7 @@ impl SawtoothClient for RestApiSawtoothClient {
     > {
         let url = format!("{}/blocks", &self.url);
 
-        Ok(Box::new(PagingIter::new(&url)?.map(
+        Ok(Box::new(PagingIter::new(&url, self.auth.as_deref())?.map(
             |item: Result<Block, _>| item.map(|block| block.into()),
         )))
     }
@@ -141,7 +158,8 @@ impl SawtoothClient for RestApiSawtoothClient {
         let url = format!("{}/state/{}", &self.url, &address);
         let error_msg = &format!("unable to get state at address {}", address);
 
-        Ok(get::<SingleState>(&url, error_msg)?.map(convert_single_state))?.transpose()
+        Ok(get::<SingleState>(&url, error_msg, self.auth.as_deref())?.map(convert_single_state))?
+            .transpose()
     }
     /// List all state entries in the current blockchain
     fn list_states(
@@ -153,7 +171,8 @@ impl SawtoothClient for RestApiSawtoothClient {
         let url = format!("{}/state", &self.url);
 
         Ok(Box::new(
-            PagingIter::new(&url)?.map(|item: Result<State, _>| item.map(convert_state)?),
+            PagingIter::new(&url, self.auth.as_deref())?
+                .map(|item: Result<State, _>| item.map(convert_state)?),
         ))
     }
     /// List the committed status of one or more batches with the given batch_ids.
@@ -174,7 +193,8 @@ impl SawtoothClient for RestApiSawtoothClient {
 
         let error_msg = &format!("unable to get the status for batches: {}", ids);
 
-        Ok(get::<StatusList>(&url, error_msg)?.map(convert_status_list))?.transpose()
+        Ok(get::<StatusList>(&url, error_msg, self.auth.as_deref())?.map(convert_status_list))?
+            .transpose()
     }
     /// Send one or more batches to the sawtooth REST API to be submitted to the validator
     fn submit_batches(
@@ -214,13 +234,23 @@ impl SawtoothClient for RestApiSawtoothClient {
                     err.into(),
                 )
             })?;
-            let request = Client::new()
+            let mut request = Client::new()
                 .post(&url)
                 .header(header::CONTENT_TYPE, "application/octet-stream")
                 .body(submit_list);
+            if let Some(ref auth) = &self.auth {
+                request = request.header("Authorization", format!("Basic {}", encode(auth)));
+            }
             let response = request.send().map_err(|err| {
                 SawtoothClientError::new_with_source("request failed", err.into())
             })?;
+            if response.status().as_u16() == 401 {
+                return Err(SawtoothClientError::new(&format!(
+                    "{}, {}",
+                    response.status(),
+                    "failed to authenticate"
+                )));
+            }
             if response.status().as_u16() != 202 {
                 let status = response.status();
                 let msg: ErrorResponse = response.json().map_err(|err| {
@@ -257,11 +287,14 @@ fn split_batches(batch_list: BatchList, size_limit: usize) -> Vec<BatchList> {
 }
 
 /// used for deserializing single objects returned by the REST API.
-fn get<T>(url: &str, error_msg: &str) -> Result<Option<T>, SawtoothClientError>
+fn get<T>(url: &str, error_msg: &str, auth: Option<&str>) -> Result<Option<T>, SawtoothClientError>
 where
     T: for<'a> serde::de::Deserialize<'a> + Sized,
 {
-    let request = Client::new().get(url);
+    let mut request = Client::new().get(url);
+    if let Some(auth) = auth {
+        request = request.header("Authorization", format!("Basic {}", encode(auth)));
+    }
     let response = request
         .send()
         .map_err(|err| SawtoothClientError::new_with_source("request failed", err.into()))?;
@@ -273,6 +306,12 @@ where
         Ok(Some(obj))
     } else if response.status().as_u16() == 404 {
         Ok(None)
+    } else if response.status().as_u16() == 401 {
+        Err(SawtoothClientError::new(&format!(
+            "{}, {}",
+            response.status(),
+            "failed to authenticate"
+        )))
     } else {
         let status = response.status();
         let msg: ErrorResponse = response.json().map_err(|err| {
@@ -295,6 +334,7 @@ where
 {
     next: Option<String>,
     cache: VecDeque<T>,
+    auth: Option<String>,
 }
 
 impl<T> PagingIter<T>
@@ -303,10 +343,11 @@ where
 {
     /// Create a new 'PagingIter' which will make a call to the REST API and load the initial
     /// cache with the first page of items.
-    fn new(url: &str) -> Result<Self, SawtoothClientError> {
+    fn new(url: &str, auth: Option<&str>) -> Result<Self, SawtoothClientError> {
         let mut new_iter = Self {
             next: Some(url.to_string()),
             cache: VecDeque::with_capacity(0),
+            auth: auth.map(String::from),
         };
         new_iter.reload_cache()?;
         Ok(new_iter)
@@ -316,11 +357,20 @@ where
     /// reload the cache with the next page of items.
     fn reload_cache(&mut self) -> Result<(), SawtoothClientError> {
         if let Some(url) = &self.next.take() {
-            let request = Client::new().get(url);
+            let mut request = Client::new().get(url);
+            if let Some(auth) = &self.auth {
+                request = request.header("Authorization", format!("Basic {}", encode(auth)));
+            }
             let response = request.send().map_err(|err| {
                 SawtoothClientError::new_with_source("request failed", err.into())
             })?;
-
+            if response.status().as_u16() == 401 {
+                return Err(SawtoothClientError::new(&format!(
+                    "{}, {}",
+                    response.status(),
+                    "failed to authenticate"
+                )));
+            }
             let page: Page<T> = response.json().map_err(|err| {
                 SawtoothClientError::new_with_source(
                     "failed to deserialize response body",
