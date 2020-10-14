@@ -19,6 +19,7 @@ pub mod rest;
 
 pub use error::SawtoothClientError;
 
+use serde::Serialize;
 use std::time::Duration;
 
 /// A trait that can be used to interact with a sawtooth node.
@@ -75,25 +76,25 @@ pub trait SawtoothClient {
 }
 
 /// A struct that represents a batch.
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Batch {
     pub header: Header,
     pub header_signature: String,
     pub trace: bool,
     pub transactions: Vec<Transaction>,
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Header {
     pub signer_public_key: String,
     pub transaction_ids: Vec<String>,
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Transaction {
     pub header: TransactionHeader,
     pub header_signature: String,
     pub payload: String,
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct TransactionHeader {
     pub batcher_public_key: String,
     pub dependencies: Vec<String>,
@@ -105,13 +106,13 @@ pub struct TransactionHeader {
     pub payload_sha512: String,
     pub signer_public_key: String,
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Block {
     pub header: BlockHeader,
     pub header_signature: String,
     pub batches: Vec<Batch>,
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct BlockHeader {
     pub batch_ids: Vec<String>,
     pub block_num: String,
@@ -120,23 +121,23 @@ pub struct BlockHeader {
     pub signer_public_key: String,
     pub state_root_hash: String,
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct State {
     pub address: String,
     pub data: Vec<u8>,
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct SingleState {
     pub data: Vec<u8>,
     pub head: String,
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Status {
     pub id: String,
     pub invalid_transactions: Vec<InvalidTransaction>,
     pub status: String,
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct InvalidTransaction {
     pub id: String,
     pub message: String,
