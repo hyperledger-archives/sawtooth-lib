@@ -1,5 +1,20 @@
 # Release Notes
 
+## Changes in libsawtooth 0.6.4
+
+### Experimental Changes
+
+- In the sawtooth client, remove the existing constructor for
+  `RestApiSawtoothClient` and create a builder. The builder includes a
+  `with_url` function to set the url field of the struct.
+- Modify the REST API backed implementation of the sawtooth client to allow
+  for basic authentication when the REST API is behind a Basic Auth proxy. Add
+  a function to the `RestApiSawtoothClientBuilder` to set the auth field when
+  creating a new `RestApiSawtoothClient`.
+- Add the `submit batches` command to the sawtooth client and REST API backed
+  implementation. The function sends one or more batches to the sawtooth REST
+  API to be submitted by the validator.
+
 ## Changes in libsawtooth 0.6.3
 
 ### Experimental Changes
