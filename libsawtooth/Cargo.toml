@@ -26,7 +26,7 @@ description = """\
 [dependencies]
 base64 = { version = "0.12", optional = true }
 cbor-codec = { version = "0.7", optional = true }
-cylinder = "0.1"
+cylinder = "0.2"
 hex = "0.4"
 log = "0.4"
 lmdb-zero = { version = "0.4", optional = true }
