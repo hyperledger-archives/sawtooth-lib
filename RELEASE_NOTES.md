@@ -1,5 +1,9 @@
 # Release Notes
 
+## Changes in libsawtooth 0.6.5
+
+- Update the `cylinder` dependency to version `0.2`
+
 ## Changes in libsawtooth 0.6.4
 
 ### Experimental Changes
