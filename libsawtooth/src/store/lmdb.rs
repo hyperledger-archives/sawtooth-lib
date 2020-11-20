@@ -24,7 +24,14 @@ use lmdb_zero::error::LmdbResultExt;
 
 use super::{AsBytes, FromBytes, OrderedStore, OrderedStoreError, OrderedStoreRange};
 
+// 32-bit architectures
+#[cfg(any(target_arch = "x86", target_arch = "arm"))]
+const DEFAULT_SIZE: usize = 1 << 30; // 1024 ** 3
+
+// Remaining architectures are assumed to be 64-bit
+#[cfg(not(any(target_arch = "x86", target_arch = "arm")))]
 const DEFAULT_SIZE: usize = 1 << 40; // 1024 ** 4
+
 const NUM_DBS: u32 = 3; // main DB, index-to-key DB, and key-to-index DB
 const ITER_CACHE_SIZE: usize = 64; // num of items at a time that are loaded into memory by iter
 
