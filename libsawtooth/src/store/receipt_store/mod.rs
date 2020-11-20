@@ -91,7 +91,7 @@ impl TransactionReceiptStore {
         let idx = self
             .0
             .get_index_by_key(&id)?
-            .ok_or_else(|| TransactionReceiptStoreError::IdNotFound)?;
+            .ok_or(TransactionReceiptStoreError::IdNotFound)?;
         let range = OrderedStoreRange {
             start: Bound::Excluded(idx),
             end: Bound::Unbounded,
