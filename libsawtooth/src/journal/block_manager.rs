@@ -18,7 +18,7 @@
 #![allow(unknown_lints)]
 
 use std::collections::{HashMap, HashSet};
-use std::iter::{FromIterator, Peekable};
+use std::iter::Peekable;
 use std::sync::{Arc, RwLock};
 
 use crate::journal::block_store::{
@@ -675,15 +675,14 @@ impl BlockManager {
     }
 
     fn block_contains_any_transaction(&self, block: &BlockPair, ids: &[&str]) -> Option<String> {
-        let transaction_ids: HashSet<&str> = HashSet::from_iter(
-            block
-                .block()
-                .batches()
-                .iter()
-                .flat_map(|batch| batch.transactions())
-                .map(|txn| txn.header_signature()),
-        );
-        let comparison_transaction_ids = HashSet::from_iter(ids.iter().cloned());
+        let transaction_ids: HashSet<&str> = block
+            .block()
+            .batches()
+            .iter()
+            .flat_map(|batch| batch.transactions())
+            .map(|txn| txn.header_signature())
+            .collect();
+        let comparison_transaction_ids = ids.iter().cloned().collect::<HashSet<_>>();
         transaction_ids
             .intersection(&comparison_transaction_ids)
             .next()
@@ -691,9 +690,13 @@ impl BlockManager {
     }
 
     fn block_contains_any_batch(&self, block: &BlockPair, ids: &[&str]) -> Option<String> {
-        let batch_ids: HashSet<&str> =
-            HashSet::from_iter(block.block().batches().iter().map(|b| b.header_signature()));
-        let comparison_batch_ids = HashSet::from_iter(ids.iter().cloned());
+        let batch_ids: HashSet<&str> = block
+            .block()
+            .batches()
+            .iter()
+            .map(|b| b.header_signature())
+            .collect();
+        let comparison_batch_ids = ids.iter().cloned().collect::<HashSet<_>>();
         batch_ids
             .intersection(&comparison_batch_ids)
             .next()
