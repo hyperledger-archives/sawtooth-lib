@@ -38,7 +38,6 @@ mod error;
 
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
-use std::iter::FromIterator;
 use std::sync::{
     mpsc::{channel, Receiver, Sender},
     Arc, Mutex, RwLock,
@@ -261,13 +260,12 @@ impl BlockPublisher {
             }
 
             // Remove all batches from the pool that were executed for this block
-            let executed_batch_ids = HashSet::from_iter(
-                candidate_block
-                    .valid_batches
-                    .iter()
-                    .chain(candidate_block.invalid_batches.iter())
-                    .map(|batch| batch.header_signature()),
-            );
+            let executed_batch_ids = candidate_block
+                .valid_batches
+                .iter()
+                .chain(candidate_block.invalid_batches.iter())
+                .map(|batch| batch.header_signature())
+                .collect::<HashSet<_>>();
             self.pending_batches
                 .write()
                 .map_err(|_| BlockPublisherError::Internal("Pending Batches lock poisoned".into()))?
