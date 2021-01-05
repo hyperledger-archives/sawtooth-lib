@@ -72,7 +72,7 @@ impl std::fmt::Display for Block {
 
 impl FromBytes<Block> for Block {
     fn from_bytes(bytes: &[u8]) -> Result<Self, ProtoConversionError> {
-        protobuf::parse_from_bytes::<BlockProto>(bytes)
+        Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get Block from bytes".to_string(),
@@ -179,7 +179,7 @@ impl std::fmt::Display for BlockHeader {
 
 impl FromBytes<BlockHeader> for BlockHeader {
     fn from_bytes(bytes: &[u8]) -> Result<Self, ProtoConversionError> {
-        protobuf::parse_from_bytes::<BlockHeaderProto>(bytes)
+        Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get BlockHeader from bytes".to_string(),

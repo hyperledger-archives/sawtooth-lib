@@ -28,7 +28,7 @@ use crate::protos::{
 
 impl FromBytes<Batch> for Batch {
     fn from_bytes(bytes: &[u8]) -> Result<Self, ProtoConversionError> {
-        protobuf::parse_from_bytes::<BatchProto>(bytes)
+        Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get Batch from bytes".to_string(),
@@ -83,7 +83,7 @@ impl IntoProto<BatchProto> for Batch {}
 
 impl FromBytes<Vec<Batch>> for Vec<Batch> {
     fn from_bytes(bytes: &[u8]) -> Result<Self, ProtoConversionError> {
-        protobuf::parse_from_bytes::<BatchList>(bytes)
+        Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get Vec<Batch> from bytes".to_string(),
@@ -132,7 +132,7 @@ impl IntoProto<BatchList> for Vec<Batch> {}
 
 impl FromBytes<BatchHeader> for BatchHeader {
     fn from_bytes(bytes: &[u8]) -> Result<Self, ProtoConversionError> {
-        protobuf::parse_from_bytes::<BatchHeaderProto>(bytes)
+        Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get BatchHeader from bytes".to_string(),

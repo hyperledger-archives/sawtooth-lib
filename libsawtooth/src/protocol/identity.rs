@@ -48,7 +48,7 @@ impl Policy {
 
 impl FromBytes<Policy> for Policy {
     fn from_bytes(bytes: &[u8]) -> Result<Self, ProtoConversionError> {
-        protobuf::parse_from_bytes::<PolicyProto>(bytes)
+        Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get Policy from bytes".to_string(),
@@ -108,7 +108,7 @@ impl IntoProto<PolicyProto> for Policy {}
 
 impl FromBytes<Vec<Policy>> for Vec<Policy> {
     fn from_bytes(bytes: &[u8]) -> Result<Self, ProtoConversionError> {
-        protobuf::parse_from_bytes::<PolicyList>(bytes)
+        Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get Vec<Policy> from bytes".to_string(),
@@ -164,7 +164,7 @@ pub enum Permission {
 
 impl FromBytes<Permission> for Permission {
     fn from_bytes(bytes: &[u8]) -> Result<Self, ProtoConversionError> {
-        protobuf::parse_from_bytes::<Policy_Entry>(bytes)
+        Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get Permission from bytes".to_string(),
@@ -275,7 +275,7 @@ impl Role {
 
 impl FromBytes<Role> for Role {
     fn from_bytes(bytes: &[u8]) -> Result<Self, ProtoConversionError> {
-        protobuf::parse_from_bytes::<RoleProto>(bytes)
+        Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get Role from bytes".to_string(),
@@ -324,7 +324,7 @@ impl IntoProto<RoleProto> for Role {}
 
 impl FromBytes<Vec<Role>> for Vec<Role> {
     fn from_bytes(bytes: &[u8]) -> Result<Self, ProtoConversionError> {
-        protobuf::parse_from_bytes::<RoleList>(bytes)
+        Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get Vec<Role> from bytes".to_string(),

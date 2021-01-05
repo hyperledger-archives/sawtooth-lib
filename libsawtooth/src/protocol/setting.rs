@@ -45,7 +45,7 @@ impl Setting {
 
 impl FromBytes<Setting> for Setting {
     fn from_bytes(bytes: &[u8]) -> Result<Self, ProtoConversionError> {
-        protobuf::parse_from_bytes::<Setting_Entry>(bytes)
+        Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get Setting from bytes".to_string(),
@@ -93,7 +93,7 @@ impl IntoProto<Setting_Entry> for Setting {}
 
 impl FromBytes<Vec<Setting>> for Vec<Setting> {
     fn from_bytes(bytes: &[u8]) -> Result<Self, ProtoConversionError> {
-        protobuf::parse_from_bytes::<SettingProto>(bytes)
+        Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get Vec<Setting> from bytes".to_string(),

@@ -212,10 +212,9 @@ impl SawtoothClient for RestApiSawtoothClient {
             SawtoothClientError::new_with_source("failed to open batch file", err.into())
         })?;
 
-        let batch_list: BatchList =
-            protobuf::parse_from_reader(&mut batch_file).map_err(|err| {
-                SawtoothClientError::new_with_source("unable to parse file contents", err.into())
-            })?;
+        let batch_list: BatchList = Message::parse_from_reader(&mut batch_file).map_err(|err| {
+            SawtoothClientError::new_with_source("unable to parse file contents", err.into())
+        })?;
         let len = batch_list.batches.len();
         let batch_ids = batch_list
             .batches
