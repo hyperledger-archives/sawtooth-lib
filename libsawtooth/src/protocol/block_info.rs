@@ -76,7 +76,7 @@ impl BlockInfo {
 
 impl FromBytes<BlockInfo> for BlockInfo {
     fn from_bytes(bytes: &[u8]) -> Result<Self, ProtoConversionError> {
-        protobuf::parse_from_bytes::<BlockInfoTxnProto>(bytes)
+        Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get BlockInfo from bytes".to_string(),

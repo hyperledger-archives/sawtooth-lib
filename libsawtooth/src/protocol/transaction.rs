@@ -28,7 +28,7 @@ use crate::protos::{
 
 impl FromBytes<Transaction> for Transaction {
     fn from_bytes(bytes: &[u8]) -> Result<Self, ProtoConversionError> {
-        protobuf::parse_from_bytes::<TransactionProto>(bytes)
+        Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get Transaction from bytes".to_string(),
@@ -81,7 +81,7 @@ impl IntoProto<TransactionProto> for Transaction {}
 
 impl FromBytes<TransactionHeader> for TransactionHeader {
     fn from_bytes(bytes: &[u8]) -> Result<Self, ProtoConversionError> {
-        protobuf::parse_from_bytes::<TransactionHeaderProto>(bytes)
+        Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get TransactionHeader from bytes".to_string(),

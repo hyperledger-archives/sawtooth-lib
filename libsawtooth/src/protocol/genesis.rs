@@ -43,7 +43,7 @@ impl GenesisData {
 
 impl FromBytes<GenesisData> for GenesisData {
     fn from_bytes(bytes: &[u8]) -> Result<Self, ProtoConversionError> {
-        protobuf::parse_from_bytes::<GenesisDataProto>(bytes)
+        Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get GenesisData from bytes".to_string(),
