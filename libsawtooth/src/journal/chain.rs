@@ -582,9 +582,7 @@ impl ChainController {
             let chain_thread_builder = thread::Builder::new().name("ChainThread".into());
             chain_thread_builder
                 .spawn(move || {
-                    if let Err(err) = chain_thread.run() {
-                        error!("Error occurred during ChainController loop: {:?}", err);
-                    }
+                    chain_thread.run();
                 })
                 .expect("Unable to start ChainThread");
         }
@@ -680,7 +678,7 @@ fn on_block_received(
     chain_head_lock: &ChainHeadLock,
     block_validator: &BlockValidator,
     block_validation_results: &BlockValidationResultStore,
-) -> Result<(), ChainControllerError> {
+) {
     if state.chain_head.is_none() {
         if let Some(Some(block)) = state.block_manager.get(&[&block_id]).next() {
             if let Err(err) = set_genesis(
@@ -699,7 +697,6 @@ fn on_block_received(
         } else {
             warn!("Received block not in block manager");
         }
-        return Ok(());
     }
 
     let block = {
@@ -770,8 +767,6 @@ fn on_block_received(
             }
         }
     }
-
-    Ok(())
 }
 
 fn handle_block_commit(
@@ -1081,7 +1076,7 @@ impl ChainThread {
         }
     }
 
-    fn run(&mut self) -> Result<(), ChainControllerError> {
+    fn run(&mut self) {
         loop {
             let request = match self
                 .request_receiver
@@ -1108,16 +1103,14 @@ impl ChainThread {
                         .write()
                         .expect("No lock holder should have poisoned the lock");
 
-                    if let Err(err) = on_block_received(
+                    on_block_received(
                         &block_id,
                         &mut state,
                         &self.consensus_notifier,
                         &self.chain_head_lock,
                         &self.block_validator,
                         &self.block_validation_results,
-                    ) {
-                        error!("Error was return from on block received: {:?}", err);
-                    }
+                    );
 
                     if self.exit.load(Ordering::Relaxed) {
                         break;
@@ -1178,7 +1171,6 @@ impl ChainThread {
             }
         }
         self.block_validator.stop();
-        Ok(())
     }
 }
 
