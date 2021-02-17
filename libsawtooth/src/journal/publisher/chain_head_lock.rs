@@ -54,16 +54,11 @@ impl<'a> ChainHeadGuard<'a> {
         committed_batches: Vec<BatchPair>,
         uncommitted_batches: Vec<BatchPair>,
     ) {
-        if let Err(err) = BlockPublisher::on_chain_updated(
+        BlockPublisher::on_chain_updated(
             &mut self.state,
             chain_head,
             committed_batches,
             uncommitted_batches,
-        ) {
-            error!(
-                "An unexpected error occurred when notifying the publisher of a chain update: {}",
-                err
-            );
-        }
+        );
     }
 }

@@ -163,13 +163,11 @@ impl BlockPublisher {
         new_chain_head: BlockPair,
         committed_batches: Vec<BatchPair>,
         uncommitted_batches: Vec<BatchPair>,
-    ) -> Result<(), BlockPublisherError> {
+    ) {
         // Use the new chain head as a sample for calculating the upper bound of the batch pool
         pending_batches.update_limit(new_chain_head.block().batches().len());
         // Rebuild the pending batch pool based on the batches that were committed and uncommitted
         pending_batches.rebuild(Some(committed_batches), Some(uncommitted_batches));
-
-        Ok(())
     }
 
     /// Starts a new block on top of an existing block and schedules as many transactions as the

@@ -173,15 +173,15 @@ impl BlockManagerState {
         references_block_id: &HashMap<String, RefCount>,
         blockstore_by_name: &HashMap<String, Box<dyn IndexedBlockStore>>,
         block_id: &str,
-    ) -> Result<bool, BlockManagerError> {
+    ) -> bool {
         let block_is_null_block = block_id == NULL_BLOCK_IDENTIFIER;
         if block_is_null_block {
-            return Ok(true);
+            return true;
         }
 
         let block_has_been_put = references_block_id.contains_key(block_id);
         if block_has_been_put {
-            return Ok(true);
+            return true;
         }
 
         let block_in_some_store = blockstore_by_name
@@ -189,10 +189,10 @@ impl BlockManagerState {
             .any(|(_, store)| store.get(&[block_id]).map(|res| res.count()).unwrap_or(0) > 0);
 
         if block_in_some_store {
-            return Ok(true);
+            return true;
         }
 
-        Ok(false)
+        false
     }
 
     /// Checks that every block is preceded by the block referenced by block.previous_block_id
@@ -250,7 +250,7 @@ impl BlockManagerState {
                     &references_by_block_id,
                     &blockstore_by_name,
                     head.header().previous_block_id(),
-                )? {
+                ) {
                     return Err(BlockManagerError::MissingPredecessor(format!(
                         "During Put, missing predecessor of block {}: {}",
                         head.block().header_signature(),
@@ -263,7 +263,7 @@ impl BlockManagerState {
                     &references_by_block_id,
                     &blockstore_by_name,
                     head.block().header_signature(),
-                )? {
+                ) {
                     if let Some(r) =
                         references_by_block_id.get_mut(head.header().previous_block_id())
                     {
@@ -279,7 +279,7 @@ impl BlockManagerState {
                 &references_by_block_id,
                 &blockstore_by_name,
                 block.block().header_signature(),
-            )? {
+            ) {
                 blocks_not_added_yet.push(block);
             }
         }
@@ -500,11 +500,7 @@ impl BlockManagerState {
         (blocks_to_remove, pointed_to)
     }
 
-    fn add_store(
-        &self,
-        store_name: &str,
-        store: Box<dyn IndexedBlockStore>,
-    ) -> Result<(), BlockManagerError> {
+    fn add_store(&self, store_name: &str, store: Box<dyn IndexedBlockStore>) {
         let mut references_by_block_id = self
             .references_by_block_id
             .write()
@@ -528,7 +524,6 @@ impl BlockManagerState {
         }
 
         stores.insert(store_name.into(), store);
-        Ok(())
     }
 }
 
@@ -608,7 +603,7 @@ impl BlockManager {
             .blockstore_by_name
             .read()
             .expect("The blockstore RwLock is poisoned");
-        if let Some(store) = self.persisted_branch_contains_block(&blockstore_by_name, block_id)? {
+        if let Some(store) = self.persisted_branch_contains_block(&blockstore_by_name, block_id) {
             self.persisted_branch_contains_any_transactions(store, block_id, ids)
         } else {
             if block_id != NULL_BLOCK_IDENTIFIER {
@@ -616,7 +611,7 @@ impl BlockManager {
                     if let Some(store) = self.persisted_branch_contains_block(
                         &blockstore_by_name,
                         pool_block.block().header_signature(),
-                    )? {
+                    ) {
                         return self.persisted_branch_contains_any_transactions(
                             store,
                             pool_block.block().header_signature(),
@@ -649,7 +644,7 @@ impl BlockManager {
             .blockstore_by_name
             .read()
             .expect("The blockstore RwLock is poisoned");
-        if let Some(store) = self.persisted_branch_contains_block(&blockstore_by_name, block_id)? {
+        if let Some(store) = self.persisted_branch_contains_block(&blockstore_by_name, block_id) {
             self.persisted_branch_contains_any_batches(store, block_id, ids)
         } else {
             if block_id != NULL_BLOCK_IDENTIFIER {
@@ -657,7 +652,7 @@ impl BlockManager {
                     if let Some(store) = self.persisted_branch_contains_block(
                         &blockstore_by_name,
                         pool_block.block().header_signature(),
-                    )? {
+                    ) {
                         return self.persisted_branch_contains_any_batches(
                             store,
                             pool_block.block().header_signature(),
@@ -707,14 +702,14 @@ impl BlockManager {
         &self,
         blockstore_by_name: &'a HashMap<String, Box<dyn IndexedBlockStore>>,
         block_id: &str,
-    ) -> Result<Option<&'a dyn IndexedBlockStore>, BlockManagerError> {
+    ) -> Option<&'a dyn IndexedBlockStore> {
         if let Some((_, store)) = blockstore_by_name
             .iter()
             .find(|(_, store)| store.get(&[block_id]).map(|res| res.count()).unwrap_or(0) > 0)
         {
-            Ok(Some(store.as_ref()))
+            Some(store.as_ref())
         } else {
-            Ok(None)
+            None
         }
     }
 
@@ -758,7 +753,11 @@ impl BlockManager {
             .blockstore_by_name
             .read()
             .expect("Acquiring blockstore name read lock; lock poisoned");
-        BlockManagerState::contains(&references_by_block_id, &blockstore_by_name, block_id)
+        Ok(BlockManagerState::contains(
+            &references_by_block_id,
+            &blockstore_by_name,
+            block_id,
+        ))
     }
 
     /// Put is idempotent, making the guarantee that after put is called with a
@@ -826,7 +825,8 @@ impl BlockManager {
         store_name: &str,
         store: Box<dyn IndexedBlockStore>,
     ) -> Result<(), BlockManagerError> {
-        self.state.add_store(store_name, store)
+        self.state.add_store(store_name, store);
+        Ok(())
     }
 
     #[allow(clippy::needless_pass_by_value)]

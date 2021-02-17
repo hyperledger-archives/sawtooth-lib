@@ -93,7 +93,9 @@ impl BlockStore for InMemoryBlockStore {
         self.state
             .lock()
             .expect("The mutex is poisoned")
-            .put(blocks)
+            .put(blocks);
+
+        Ok(())
     }
 
     fn iter<'a>(&'a self) -> Result<Box<dyn Iterator<Item = BlockPair> + 'a>, BlockStoreError> {
@@ -143,7 +145,7 @@ impl InMemoryBlockStoreState {
         Ok(blocks.collect())
     }
 
-    fn put(&mut self, blocks: Vec<BlockPair>) -> Result<(), BlockStoreError> {
+    fn put(&mut self, blocks: Vec<BlockPair>) {
         blocks.into_iter().for_each(|block| {
             if block.header().block_num() > self.chain_head_num {
                 self.chain_head_id = block.block().header_signature().to_string();
@@ -153,7 +155,6 @@ impl InMemoryBlockStoreState {
             self.block_by_block_id
                 .insert(block.block().header_signature().to_string(), block);
         });
-        Ok(())
     }
 }
 

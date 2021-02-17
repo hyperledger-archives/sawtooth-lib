@@ -193,7 +193,7 @@ impl<
             self.index_to_key_db.clone(),
             self.main_db.clone(),
             None,
-        )?;
+        );
 
         Ok(Box::new(iter))
     }
@@ -207,7 +207,7 @@ impl<
             self.index_to_key_db.clone(),
             self.main_db.clone(),
             Some(range),
-        )?;
+        );
 
         Ok(Box::new(iter))
     }
@@ -356,7 +356,7 @@ impl<V: FromBytes, I: AsBytes + FromBytes + PartialEq + PartialOrd> LmdbOrderedS
         index_to_key_db: Arc<lmdb::Database<'static>>,
         main_db: Arc<lmdb::Database<'static>>,
         range: Option<OrderedStoreRange<I>>,
-    ) -> Result<Self, OrderedStoreError> {
+    ) -> Self {
         let mut iter = Self {
             env,
             index_to_key_db,
@@ -370,7 +370,7 @@ impl<V: FromBytes, I: AsBytes + FromBytes + PartialEq + PartialOrd> LmdbOrderedS
             error!("Failed to load iterator's initial cache: {}", err);
         }
 
-        Ok(iter)
+        iter
     }
 
     fn reload_cache(&mut self) -> Result<(), String> {
@@ -493,8 +493,7 @@ mod tests {
                 store.index_to_key_db.clone(),
                 store.main_db.clone(),
                 None,
-            )
-            .expect("failed to create iter for all entries");
+            );
 
             assert_eq!(
                 all_entries.collect::<Vec<_>>(),
@@ -507,8 +506,7 @@ mod tests {
                 store.index_to_key_db.clone(),
                 store.main_db.clone(),
                 Some((2..).into()),
-            )
-            .expect("failed to create iter for entries from 2");
+            );
 
             assert_eq!(from_2.collect::<Vec<_>>(), vec![2u8, 3u8, 4u8, 5u8]);
 
@@ -518,8 +516,7 @@ mod tests {
                 store.index_to_key_db.clone(),
                 store.main_db.clone(),
                 Some((..5).into()), // upper bound is exclusive
-            )
-            .expect("failed to create iter for entries up to 4");
+            );
 
             assert_eq!(up_to_4.collect::<Vec<_>>(), vec![1u8, 2u8, 3u8, 4u8]);
 
@@ -529,8 +526,7 @@ mod tests {
                 store.index_to_key_db.clone(),
                 store.main_db.clone(),
                 Some((2..5).into()), // upper bound is exclusive
-            )
-            .expect("failed to create iter for entries from 2 to 4");
+            );
 
             assert_eq!(from_2_to_4.collect::<Vec<_>>(), vec![2u8, 3u8, 4u8]);
 
@@ -540,8 +536,7 @@ mod tests {
                 store.index_to_key_db.clone(),
                 store.main_db.clone(),
                 Some((1..).into()),
-            )
-            .expect("failed to create iter for entries from 1 (inclusive)");
+            );
 
             assert_eq!(
                 from_1_inclusive.collect::<Vec<_>>(),
@@ -554,8 +549,7 @@ mod tests {
                 store.index_to_key_db.clone(),
                 store.main_db.clone(),
                 Some((0..).into()),
-            )
-            .expect("failed to create iter for entries from 0 (inclusive)");
+            );
 
             assert_eq!(
                 from_0_inclusive.collect::<Vec<_>>(),
@@ -571,8 +565,7 @@ mod tests {
                     start: Bound::Excluded(1),
                     end: Bound::Unbounded,
                 }),
-            )
-            .expect("failed to create iter for entries from 1 (exclusive)");
+            );
 
             assert_eq!(
                 from_1_exclusive.collect::<Vec<_>>(),
@@ -585,8 +578,7 @@ mod tests {
                 store.index_to_key_db.clone(),
                 store.main_db.clone(),
                 Some((0..).into()),
-            )
-            .expect("failed to create iter for entries from 0 (exclusive)");
+            );
 
             assert_eq!(
                 from_0_exclusive.collect::<Vec<_>>(),
@@ -599,8 +591,7 @@ mod tests {
                 store.index_to_key_db.clone(),
                 store.main_db.clone(),
                 Some(std::ops::RangeToInclusive { end: 5 }.into()),
-            )
-            .expect("failed to create iter for entries up to 5 (inclusive)");
+            );
 
             assert_eq!(
                 up_to_5_inclusive.collect::<Vec<_>>(),
@@ -613,8 +604,7 @@ mod tests {
                 store.index_to_key_db.clone(),
                 store.main_db.clone(),
                 Some(std::ops::RangeToInclusive { end: 6 }.into()),
-            )
-            .expect("failed to create iter for entries up to 6 (inclusive)");
+            );
 
             assert_eq!(
                 up_to_6_inclusive.collect::<Vec<_>>(),
@@ -627,8 +617,7 @@ mod tests {
                 store.index_to_key_db.clone(),
                 store.main_db.clone(),
                 Some((..5).into()),
-            )
-            .expect("failed to create iter for entries up to 5 (exclusive)");
+            );
 
             assert_eq!(
                 up_to_5_exclusive.collect::<Vec<_>>(),
@@ -641,8 +630,7 @@ mod tests {
                 store.index_to_key_db.clone(),
                 store.main_db.clone(),
                 Some((..6).into()),
-            )
-            .expect("failed to create iter for entries up to 6 (exclusive)");
+            );
 
             assert_eq!(
                 up_to_6_exclusive.collect::<Vec<_>>(),
@@ -674,8 +662,7 @@ mod tests {
                 store.index_to_key_db.clone(),
                 store.main_db.clone(),
                 None,
-            )
-            .expect("failed to create iter");
+            );
 
             assert_eq!(iter.cache.len(), ITER_CACHE_SIZE);
 
