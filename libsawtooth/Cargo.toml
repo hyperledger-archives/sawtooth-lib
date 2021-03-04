@@ -59,6 +59,7 @@ experimental = [
     "client",
     "client-rest",
     "lmdb-store",
+    "pending-batch-queue",
     "receipt-store",
     "redis-store",
     "stores",
@@ -69,6 +70,7 @@ btree-store = ["stores"]
 client = []
 client-rest = ["base64", "client", "reqwest", "serde"]
 lmdb-store = ["lmdb-zero", "stores"]
+pending-batch-queue = ["validator-internals"]
 receipt-store = ["stores"]
 redis-store = ["redis", "stores"]
 stores = []
