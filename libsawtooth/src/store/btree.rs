@@ -89,15 +89,14 @@ impl<
     }
 
     fn count(&self) -> Result<u64, OrderedStoreError> {
-        Ok(self
-            .internal
+        self.internal
             .lock()
             .map_err(|err| OrderedStoreError::LockPoisoned(err.to_string()))?
             .main_store
             .iter()
             .count()
             .try_into()
-            .map_err(|err| OrderedStoreError::Internal(Box::new(err)))?)
+            .map_err(|err| OrderedStoreError::Internal(Box::new(err)))
     }
 
     fn iter(&self) -> Result<Box<dyn Iterator<Item = V> + Send>, OrderedStoreError> {
