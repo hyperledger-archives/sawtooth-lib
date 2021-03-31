@@ -166,32 +166,32 @@ impl<
         let txn = lmdb::ReadTransaction::new(self.env.clone())?;
         let access = txn.access();
 
-        Ok(access
+        access
             .get::<_, [u8]>(&self.main_db, &key.as_bytes())
             .to_opt()?
             .map(|val| V::from_bytes(val))
             .transpose()
-            .map_err(OrderedStoreError::BytesParsingFailed)?)
+            .map_err(OrderedStoreError::BytesParsingFailed)
     }
 
     fn get_index_by_key(&self, key: &K) -> Result<Option<I>, OrderedStoreError> {
         let txn = lmdb::ReadTransaction::new(self.env.clone())?;
         let access = txn.access();
 
-        Ok(access
+        access
             .get::<_, [u8]>(&self.key_to_index_db, &key.as_bytes())
             .to_opt()?
             .map(|idx| I::from_bytes(idx))
             .transpose()
-            .map_err(OrderedStoreError::BytesParsingFailed)?)
+            .map_err(OrderedStoreError::BytesParsingFailed)
     }
 
     fn count(&self) -> Result<u64, OrderedStoreError> {
-        Ok(lmdb::ReadTransaction::new(self.env.clone())?
+        lmdb::ReadTransaction::new(self.env.clone())?
             .db_stat(&self.main_db)?
             .entries
             .try_into()
-            .map_err(|err| OrderedStoreError::Internal(Box::new(err)))?)
+            .map_err(|err| OrderedStoreError::Internal(Box::new(err)))
     }
 
     fn iter(&self) -> Result<Box<dyn Iterator<Item = V> + Send>, OrderedStoreError> {

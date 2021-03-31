@@ -515,77 +515,81 @@ struct InvalidTransaction {
     extended_data: String,
 }
 
-impl Into<ClientBatch> for Batch {
-    fn into(self) -> ClientBatch {
+impl From<Batch> for ClientBatch {
+    fn from(batch: Batch) -> Self {
         let mut txns = Vec::new();
-        for t in self.transactions {
+        for t in batch.transactions {
             let new_transaction: ClientTransaction = t.into();
             txns.push(new_transaction);
         }
-        ClientBatch {
-            header: self.header.into(),
-            header_signature: self.header_signature,
-            trace: self.trace,
+        Self {
+            header: batch.header.into(),
+            header_signature: batch.header_signature,
+            trace: batch.trace,
             transactions: txns,
         }
     }
 }
 
-impl Into<ClientHeader> for Header {
-    fn into(self) -> ClientHeader {
-        ClientHeader {
-            signer_public_key: self.signer_public_key,
-            transaction_ids: self.transaction_ids,
+impl From<Header> for ClientHeader {
+    fn from(header: Header) -> Self {
+        Self {
+            signer_public_key: header.signer_public_key,
+            transaction_ids: header.transaction_ids,
         }
     }
 }
 
-impl Into<ClientTransaction> for Transaction {
-    fn into(self) -> ClientTransaction {
-        ClientTransaction {
-            header: self.header.into(),
-            header_signature: self.header_signature,
-            payload: self.payload,
+impl From<Transaction> for ClientTransaction {
+    fn from(txn: Transaction) -> Self {
+        Self {
+            header: txn.header.into(),
+            header_signature: txn.header_signature,
+            payload: txn.payload,
         }
     }
 }
 
-impl Into<ClientTransactionHeader> for TransactionHeader {
-    fn into(self) -> ClientTransactionHeader {
-        ClientTransactionHeader {
-            batcher_public_key: self.batcher_public_key,
-            dependencies: self.dependencies,
-            family_name: self.family_name,
-            family_version: self.family_version,
-            inputs: self.inputs,
-            nonce: self.nonce,
-            outputs: self.outputs,
-            payload_sha512: self.payload_sha512,
-            signer_public_key: self.signer_public_key,
+impl From<TransactionHeader> for ClientTransactionHeader {
+    fn from(txn_header: TransactionHeader) -> Self {
+        Self {
+            batcher_public_key: txn_header.batcher_public_key,
+            dependencies: txn_header.dependencies,
+            family_name: txn_header.family_name,
+            family_version: txn_header.family_version,
+            inputs: txn_header.inputs,
+            nonce: txn_header.nonce,
+            outputs: txn_header.outputs,
+            payload_sha512: txn_header.payload_sha512,
+            signer_public_key: txn_header.signer_public_key,
         }
     }
 }
 
-impl Into<ClientBlock> for Block {
-    fn into(self) -> ClientBlock {
-        let clientbatches = self.batches.into_iter().map(|batch| batch.into()).collect();
-        ClientBlock {
-            header: self.header.into(),
-            header_signature: self.header_signature,
+impl From<Block> for ClientBlock {
+    fn from(block: Block) -> Self {
+        let clientbatches = block
+            .batches
+            .into_iter()
+            .map(|batch| batch.into())
+            .collect();
+        Self {
+            header: block.header.into(),
+            header_signature: block.header_signature,
             batches: clientbatches,
         }
     }
 }
 
-impl Into<ClientBlockHeader> for BlockHeader {
-    fn into(self) -> ClientBlockHeader {
-        ClientBlockHeader {
-            batch_ids: self.batch_ids,
-            block_num: self.block_num,
-            consensus: self.consensus,
-            previous_block_id: self.previous_block_id,
-            signer_public_key: self.signer_public_key,
-            state_root_hash: self.state_root_hash,
+impl From<BlockHeader> for ClientBlockHeader {
+    fn from(block_header: BlockHeader) -> Self {
+        Self {
+            batch_ids: block_header.batch_ids,
+            block_num: block_header.block_num,
+            consensus: block_header.consensus,
+            previous_block_id: block_header.previous_block_id,
+            signer_public_key: block_header.signer_public_key,
+            state_root_hash: block_header.state_root_hash,
         }
     }
 }
