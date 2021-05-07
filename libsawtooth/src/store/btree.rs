@@ -93,8 +93,7 @@ impl<
             .lock()
             .map_err(|err| OrderedStoreError::LockPoisoned(err.to_string()))?
             .main_store
-            .iter()
-            .count()
+            .len()
             .try_into()
             .map_err(|err| OrderedStoreError::Internal(Box::new(err)))
     }
