@@ -18,6 +18,9 @@
 //! Helper functions to convert transacts implementation of TransactionReceipt and StateChange
 //! to the local version
 
+#[cfg(feature = "transaction-receipt-store")]
+pub mod store;
+
 use std::convert::TryFrom;
 
 use transact::protocol::receipt::{
