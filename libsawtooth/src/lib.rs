@@ -27,6 +27,7 @@ extern crate metrics;
 pub mod client;
 #[cfg(feature = "validator-internals")]
 pub mod consensus;
+pub mod error;
 #[cfg(feature = "validator-internals")]
 pub mod hashlib;
 #[cfg(feature = "validator-internals")]
