@@ -63,6 +63,7 @@ experimental = [
     "receipt-store",
     "redis-store",
     "stores",
+    "transaction-receipt-store",
     "validator-internals",
 ]
 
@@ -74,6 +75,7 @@ pending-batch-queue = ["validator-internals"]
 receipt-store = ["stores"]
 redis-store = ["redis", "stores"]
 stores = []
+transaction-receipt-store = []
 validator-internals = [
   "cbor-codec",
   "lmdb-zero",
