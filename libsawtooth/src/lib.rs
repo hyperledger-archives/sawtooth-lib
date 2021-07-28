@@ -15,7 +15,8 @@
 #[cfg(any(
     feature = "lmdb-store",
     feature = "validator-internals",
-    feature = "client"
+    feature = "client",
+    feature = "transaction-receipt-store-lmdb"
 ))]
 #[macro_use]
 extern crate log;
