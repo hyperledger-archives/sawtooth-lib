@@ -710,3 +710,641 @@ impl Iterator for LmdbReceiptStoreIter {
         self.cache.pop_front()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use transact::protocol::receipt::{Event, StateChange, TransactionResult};
+
+    /// Verify that a new `LmdbReceiptStore` can be created with a single LMDB instance
+    ///
+    /// 1. Create a new `LmdbReceiptStore` with only one file and set it as the `current_db`
+    /// 2. Check process was successful
+    #[test]
+    fn test_lmdb_receipt_store_single_file() {
+        let (file, mut path) = get_temp_db_path_and_file(1);
+
+        let test_result = std::panic::catch_unwind(|| {
+            LmdbReceiptStore::new(&path.as_path(), &[file[0].clone()], file[0].clone(), None)
+                .expect("Failed to create LMDB receipt store");
+        });
+
+        path.push(file[0].clone());
+        std::fs::remove_file(path.as_path()).expect("Failed to remove temp DB file");
+
+        assert!(test_result.is_ok());
+    }
+
+    /// Verify that a new `LmdbReceiptStore` can be created with multiple LMDB instances
+    ///
+    /// 1. Create a new `LmdbReceiptStore` with two files and set the second file as the `current_db`
+    /// 2. Check process was successful
+    #[test]
+    fn test_lmdb_receipt_store_multiple_files() {
+        let (files, path) = get_temp_db_path_and_file(2);
+
+        let test_result = std::panic::catch_unwind(|| {
+            LmdbReceiptStore::new(
+                &path.as_path(),
+                &[files[0].clone(), files[1].clone()],
+                files[1].clone(),
+                Some(1024 * 1024),
+            )
+            .expect("Failed to create LMDB receipt store");
+        });
+
+        for i in 0..files.len() {
+            let mut temp_path = path.clone();
+            temp_path.push(files[i].clone());
+            std::fs::remove_file(temp_path.as_path()).expect("Failed to remove temp DB file");
+        }
+
+        assert!(test_result.is_ok());
+    }
+
+    /// Verify that a new `LmdbReceiptStore` can be created with multiple LMDB instances and the
+    /// current database can be changed
+    ///
+    /// 1. Create a new `LmdbReceiptStore` with two files and set the second file as the `current_db`
+    /// 2. Change the `current_db` to be the first file
+    /// 3. Attempt to change the `current_db` to be a file that does not exist
+    /// 4. Check that this action returns an error
+    /// 5. Check that the `current_db` is still the first file
+    #[test]
+    fn test_lmdb_receipt_store_change_current_db() {
+        let (files, mut path) = get_temp_db_path_and_file(2);
+
+        let test_result = std::panic::catch_unwind(|| {
+            let mut receipt_store = LmdbReceiptStore::new(
+                &path.as_path(),
+                &[files[0].clone(), files[1].clone()],
+                files[1].clone(),
+                Some(1024 * 1024),
+            )
+            .expect("Failed to create LMDB receipt store");
+
+            assert!(receipt_store.set_current_db(files[0].clone()).is_ok());
+            assert!(receipt_store
+                .set_current_db("nonexistent_file".to_string())
+                .is_err());
+
+            assert_eq!(receipt_store.current_db, files[0]);
+        });
+
+        path.push(files[0].clone());
+        std::fs::remove_file(path.as_path()).expect("Failed to remove temp DB file");
+
+        assert!(test_result.is_ok());
+    }
+
+    /// Verify that a list of transaction receipts can be added to a `LmdbReceiptStore`
+    ///
+    /// 1. Create a new `LmdbReceiptStore` with only one file and set it as the `current_db`
+    /// 2. Generate 10 transaction receipts and add them to the receipt store
+    /// 3. Check that the number of transaction receipts in the store is 10
+    #[test]
+    fn test_lmdb_receipt_store_add_receipts() {
+        let (files, mut path) = get_temp_db_path_and_file(1);
+
+        let test_result = std::panic::catch_unwind(|| {
+            let receipt_store =
+                LmdbReceiptStore::new(&path.as_path(), &[files[0].clone()], files[0].clone(), None)
+                    .expect("Failed to create LMDB receipt store");
+
+            let txn_receipts = create_txn_receipts(10);
+
+            receipt_store
+                .add_txn_receipts(txn_receipts)
+                .expect("failed to add transaction receipts");
+
+            let num_receipts = receipt_store
+                .count_txn_receipts()
+                .expect("failed to count transaction receipts");
+
+            assert_eq!(num_receipts, 10);
+        });
+
+        path.push(files[0].clone());
+        std::fs::remove_file(path.as_path()).expect("Failed to remove temp DB file");
+
+        assert!(test_result.is_ok());
+    }
+
+    /// Verify that a transaction receipt can be retrieved from the `LmdbReceiptStore`
+    /// by id
+    ///
+    /// 1. Create a new `LmdbReceiptStore` with only one file and set it as the `current_db`
+    /// 2. Generate 10 transaction receipts and add them to the receipt store
+    /// 3. Retrieve the first receipt in the store by id
+    /// 4. Check that the fields of the retrieved receipt contain the expected values
+    /// 5. Retrieve the second receipt in the store by id
+    /// 6. Check that the fields of the retrieved receipt contain the expected values
+    #[test]
+    fn test_lmdb_receipt_store_get_receipt_by_id() {
+        let (files, mut path) = get_temp_db_path_and_file(1);
+
+        let test_result = std::panic::catch_unwind(|| {
+            let receipt_store =
+                LmdbReceiptStore::new(&path.as_path(), &[files[0].clone()], files[0].clone(), None)
+                    .expect("Failed to create LMDB receipt store");
+
+            let txn_receipts = create_txn_receipts(10);
+
+            receipt_store
+                .add_txn_receipts(txn_receipts)
+                .expect("failed to add transaction receipts");
+
+            let first_receipt = receipt_store
+                .get_txn_receipt_by_id("0".to_string())
+                .expect("failed to get transaction receipt with id 0");
+
+            match first_receipt.unwrap().transaction_result {
+                TransactionResult::Valid { events, .. } => assert_eq!(
+                    events[0].attributes[0],
+                    ("a0".to_string(), "b0".to_string())
+                ),
+                _ => panic!("transaction result should be valid"),
+            }
+
+            let second_receipt = receipt_store
+                .get_txn_receipt_by_id("1".to_string())
+                .expect("failed to get transaction receipt with id 0");
+
+            match second_receipt.unwrap().transaction_result {
+                TransactionResult::Valid { events, .. } => assert_eq!(
+                    events[0].attributes[0],
+                    ("a1".to_string(), "b1".to_string())
+                ),
+                _ => panic!("transaction result should be valid"),
+            }
+        });
+
+        path.push(files[0].clone());
+        std::fs::remove_file(path.as_path()).expect("Failed to remove temp DB file");
+
+        assert!(test_result.is_ok());
+    }
+
+    /// Verify that a transaction receipt can be retrieved from the `LmdbReceiptStore`
+    /// by index
+    ///
+    /// 1. Create a new `LmdbReceiptStore` with only one file and set it as the `current_db`
+    /// 2. Generate 10 transaction receipts and add them to the receipt store
+    /// 3. Retrieve the first receipt in the store by index
+    /// 4. Check that the fields of the retrieved receipt contain the expected values
+    /// 5. Retrieve the second receipt in the store by index
+    /// 6. Check that the fields of the retrieved receipt contain the expected values
+    #[test]
+    fn test_lmdb_receipt_store_get_receipt_by_index() {
+        let (files, mut path) = get_temp_db_path_and_file(1);
+
+        let test_result = std::panic::catch_unwind(|| {
+            let receipt_store =
+                LmdbReceiptStore::new(&path.as_path(), &[files[0].clone()], files[0].clone(), None)
+                    .expect("Failed to create LMDB receipt store");
+
+            let txn_receipts = create_txn_receipts(10);
+
+            receipt_store
+                .add_txn_receipts(txn_receipts)
+                .expect("failed to add transaction receipts");
+
+            let first_receipt = receipt_store
+                .get_txn_receipt_by_index(0)
+                .expect("failed to get transaction receipt at idndex 0");
+
+            match first_receipt.unwrap().transaction_result {
+                TransactionResult::Valid { events, .. } => assert_eq!(
+                    events[0].attributes[0],
+                    ("a0".to_string(), "b0".to_string())
+                ),
+                _ => panic!("transaction result should be valid"),
+            }
+
+            let second_receipt = receipt_store
+                .get_txn_receipt_by_index(1)
+                .expect("failed to get transaction receipt at idndex 0");
+
+            match second_receipt.unwrap().transaction_result {
+                TransactionResult::Valid { events, .. } => assert_eq!(
+                    events[0].attributes[0],
+                    ("a1".to_string(), "b1".to_string())
+                ),
+                _ => panic!("transaction result should be valid"),
+            }
+        });
+
+        path.push(files[0].clone());
+        std::fs::remove_file(path.as_path()).expect("Failed to remove temp DB file");
+
+        assert!(test_result.is_ok());
+    }
+
+    /// Verify that a transaction receipt can be removed from the `LmdbReceiptStore`
+    /// by id
+    ///
+    /// 1. Create a new `LmdbReceiptStore` with only one file and set it as the `current_db`
+    /// 2. Generate 10 transaction receipts and add them to the receipt store
+    /// 3. Remove the first receipt from the store by id
+    /// 4. Check that the fields of the returned receipt contain the expected values
+    /// 5. Check that attempting to retrieve the deleted receipt by id returns None
+    /// 6. Check that the number of receipts in the database is now 9
+    #[test]
+    fn test_lmdb_receipt_store_remove_receipt_by_id() {
+        let (files, mut path) = get_temp_db_path_and_file(1);
+
+        let test_result = std::panic::catch_unwind(|| {
+            let receipt_store =
+                LmdbReceiptStore::new(&path.as_path(), &[files[0].clone()], files[0].clone(), None)
+                    .expect("Failed to create LMDB receipt store");
+
+            let txn_receipts = create_txn_receipts(10);
+
+            receipt_store
+                .add_txn_receipts(txn_receipts)
+                .expect("failed to add transaction receipts");
+
+            let first_receipt = receipt_store
+                .remove_txn_receipt_by_id("0".to_string())
+                .expect("failed to get transaction receipt with id 0");
+
+            match first_receipt.unwrap().transaction_result {
+                TransactionResult::Valid { events, .. } => assert_eq!(
+                    events[0].attributes[0],
+                    ("a0".to_string(), "b0".to_string())
+                ),
+                _ => panic!("transaction result should be valid"),
+            }
+
+            assert!(receipt_store
+                .get_txn_receipt_by_id("0".to_string())
+                .expect("error getting receipt")
+                .is_none());
+
+            let num_receipts = receipt_store
+                .count_txn_receipts()
+                .expect("failed to count transaction receipts");
+
+            assert_eq!(num_receipts, 9);
+        });
+
+        path.push(files[0].clone());
+        std::fs::remove_file(path.as_path()).expect("Failed to remove temp DB file");
+
+        assert!(test_result.is_ok());
+    }
+
+    /// Verify that a transaction receipt can be removed from the `LmdbReceiptStore`
+    /// by index
+    ///
+    /// 1. Create a new `LmdbReceiptStore` with only one file and set it as the `current_db`
+    /// 2. Generate 10 transaction receipts and add them to the receipt store
+    /// 3. Remove the first receipt from the store by index
+    /// 4. Check that the fields of the returned receipt contain the expected values
+    /// 5. Check that attempting to retrieve the deleted receipt by id returns None
+    /// 6. Check that the number of receipts in the database is now 9
+    #[test]
+    fn test_lmdb_receipt_store_remove_receipt_by_index() {
+        let (files, mut path) = get_temp_db_path_and_file(1);
+
+        let test_result = std::panic::catch_unwind(|| {
+            let receipt_store =
+                LmdbReceiptStore::new(&path.as_path(), &[files[0].clone()], files[0].clone(), None)
+                    .expect("Failed to create LMDB receipt store");
+
+            let txn_receipts = create_txn_receipts(10);
+
+            receipt_store
+                .add_txn_receipts(txn_receipts)
+                .expect("failed to add transaction receipts");
+
+            let first_receipt = receipt_store
+                .remove_txn_receipt_by_index(0)
+                .expect("failed to get transaction receipt at idndex 0");
+
+            match first_receipt.unwrap().transaction_result {
+                TransactionResult::Valid { events, .. } => assert_eq!(
+                    events[0].attributes[0],
+                    ("a0".to_string(), "b0".to_string())
+                ),
+                _ => panic!("transaction result should be valid"),
+            }
+
+            assert!(receipt_store
+                .get_txn_receipt_by_index(0)
+                .expect("error getting receipt")
+                .is_none());
+
+            let num_receipts = receipt_store
+                .count_txn_receipts()
+                .expect("failed to count transaction receipts");
+
+            assert_eq!(num_receipts, 9);
+        });
+
+        path.push(files[0].clone());
+        std::fs::remove_file(path.as_path()).expect("Failed to remove temp DB file");
+
+        assert!(test_result.is_ok());
+    }
+
+    /// Verify that the total number of transaction receipts in a `LmdbReceiptStore` can
+    /// be retrieved
+    ///
+    /// 1. Create a new `LmdbReceiptStore` with only one file and set it as the `current_db`
+    /// 2. Generate 10 transaction receipts and add them to the receipt store
+    /// 3. Retrieve the total number of transactions in the store
+    /// 4. Verify that the number of transactions returned is 10
+    #[test]
+    fn test_lmdb_receipt_store_count_receipts() {
+        let (files, mut path) = get_temp_db_path_and_file(1);
+
+        let test_result = std::panic::catch_unwind(|| {
+            let receipt_store =
+                LmdbReceiptStore::new(&path.as_path(), &[files[0].clone()], files[0].clone(), None)
+                    .expect("Failed to create LMDB receipt store");
+
+            let txn_receipts = create_txn_receipts(10);
+
+            receipt_store
+                .add_txn_receipts(txn_receipts)
+                .expect("failed to add transaction receipts");
+
+            let num_receipts = receipt_store
+                .count_txn_receipts()
+                .expect("failed to count transaction receipts");
+
+            assert_eq!(num_receipts, 10);
+        });
+
+        path.push(files[0].clone());
+        std::fs::remove_file(path.as_path()).expect("Failed to remove temp DB file");
+
+        assert!(test_result.is_ok());
+    }
+
+    /// Verify that all transaction receipts in a `LmdbReceiptStore` can be listed
+    ///
+    /// 1. Create a new `LmdbReceiptStore` with only one file and set it as the `current_db`
+    /// 2. Generate 10 transaction receipts and add them to the receipt store
+    /// 3. Call `list_receipts_since` on the receipt store, passing in None to indicate all
+    ///    receipts should be listed
+    /// 4. Check that the receipts are returned in order and that various fields
+    ///    contain the expected values
+    /// 5. Check that the number of receipts returned is 10
+    #[test]
+    fn test_lmdb_receipt_store_list_all_receipts() {
+        let (files, mut path) = get_temp_db_path_and_file(1);
+
+        let test_result = std::panic::catch_unwind(|| {
+            let receipt_store =
+                LmdbReceiptStore::new(&path.as_path(), &[files[0].clone()], files[0].clone(), None)
+                    .expect("Failed to create LMDB receipt store");
+
+            let txn_receipts = create_txn_receipts(10);
+
+            receipt_store
+                .add_txn_receipts(txn_receipts)
+                .expect("failed to add transaction receipts");
+
+            let all_receipts = receipt_store
+                .list_receipts_since(None)
+                .expect("failed to list all transaction receipts");
+
+            let mut total = 0;
+            for (i, receipt) in all_receipts.enumerate() {
+                match receipt.transaction_result {
+                    TransactionResult::Valid { events, .. } => assert_eq!(
+                        events[0].attributes[0],
+                        (format!("a{}", i), format!("b{}", i))
+                    ),
+                    _ => panic!("transaction result should be valid"),
+                }
+                total += 1;
+            }
+            assert_eq!(total, 10);
+        });
+
+        path.push(files[0].clone());
+        std::fs::remove_file(path.as_path()).expect("Failed to remove temp DB file");
+
+        assert!(test_result.is_ok());
+    }
+
+    /// Verify that all transaction receipts in a `LmdbReceiptStore` added since a specified
+    /// receipt can be listed
+    ///
+    /// 1. Create a new `LmdbReceiptStore` with only one file and set it as the `current_db`
+    /// 2. Generate 10 transaction receipts and add them to the receipt store
+    /// 3. Call `list_receipts_since` on the receipt store, passing in an id to indicate all
+    ///    receipts added since that reciept should be listed
+    /// 4. Check that the receipts are returned in order and that various fields
+    ///    contain the expected values
+    /// 5. Check that the number of receipts returned is 7
+    #[test]
+    fn test_lmdb_receipt_store_list_some_receipts() {
+        let (files, mut path) = get_temp_db_path_and_file(1);
+
+        let test_result = std::panic::catch_unwind(|| {
+            let receipt_store =
+                LmdbReceiptStore::new(&path.as_path(), &[files[0].clone()], files[0].clone(), None)
+                    .expect("Failed to create LMDB receipt store");
+
+            let txn_receipts = create_txn_receipts(10);
+
+            receipt_store
+                .add_txn_receipts(txn_receipts)
+                .expect("failed to add transaction receipts");
+
+            let all_receipts = receipt_store
+                .list_receipts_since(Some("2".to_string()))
+                .expect("failed to list all transaction receipts");
+
+            let mut id = 3;
+            let mut total = 0;
+            for receipt in all_receipts {
+                match receipt.transaction_result {
+                    TransactionResult::Valid { events, .. } => assert_eq!(
+                        events[0].attributes[0],
+                        (format!("a{}", id), format!("b{}", id))
+                    ),
+                    _ => panic!("transaction result should be valid"),
+                }
+                id += 1;
+                total += 1;
+            }
+            assert_eq!(total, 7);
+        });
+
+        path.push(files[0].clone());
+        std::fs::remove_file(path.as_path()).expect("Failed to remove temp DB file");
+
+        assert!(test_result.is_ok());
+    }
+
+    /// Verify that `LmdbReceiptStoreIter` accurately lists all receipts when
+    /// the number of receipts in the database is more than ITER_CACHE_SIZE
+    ///
+    /// 1. Create a new `LmdbReceiptStore` with only one file and set it as the `current_db`
+    /// 2. Generate 100 transaction receipts and add them to the receipt store
+    /// 3. Call `list_receipts_since` on the receipt store, passing in None to indicate all
+    ///    receipts should be listed
+    /// 4. Check that the receipts are returned in order and that various fields
+    ///    contain the expected values
+    /// 5. Check that the number of receipts returned is 100
+    #[test]
+    fn test_lmdb_receipt_store_list_all_receipts_100() {
+        let (files, mut path) = get_temp_db_path_and_file(1);
+
+        let test_result = std::panic::catch_unwind(|| {
+            let receipt_store =
+                LmdbReceiptStore::new(&path.as_path(), &[files[0].clone()], files[0].clone(), None)
+                    .expect("Failed to create LMDB receipt store");
+
+            let txn_receipts = create_txn_receipts(100);
+
+            receipt_store
+                .add_txn_receipts(txn_receipts)
+                .expect("failed to add transaction receipts");
+
+            let all_receipts = receipt_store
+                .list_receipts_since(None)
+                .expect("failed to list all transaction receipts");
+
+            let mut total = 0;
+            for (i, receipt) in all_receipts.enumerate() {
+                match receipt.transaction_result {
+                    TransactionResult::Valid { events, .. } => assert_eq!(
+                        events[0].attributes[0],
+                        (format!("a{}", i), format!("b{}", i))
+                    ),
+                    _ => panic!("transaction result should be valid"),
+                }
+                total += 1;
+            }
+            assert_eq!(total, 100);
+        });
+
+        path.push(files[0].clone());
+        std::fs::remove_file(path.as_path()).expect("Failed to remove temp DB file");
+
+        assert!(test_result.is_ok());
+    }
+
+    /// Verify that a `LmdbReceiptStore` with multiple LMDB instances can change the
+    /// `current_db` and perform various actions on the receipts
+    ///
+    /// 1. Create a new `LmdbReceiptStore` with two files and set the second file as the `current_db`
+    /// 2. Generate 10 transaction receipts and add them to the second database
+    /// 3. Change the `current_db` to be the second database
+    /// 4. Generate 10 transaction receipts and add them to the first database
+    /// 5. Remove the first receipt from the current database
+    /// 6. Check that the fields of the returned receipt contain the expected values
+    /// 7. Check that the total number of receipts is now 9
+    /// 8. Change the `current_db` to be the second database
+    /// 9. Check that the total number of receipts is still 10
+    #[test]
+    fn test_lmdb_receipt_store_change_current_db_and_modify_receipts() {
+        let (files, path) = get_temp_db_path_and_file(2);
+
+        let test_result = std::panic::catch_unwind(|| {
+            let mut receipt_store = LmdbReceiptStore::new(
+                &path.as_path(),
+                &[files[0].clone(), files[1].clone()],
+                files[1].clone(),
+                Some(1024 * 1024),
+            )
+            .expect("Failed to create LMDB receipt store");
+
+            let txn_receipts = create_txn_receipts(10);
+
+            receipt_store
+                .add_txn_receipts(txn_receipts)
+                .expect("failed to add transaction receipts");
+
+            assert!(receipt_store.set_current_db(files[0].clone()).is_ok());
+            assert_eq!(receipt_store.current_db, files[0]);
+
+            let txn_receipts = create_txn_receipts(10);
+
+            receipt_store
+                .add_txn_receipts(txn_receipts)
+                .expect("failed to add transaction receipts");
+
+            let first_receipt = receipt_store
+                .remove_txn_receipt_by_id("0".to_string())
+                .expect("failed to get transaction receipt with id 0");
+
+            match first_receipt.unwrap().transaction_result {
+                TransactionResult::Valid { events, .. } => assert_eq!(
+                    events[0].attributes[0],
+                    ("a0".to_string(), "b0".to_string())
+                ),
+                _ => panic!("transaction result should be valid"),
+            }
+
+            let num_receipts = receipt_store
+                .count_txn_receipts()
+                .expect("failed to count transaction receipts");
+
+            assert_eq!(num_receipts, 9);
+
+            assert!(receipt_store.set_current_db(files[1].clone()).is_ok());
+            assert_eq!(receipt_store.current_db, files[1]);
+
+            let num_receipts = receipt_store
+                .count_txn_receipts()
+                .expect("failed to count transaction receipts");
+
+            assert_eq!(num_receipts, 10);
+        });
+
+        for i in 0..files.len() {
+            let mut temp_path = path.clone();
+            temp_path.push(files[i].clone());
+            std::fs::remove_file(temp_path.as_path()).expect("Failed to remove temp DB file");
+        }
+
+        assert!(test_result.is_ok());
+    }
+
+    fn get_temp_db_path_and_file(number_of_files: u8) -> (Vec<String>, std::path::PathBuf) {
+        let temp_db_path = std::env::temp_dir();
+        let thread_id = std::thread::current().id();
+
+        let mut file_names = Vec::new();
+
+        for i in 0..number_of_files {
+            let file_name = format!("store-{:?}-{}.lmdb", thread_id, i);
+            file_names.push(file_name);
+        }
+        (file_names, temp_db_path)
+    }
+
+    fn create_txn_receipts(num_receipts: u8) -> Vec<TransactionReceipt> {
+        let mut receipts = Vec::new();
+
+        for i in 0..num_receipts as u8 {
+            let event = Event {
+                event_type: "event".to_string(),
+                attributes: vec![(format!("a{}", i), format!("b{}", i))],
+                data: "data".to_string().into_bytes(),
+            };
+            let state_change = StateChange::Set {
+                key: i.to_string(),
+                value: i.to_string().into_bytes(),
+            };
+            let txn_result = TransactionResult::Valid {
+                state_changes: vec![state_change],
+                events: vec![event],
+                data: vec!["data".to_string().into_bytes()],
+            };
+            let receipt = TransactionReceipt {
+                transaction_id: i.to_string(),
+                transaction_result: txn_result,
+            };
+            receipts.push(receipt);
+        }
+        receipts
+    }
+}
