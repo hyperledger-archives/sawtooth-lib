@@ -64,6 +64,7 @@ experimental = [
     "redis-store",
     "stores",
     "transaction-receipt-store",
+    "transaction-receipt-store-lmdb",
     "validator-internals",
 ]
 
@@ -76,6 +77,7 @@ receipt-store = ["stores"]
 redis-store = ["redis", "stores"]
 stores = []
 transaction-receipt-store = []
+transaction-receipt-store-lmdb = ["lmdb-zero", "transaction-receipt-store"]
 validator-internals = [
   "cbor-codec",
   "lmdb-zero",
