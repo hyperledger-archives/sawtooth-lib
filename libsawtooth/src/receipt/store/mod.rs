@@ -18,6 +18,8 @@
 //! Data store for transaction receipts.
 
 mod error;
+#[cfg(feature = "transaction-receipt-store-lmdb")]
+pub mod lmdb;
 
 use transact::protocol::receipt::TransactionReceipt;
 
