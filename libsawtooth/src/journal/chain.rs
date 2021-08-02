@@ -136,10 +136,7 @@ pub trait ChainObserver: Send + Sync {
 }
 
 /// Holds the results of Block Validation.
-struct ForkResolutionResult<'a> {
-    pub block: &'a BlockPair,
-    pub chain_head: Option<&'a BlockPair>,
-
+struct ForkResolutionResult {
     pub new_chain: Vec<BlockPair>,
     pub current_chain: Vec<BlockPair>,
 
@@ -167,11 +164,11 @@ struct ChainControllerState {
 }
 
 impl ChainControllerState {
-    fn build_fork<'a>(
+    fn build_fork(
         &mut self,
-        block: &'a BlockPair,
-        chain_head: &'a BlockPair,
-    ) -> Result<ForkResolutionResult<'a>, ChainControllerError> {
+        block: &BlockPair,
+        chain_head: &BlockPair,
+    ) -> Result<ForkResolutionResult, ChainControllerError> {
         let new_block = block.clone();
 
         let new_chain = self
@@ -234,8 +231,6 @@ impl ChainControllerState {
         });
 
         let result = ForkResolutionResult {
-            block,
-            chain_head: Some(chain_head),
             new_chain,
             current_chain,
             committed_batches,
