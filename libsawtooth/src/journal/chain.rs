@@ -136,10 +136,7 @@ pub trait ChainObserver: Send + Sync {
 }
 
 /// Holds the results of Block Validation.
-struct ForkResolutionResult<'a> {
-    pub block: &'a BlockPair,
-    pub chain_head: Option<&'a BlockPair>,
-
+struct ForkResolutionResult {
     pub new_chain: Vec<BlockPair>,
     pub current_chain: Vec<BlockPair>,
 
@@ -167,11 +164,11 @@ struct ChainControllerState {
 }
 
 impl ChainControllerState {
-    fn build_fork<'a>(
+    fn build_fork(
         &mut self,
-        block: &'a BlockPair,
-        chain_head: &'a BlockPair,
-    ) -> Result<ForkResolutionResult<'a>, ChainControllerError> {
+        block: &BlockPair,
+        chain_head: &BlockPair,
+    ) -> Result<ForkResolutionResult, ChainControllerError> {
         let new_block = block.clone();
 
         let new_chain = self
@@ -234,8 +231,6 @@ impl ChainControllerState {
         });
 
         let result = ForkResolutionResult {
-            block,
-            chain_head: Some(chain_head),
             new_chain,
             current_chain,
             committed_batches,
@@ -619,7 +614,7 @@ fn set_genesis(
                 block.block().header_signature()
             );
         } else {
-            block_validator.validate_block(&block)?;
+            block_validator.validate_block(block)?;
 
             if chain_id.is_none() {
                 state
@@ -652,7 +647,7 @@ fn set_genesis(
                         })?;
                     let receipts: Vec<TransactionReceipt> = validation_results.execution_results;
                     for observer in &mut state.observers {
-                        observer.chain_update(&block, receipts.as_slice());
+                        observer.chain_update(block, receipts.as_slice());
                     }
                 }
                 None => {
@@ -680,13 +675,13 @@ fn on_block_received(
     block_validation_results: &BlockValidationResultStore,
 ) {
     if state.chain_head.is_none() {
-        if let Some(Some(block)) = state.block_manager.get(&[&block_id]).next() {
+        if let Some(Some(block)) = state.block_manager.get(&[block_id]).next() {
             if let Err(err) = set_genesis(
                 state,
-                &chain_head_lock,
+                chain_head_lock,
                 &block,
-                &block_validator,
-                &block_validation_results,
+                block_validator,
+                block_validation_results,
             ) {
                 warn!(
                     "Unable to set chain head; genesis block {} is not valid: {:?}",
@@ -700,10 +695,10 @@ fn on_block_received(
     }
 
     let block = {
-        if let Some(Some(block)) = state.block_manager.get(&[&block_id]).next() {
+        if let Some(Some(block)) = state.block_manager.get(&[block_id]).next() {
             // Create Ref-C: Hold this reference until consensus renders a {commit, ignore, or
             // fail} opinion on the block.
-            match state.block_manager.ref_block(&block_id) {
+            match state.block_manager.ref_block(block_id) {
                 Ok(block_ref) => {
                     state
                         .block_references
@@ -737,7 +732,7 @@ fn on_block_received(
         // point the block may be dropped if no other ext. ref's exist.
         if let Some(previous_block_id) = state
             .fork_cache
-            .insert(&block_id, Some(block.header().previous_block_id()))
+            .insert(block_id, Some(block.header().previous_block_id()))
         {
             // Drop Ref-B: This fork was extended and so this block has an int. ref. count of
             // at least one, so we can drop the ext. ref. placed on the block to keep the fork
@@ -799,15 +794,16 @@ fn handle_block_commit(
             })?;
 
             let mut chain_head_guard = chain_head_lock.acquire();
-            let chain_head_updated = state
-                .check_chain_head_updated(&chain_head, &block)
-                .map_err(|err| {
-                    error!(
-                        "Error occured while checking if chain head updated: {:?}",
-                        err,
-                    );
-                    err
-                })?;
+            let chain_head_updated =
+                state
+                    .check_chain_head_updated(&chain_head, block)
+                    .map_err(|err| {
+                        error!(
+                            "Error occured while checking if chain head updated: {:?}",
+                            err,
+                        );
+                        err
+                    })?;
             if chain_head_updated {
                 continue;
             }
@@ -858,7 +854,7 @@ fn handle_block_commit(
                         let receipts: Vec<TransactionReceipt> =
                             validation_results.execution_results;
                         for observer in &mut state.observers {
-                            observer.chain_update(&blk, receipts.as_slice());
+                            observer.chain_update(blk, receipts.as_slice());
                         }
                     }
                     None => {

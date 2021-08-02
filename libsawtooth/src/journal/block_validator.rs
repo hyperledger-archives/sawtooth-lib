@@ -446,14 +446,14 @@ impl<SBV: BlockValidation<ReturnValue = BlockValidationResult>> BlockValidationP
             .map(|b| b.header().state_root_hash().to_vec());
 
         for validation in &self.validations {
-            match validation.validate_block(&block, previous_blocks_state_hash.as_deref()) {
+            match validation.validate_block(block, previous_blocks_state_hash.as_deref()) {
                 Ok(()) => (),
                 Err(err) => return Err(err),
             }
         }
 
         self.state_validation
-            .validate_block(&block, previous_blocks_state_hash.as_deref())
+            .validate_block(block, previous_blocks_state_hash.as_deref())
     }
 }
 
@@ -731,7 +731,7 @@ impl BlockValidation for PermissionValidation {
 
             let identity_view: IdentityView = self
                 .state_view_factory
-                .create_view(&state_root)
+                .create_view(state_root)
                 .map_err(|err| {
                     ValidationError::BlockValidationError(format!(
                         "During permission check of block ({}, {}) state root was not \
@@ -803,7 +803,7 @@ impl BlockValidation for OnChainRulesValidation {
             })?;
 
             let settings_view: SettingsView =
-                self.view_factory.create_view(&state_root).map_err(|err| {
+                self.view_factory.create_view(state_root).map_err(|err| {
                     ValidationError::BlockValidationError(format!(
                         "During validate_on_chain_rules, error creating settings view: {:?}",
                         err

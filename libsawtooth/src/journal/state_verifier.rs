@@ -145,8 +145,8 @@ fn process_blocks(
                 // recompute it and verify it
                 execute_batches(
                     &previous_state_root,
-                    &execution_task_submitter,
-                    &merkle_state,
+                    execution_task_submitter,
+                    merkle_state,
                     block.block().batches().to_vec(),
                     &*scheduler_factory,
                     hex::encode(block.header().state_root_hash()),

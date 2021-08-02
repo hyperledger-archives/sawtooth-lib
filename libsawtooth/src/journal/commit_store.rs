@@ -45,7 +45,7 @@ impl CommitStore {
         reader: &dyn DatabaseReader,
         block_id: &[u8],
     ) -> Result<BlockPair, DatabaseError> {
-        let packed = reader.get(&block_id)?.ok_or_else(|| {
+        let packed = reader.get(block_id)?.ok_or_else(|| {
             DatabaseError::NotFoundError(format!("Block not found: {:?}", block_id))
         })?;
         BlockPair::from_bytes(&packed).map_err(|err| {
@@ -61,7 +61,7 @@ impl CommitStore {
         batch_id: &[u8],
     ) -> Result<Vec<u8>, DatabaseError> {
         reader
-            .index_get("index_batch", &batch_id)
+            .index_get("index_batch", batch_id)
             .and_then(|block_id| {
                 block_id.ok_or_else(|| {
                     DatabaseError::NotFoundError(format!("Batch not found: {:?}", batch_id))
@@ -74,7 +74,7 @@ impl CommitStore {
         transaction_id: &[u8],
     ) -> Result<Vec<u8>, DatabaseError> {
         reader
-            .index_get("index_transaction", &transaction_id)
+            .index_get("index_transaction", transaction_id)
             .and_then(|block_id| {
                 block_id.ok_or_else(|| {
                     DatabaseError::NotFoundError(format!(
@@ -92,7 +92,7 @@ impl CommitStore {
         reader
             .index_get(
                 "index_block_num",
-                &format!("0x{:0>16x}", block_num).as_bytes(),
+                format!("0x{:0>16x}", block_num).as_bytes(),
             )
             .and_then(|block_id| {
                 block_id.ok_or_else(|| {
@@ -150,7 +150,7 @@ impl CommitStore {
         let packed = block.block().clone().into_bytes().map_err(|err| {
             DatabaseError::WriterError(format!("Failed to serialize block: {}", err))
         })?;
-        writer.put(&block.block().header_signature().as_bytes(), &packed)
+        writer.put(block.block().header_signature().as_bytes(), &packed)
     }
 
     fn write_block_num_to_index(
@@ -161,8 +161,8 @@ impl CommitStore {
         let block_num_index = format!("0x{:0>16x}", block_num);
         writer.index_put(
             "index_block_num",
-            &block_num_index.as_bytes(),
-            &header_signature.as_bytes(),
+            block_num_index.as_bytes(),
+            header_signature.as_bytes(),
         )
     }
 
@@ -173,8 +173,8 @@ impl CommitStore {
         for batch in block.block().batches().iter() {
             writer.index_put(
                 "index_batch",
-                &batch.header_signature().as_bytes(),
-                &block.block().header_signature().as_bytes(),
+                batch.header_signature().as_bytes(),
+                block.block().header_signature().as_bytes(),
             )?;
         }
         Ok(())
@@ -188,8 +188,8 @@ impl CommitStore {
             for txn in batch.transactions() {
                 writer.index_put(
                     "index_transaction",
-                    &txn.header_signature().as_bytes(),
-                    &block.block().header_signature().as_bytes(),
+                    txn.header_signature().as_bytes(),
+                    block.block().header_signature().as_bytes(),
                 )?;
             }
         }
@@ -223,7 +223,7 @@ impl CommitStore {
         writer: &mut LmdbDatabaseWriter,
         block: &BlockPair,
     ) -> Result<(), DatabaseError> {
-        writer.delete(&block.block().header_signature().as_bytes())
+        writer.delete(block.block().header_signature().as_bytes())
     }
 
     fn delete_block_num_from_index(
@@ -232,7 +232,7 @@ impl CommitStore {
     ) -> Result<(), DatabaseError> {
         writer.index_delete(
             "index_block_num",
-            &format!("0x{:0>16x}", block_num).as_bytes(),
+            format!("0x{:0>16x}", block_num).as_bytes(),
         )
     }
 
@@ -241,7 +241,7 @@ impl CommitStore {
         block: &BlockPair,
     ) -> Result<(), DatabaseError> {
         for batch in block.block().batches().iter() {
-            writer.index_delete("index_batch", &batch.header_signature().as_bytes())?;
+            writer.index_delete("index_batch", batch.header_signature().as_bytes())?;
         }
         Ok(())
     }
@@ -252,7 +252,7 @@ impl CommitStore {
     ) -> Result<(), DatabaseError> {
         for batch in block.block().batches().iter() {
             for txn in batch.transactions() {
-                writer.index_delete("index_transaction", &txn.header_signature().as_bytes())?;
+                writer.index_delete("index_transaction", txn.header_signature().as_bytes())?;
             }
         }
         Ok(())

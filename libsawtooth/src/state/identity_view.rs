@@ -89,13 +89,13 @@ impl IdentityView {
         I: Named,
         Vec<I>: FromBytes<Vec<I>>,
     {
-        if !self.state_reader.contains(&address)? {
+        if !self.state_reader.contains(address)? {
             return Ok(None);
         }
 
         Ok(self
             .state_reader
-            .get(&address)?
+            .get(address)?
             .map(|bytes| Vec::from_bytes(&bytes))
             .transpose()?
             .and_then(|list| list.into_iter().find(|item| item.name() == name)))
