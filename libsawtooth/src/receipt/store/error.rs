@@ -17,10 +17,13 @@
 
 use std::error::Error;
 
-use crate::error::{InternalError, InvalidStateError, ResourceTemporarilyUnavailableError};
+use crate::error::{
+    ConstraintViolationError, InternalError, InvalidStateError, ResourceTemporarilyUnavailableError,
+};
 
 #[derive(Debug)]
 pub enum ReceiptStoreError {
+    ConstraintViolationError(ConstraintViolationError),
     InternalError(InternalError),
     InvalidStateError(InvalidStateError),
     ResourceTemporarilyUnavailableError(ResourceTemporarilyUnavailableError),
@@ -29,6 +32,7 @@ pub enum ReceiptStoreError {
 impl Error for ReceiptStoreError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
+            Self::ConstraintViolationError(err) => Some(err),
             Self::InternalError(err) => Some(err),
             Self::InvalidStateError(err) => Some(err),
             Self::ResourceTemporarilyUnavailableError(err) => Some(err),
@@ -39,6 +43,7 @@ impl Error for ReceiptStoreError {
 impl std::fmt::Display for ReceiptStoreError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            Self::ConstraintViolationError(err) => err.fmt(f),
             Self::InternalError(err) => err.fmt(f),
             Self::InvalidStateError(err) => err.fmt(f),
             Self::ResourceTemporarilyUnavailableError(err) => err.fmt(f),
