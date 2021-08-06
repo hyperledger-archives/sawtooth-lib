@@ -17,6 +17,8 @@
 
 use std::error::Error;
 
+#[cfg(feature = "diesel")]
+use crate::error::ConstraintViolationType;
 use crate::error::{
     ConstraintViolationError, InternalError, InvalidStateError, ResourceTemporarilyUnavailableError,
 };
@@ -47,6 +49,43 @@ impl std::fmt::Display for ReceiptStoreError {
             Self::InternalError(err) => err.fmt(f),
             Self::InvalidStateError(err) => err.fmt(f),
             Self::ResourceTemporarilyUnavailableError(err) => err.fmt(f),
+        }
+    }
+}
+
+#[cfg(feature = "diesel")]
+impl From<diesel::r2d2::PoolError> for ReceiptStoreError {
+    fn from(err: diesel::r2d2::PoolError) -> Self {
+        ReceiptStoreError::ResourceTemporarilyUnavailableError(
+            ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+        )
+    }
+}
+
+#[cfg(feature = "diesel")]
+impl From<diesel::result::Error> for ReceiptStoreError {
+    fn from(err: diesel::result::Error) -> Self {
+        match err {
+            diesel::result::Error::DatabaseError(db_err_kind, _) => match db_err_kind {
+                diesel::result::DatabaseErrorKind::UniqueViolation => {
+                    ReceiptStoreError::ConstraintViolationError(
+                        ConstraintViolationError::from_source_with_violation_type(
+                            ConstraintViolationType::Unique,
+                            Box::new(err),
+                        ),
+                    )
+                }
+                diesel::result::DatabaseErrorKind::ForeignKeyViolation => {
+                    ReceiptStoreError::ConstraintViolationError(
+                        ConstraintViolationError::from_source_with_violation_type(
+                            ConstraintViolationType::ForeignKey,
+                            Box::new(err),
+                        ),
+                    )
+                }
+                _ => ReceiptStoreError::InternalError(InternalError::from_source(Box::new(err))),
+            },
+            _ => ReceiptStoreError::InternalError(InternalError::from_source(Box::new(err))),
         }
     }
 }
