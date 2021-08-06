@@ -27,6 +27,8 @@ description = """\
 base64 = { version = "0.13", optional = true }
 cbor-codec = { version = "0.7", optional = true }
 cylinder = "0.2"
+diesel = { version = "1.0", features = ["r2d2", "serde_json"], optional = true }
+diesel_migrations = { version = "1.4", optional = true }
 hex = "0.4"
 log = "0.4"
 lmdb-zero = { version = "0.4", optional = true }
@@ -76,7 +78,7 @@ lmdb-store = ["lmdb-zero", "stores"]
 pending-batch-queue = ["validator-internals"]
 receipt-store = ["stores"]
 redis-store = ["redis", "stores"]
-sqlite = []
+sqlite = ["diesel_migrations", "transaction-receipt-store"]
 stores = []
 transaction-receipt-store = []
 transaction-receipt-store-lmdb = ["lmdb-zero", "transaction-receipt-store"]
