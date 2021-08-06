@@ -62,6 +62,7 @@ experimental = [
     "pending-batch-queue",
     "receipt-store",
     "redis-store",
+    "sqlite",
     "stores",
     "transaction-receipt-store",
     "transaction-receipt-store-lmdb",
@@ -75,6 +76,7 @@ lmdb-store = ["lmdb-zero", "stores"]
 pending-batch-queue = ["validator-internals"]
 receipt-store = ["stores"]
 redis-store = ["redis", "stores"]
+sqlite = []
 stores = []
 transaction-receipt-store = []
 transaction-receipt-store-lmdb = ["lmdb-zero", "transaction-receipt-store"]
