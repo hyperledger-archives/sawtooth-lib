@@ -15,7 +15,24 @@
  * ------------------------------------------------------------------------------
  */
 
-#[cfg(feature = "postgres")]
-pub mod postgres;
-#[cfg(feature = "sqlite")]
-pub mod sqlite;
+//! Defines methods and utilities to interact with Receipt Store tables in a PostgreSQL database.
+
+embed_migrations!("./src/migrations/diesel/postgres/migrations");
+
+use diesel::pg::PgConnection;
+
+use crate::error::InternalError;
+
+/// Run database migrations to create tables defined by Receipt Store
+///
+/// # Arguments
+///
+/// * `conn` - Connection to PostgreSQL database
+///
+pub fn run_migrations(conn: &PgConnection) -> Result<(), InternalError> {
+    embedded_migrations::run(conn).map_err(|err| InternalError::from_source(Box::new(err)))?;
+
+    info!("Successfully applied PostgreSQL migrations");
+
+    Ok(())
+}

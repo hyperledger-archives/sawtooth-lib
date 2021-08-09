@@ -22,6 +22,7 @@ extern crate diesel_migrations;
     feature = "lmdb-store",
     feature = "validator-internals",
     feature = "client",
+    feature = "postgres",
     feature = "sqlite",
     feature = "transaction-receipt-store-lmdb"
 ))]
