@@ -60,8 +60,64 @@ impl Clone for DieselReceiptStore<diesel::sqlite::SqliteConnection> {
     }
 }
 
+#[cfg(feature = "postgres")]
+impl Clone for DieselReceiptStore<diesel::pg::PgConnection> {
+    fn clone(&self) -> Self {
+        Self {
+            connection_pool: self.connection_pool.clone(),
+        }
+    }
+}
+
 #[cfg(feature = "sqlite")]
 impl ReceiptStore for DieselReceiptStore<diesel::sqlite::SqliteConnection> {
+    fn get_txn_receipt_by_id(
+        &self,
+        id: String,
+    ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?).get_txn_receipt_by_id(&id)
+    }
+
+    fn get_txn_receipt_by_index(
+        &self,
+        index: u64,
+    ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?).get_txn_receipt_by_index(index)
+    }
+
+    fn add_txn_receipts(&self, receipts: Vec<TransactionReceipt>) -> Result<(), ReceiptStoreError> {
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?).add_txn_receipts(receipts)
+    }
+
+    fn remove_txn_receipt_by_id(
+        &self,
+        id: String,
+    ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?).remove_txn_receipt_by_id(id)
+    }
+
+    fn remove_txn_receipt_by_index(
+        &self,
+        index: u64,
+    ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?)
+            .remove_txn_receipt_by_index(index)
+    }
+
+    fn count_txn_receipts(&self) -> Result<u64, ReceiptStoreError> {
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?).count_txn_receipts()
+    }
+
+    fn list_receipts_since(
+        &self,
+        id: Option<String>,
+    ) -> Result<Box<dyn Iterator<Item = TransactionReceipt>>, ReceiptStoreError> {
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?).list_receipts_since(id)
+    }
+}
+
+#[cfg(feature = "postgres")]
+impl ReceiptStore for DieselReceiptStore<diesel::pg::PgConnection> {
     fn get_txn_receipt_by_id(
         &self,
         id: String,
