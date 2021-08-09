@@ -51,6 +51,7 @@ impl<C: diesel::Connection> DieselReceiptStore<C> {
     }
 }
 
+#[cfg(feature = "sqlite")]
 impl Clone for DieselReceiptStore<diesel::sqlite::SqliteConnection> {
     fn clone(&self) -> Self {
         Self {
@@ -59,6 +60,7 @@ impl Clone for DieselReceiptStore<diesel::sqlite::SqliteConnection> {
     }
 }
 
+#[cfg(feature = "sqlite")]
 impl ReceiptStore for DieselReceiptStore<diesel::sqlite::SqliteConnection> {
     fn get_txn_receipt_by_id(
         &self,
