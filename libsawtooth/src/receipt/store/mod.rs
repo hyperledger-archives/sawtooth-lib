@@ -17,6 +17,8 @@
 
 //! Data store for transaction receipts.
 
+#[cfg(feature = "sqlite")]
+pub mod diesel;
 mod error;
 #[cfg(feature = "transaction-receipt-store-lmdb")]
 pub mod lmdb;

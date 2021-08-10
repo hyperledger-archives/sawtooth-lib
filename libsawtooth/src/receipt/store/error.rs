@@ -17,10 +17,15 @@
 
 use std::error::Error;
 
-use crate::error::{InternalError, InvalidStateError, ResourceTemporarilyUnavailableError};
+#[cfg(feature = "diesel")]
+use crate::error::ConstraintViolationType;
+use crate::error::{
+    ConstraintViolationError, InternalError, InvalidStateError, ResourceTemporarilyUnavailableError,
+};
 
 #[derive(Debug)]
 pub enum ReceiptStoreError {
+    ConstraintViolationError(ConstraintViolationError),
     InternalError(InternalError),
     InvalidStateError(InvalidStateError),
     ResourceTemporarilyUnavailableError(ResourceTemporarilyUnavailableError),
@@ -29,6 +34,7 @@ pub enum ReceiptStoreError {
 impl Error for ReceiptStoreError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
+            Self::ConstraintViolationError(err) => Some(err),
             Self::InternalError(err) => Some(err),
             Self::InvalidStateError(err) => Some(err),
             Self::ResourceTemporarilyUnavailableError(err) => Some(err),
@@ -39,9 +45,47 @@ impl Error for ReceiptStoreError {
 impl std::fmt::Display for ReceiptStoreError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            Self::ConstraintViolationError(err) => err.fmt(f),
             Self::InternalError(err) => err.fmt(f),
             Self::InvalidStateError(err) => err.fmt(f),
             Self::ResourceTemporarilyUnavailableError(err) => err.fmt(f),
+        }
+    }
+}
+
+#[cfg(feature = "diesel")]
+impl From<diesel::r2d2::PoolError> for ReceiptStoreError {
+    fn from(err: diesel::r2d2::PoolError) -> Self {
+        ReceiptStoreError::ResourceTemporarilyUnavailableError(
+            ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+        )
+    }
+}
+
+#[cfg(feature = "diesel")]
+impl From<diesel::result::Error> for ReceiptStoreError {
+    fn from(err: diesel::result::Error) -> Self {
+        match err {
+            diesel::result::Error::DatabaseError(db_err_kind, _) => match db_err_kind {
+                diesel::result::DatabaseErrorKind::UniqueViolation => {
+                    ReceiptStoreError::ConstraintViolationError(
+                        ConstraintViolationError::from_source_with_violation_type(
+                            ConstraintViolationType::Unique,
+                            Box::new(err),
+                        ),
+                    )
+                }
+                diesel::result::DatabaseErrorKind::ForeignKeyViolation => {
+                    ReceiptStoreError::ConstraintViolationError(
+                        ConstraintViolationError::from_source_with_violation_type(
+                            ConstraintViolationType::ForeignKey,
+                            Box::new(err),
+                        ),
+                    )
+                }
+                _ => ReceiptStoreError::InternalError(InternalError::from_source(Box::new(err))),
+            },
+            _ => ReceiptStoreError::InternalError(InternalError::from_source(Box::new(err))),
         }
     }
 }

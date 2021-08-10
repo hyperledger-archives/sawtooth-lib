@@ -12,10 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[macro_use]
+#[cfg(feature = "diesel")]
+extern crate diesel;
+#[macro_use]
+#[cfg(feature = "diesel")]
+extern crate diesel_migrations;
 #[cfg(any(
     feature = "lmdb-store",
     feature = "validator-internals",
     feature = "client",
+    feature = "sqlite",
     feature = "transaction-receipt-store-lmdb"
 ))]
 #[macro_use]
@@ -33,6 +40,7 @@ pub mod error;
 pub mod hashlib;
 #[cfg(feature = "validator-internals")]
 pub mod journal;
+pub mod migrations;
 #[cfg(feature = "validator-internals")]
 pub mod permissions;
 pub mod protocol;
