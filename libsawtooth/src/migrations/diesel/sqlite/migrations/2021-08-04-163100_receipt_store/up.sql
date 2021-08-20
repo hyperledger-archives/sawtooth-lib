@@ -15,7 +15,7 @@
 
 CREATE TABLE IF NOT EXISTS transaction_receipt (
     transaction_id              TEXT PRIMARY KEY,
-    idx                         INTEGER NOT NULL
+    idx                         INTEGER NOT NULL UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS invalid_transaction_result (
