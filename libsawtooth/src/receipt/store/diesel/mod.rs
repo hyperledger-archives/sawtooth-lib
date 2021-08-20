@@ -257,8 +257,8 @@ pub mod tests {
                 .expect("Unable to add receipts");
 
             let first_receipt = receipt_store
-                .get_txn_receipt_by_index(0)
-                .expect("failed to get transaction receipt at idndex 0");
+                .get_txn_receipt_by_index(1)
+                .expect("failed to get transaction receipt at index 1");
 
             match first_receipt.unwrap().transaction_result {
                 TransactionResult::Valid { events, .. } => {
@@ -283,8 +283,8 @@ pub mod tests {
             }
 
             let second_receipt = receipt_store
-                .get_txn_receipt_by_index(1)
-                .expect("failed to get transaction receipt at idndex 0");
+                .get_txn_receipt_by_index(2)
+                .expect("failed to get transaction receipt at index 2");
 
             match second_receipt.unwrap().transaction_result {
                 TransactionResult::Valid { events, .. } => {
@@ -548,8 +548,8 @@ pub mod tests {
                 .expect("Unable to add receipts");
 
             let first_receipt = receipt_store
-                .remove_txn_receipt_by_index(0)
-                .expect("failed to get transaction receipt at idndex 0");
+                .remove_txn_receipt_by_index(1)
+                .expect("failed to get transaction receipt at index 1");
 
             match first_receipt.unwrap().transaction_result {
                 TransactionResult::Valid { events, .. } => assert_eq!(
@@ -560,7 +560,7 @@ pub mod tests {
             }
 
             assert!(receipt_store
-                .get_txn_receipt_by_index(0)
+                .get_txn_receipt_by_index(1)
                 .expect("error getting receipt")
                 .is_none());
 
@@ -634,8 +634,8 @@ pub mod tests {
                 .expect("Unable to add receipts");
 
             let first_receipt = receipt_store
-                .get_txn_receipt_by_index(0)
-                .expect("failed to get transaction receipt at idndex 0");
+                .get_txn_receipt_by_index(1)
+                .expect("failed to get transaction receipt at index 1");
 
             match first_receipt.unwrap().transaction_result {
                 TransactionResult::Valid { events, .. } => {
@@ -653,8 +653,8 @@ pub mod tests {
             }
 
             let second_receipt = receipt_store
-                .get_txn_receipt_by_index(1)
-                .expect("failed to get transaction receipt at idndex 0");
+                .get_txn_receipt_by_index(2)
+                .expect("failed to get transaction receipt at index 2");
 
             match second_receipt.unwrap().transaction_result {
                 TransactionResult::Valid { events, .. } => {
@@ -722,8 +722,8 @@ pub mod tests {
                 .expect("Unable to add receipts");
 
             let first_receipt = receipt_store
-                .get_txn_receipt_by_index(0)
-                .expect("failed to get transaction receipt at idndex 0");
+                .get_txn_receipt_by_index(1)
+                .expect("failed to get transaction receipt at index 1");
 
             match first_receipt.unwrap().transaction_result {
                 TransactionResult::Valid { events, .. } => {
@@ -733,8 +733,8 @@ pub mod tests {
             }
 
             let second_receipt = receipt_store
-                .get_txn_receipt_by_index(1)
-                .expect("failed to get transaction receipt at idndex 0");
+                .get_txn_receipt_by_index(2)
+                .expect("failed to get transaction receipt at index 2");
 
             match second_receipt.unwrap().transaction_result {
                 TransactionResult::Valid { events, .. } => {
@@ -799,8 +799,8 @@ pub mod tests {
                 .expect("Unable to add receipts");
 
             let first_receipt = receipt_store
-                .get_txn_receipt_by_index(0)
-                .expect("failed to get transaction receipt at idndex 0");
+                .get_txn_receipt_by_index(1)
+                .expect("failed to get transaction receipt at index 1");
 
             match first_receipt.unwrap().transaction_result {
                 TransactionResult::Valid { state_changes, .. } => {
@@ -810,8 +810,8 @@ pub mod tests {
             }
 
             let second_receipt = receipt_store
-                .get_txn_receipt_by_index(1)
-                .expect("failed to get transaction receipt at idndex 0");
+                .get_txn_receipt_by_index(2)
+                .expect("failed to get transaction receipt at index 2");
 
             match second_receipt.unwrap().transaction_result {
                 TransactionResult::Valid { state_changes, .. } => {
