@@ -22,7 +22,7 @@ use std::convert::TryFrom;
 use diesel::{insert_into, prelude::*};
 use transact::protocol::receipt::{StateChange, TransactionReceipt, TransactionResult};
 
-use crate::error::{ConstraintViolationError, ConstraintViolationType, InternalError};
+use crate::error::InternalError;
 
 use super::ReceiptStoreOperations;
 
@@ -52,29 +52,22 @@ impl<'a> ReceiptStoreAddTxnReceiptsOperation
 {
     fn add_txn_receipts(&self, receipts: Vec<TransactionReceipt>) -> Result<(), ReceiptStoreError> {
         self.conn.transaction::<(), _, _>(|| {
-            for (index, receipt) in receipts.iter().enumerate() {
-                if transaction_receipt::table
-                    .filter(transaction_receipt::transaction_id.eq(receipt.transaction_id.to_string()))
-                    .first::<TransactionReceiptModel>(self.conn)
-                    .optional()?
-                    .is_some()
-                {
-                    return Err(ReceiptStoreError::ConstraintViolationError(
-                        ConstraintViolationError::with_violation_type(ConstraintViolationType::Unique),
-                    ));
-                }
-
+            let last_index: i64 = match transaction_receipt::table
+                .order(transaction_receipt::idx.desc())
+                .first::<TransactionReceiptModel>(self.conn)
+                .optional()?
+            {
+                Some(rec) => rec.idx,
+                None => 0,
+            };
+            for (i, receipt) in (1..).zip(receipts.into_iter()) {
                 let id = &receipt.transaction_id;
 
                 // Create the TransactionReceiptModel and insert it into the
                 // transaction_receipt table
                 let transaction_receipt_model = TransactionReceiptModel {
                     transaction_id: id.to_string(),
-                    idx: i64::try_from(index).map_err(|_| {
-                        ReceiptStoreError::InternalError(InternalError::with_message(
-                            "Unable to convert index into i64".to_string(),
-                        ))
-                    })?,
+                    idx: last_index + i,
                 };
                 insert_into(transaction_receipt::table)
                     .values(transaction_receipt_model)
