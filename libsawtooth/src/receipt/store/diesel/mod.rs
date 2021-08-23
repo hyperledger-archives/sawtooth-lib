@@ -439,7 +439,10 @@ pub mod tests {
 
             let mut total = 0;
             for (i, receipt) in all_receipts.enumerate() {
-                match receipt.transaction_result {
+                match receipt
+                    .expect("failed to get transaction receipt")
+                    .transaction_result
+                {
                     TransactionResult::Valid { events, .. } => {
                         assert_eq!(
                             events[0].attributes[0],
@@ -498,7 +501,10 @@ pub mod tests {
             let mut id = 3;
             let mut total = 0;
             for receipt in all_receipts {
-                match receipt.transaction_result {
+                match receipt
+                    .expect("failed to get transaction receipt")
+                    .transaction_result
+                {
                     TransactionResult::Valid { events, .. } => {
                         assert_eq!(
                             events[0].attributes[0],
@@ -906,7 +912,10 @@ pub mod tests {
             let mut total = 0;
             for (i, receipt) in all_receipts.enumerate() {
                 if i % 2 == 0 {
-                    match receipt.transaction_result {
+                    match receipt
+                        .expect("failed to get transaction receipt")
+                        .transaction_result
+                    {
                         TransactionResult::Valid { events, .. } => {
                             assert_eq!(
                                 events[0].attributes[0],
@@ -928,7 +937,10 @@ pub mod tests {
                         _ => panic!("transaction result should be valid"),
                     }
                 } else {
-                    match receipt.transaction_result {
+                    match receipt
+                        .expect("failed to get transaction receipt")
+                        .transaction_result
+                    {
                         TransactionResult::Invalid {
                             error_message,
                             error_data,
