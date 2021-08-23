@@ -31,7 +31,7 @@ use transact::{
 };
 
 use crate::error::{InternalError, InvalidStateError};
-use crate::receipt::store::{ReceiptStore, ReceiptStoreError};
+use crate::receipt::store::{ReceiptIter, ReceiptStore, ReceiptStoreError};
 
 // 32-bit architectures
 #[cfg(any(target_arch = "x86", target_arch = "arm"))]
@@ -460,10 +460,7 @@ impl ReceiptStore for LmdbReceiptStore {
             })
     }
 
-    fn list_receipts_since(
-        &self,
-        id: Option<String>,
-    ) -> Result<Box<dyn Iterator<Item = TransactionReceipt>>, ReceiptStoreError> {
+    fn list_receipts_since(&self, id: Option<String>) -> Result<ReceiptIter, ReceiptStoreError> {
         let db: &LmdbDatabase = self.databases.get(&self.current_db).ok_or_else(|| {
             ReceiptStoreError::InvalidStateError(InvalidStateError::with_message(format!(
                 "Unable to retrieve current database: {}",
@@ -627,12 +624,15 @@ impl LmdbReceiptStoreIter {
         iter
     }
 
-    fn reload_cache(&mut self) -> Result<(), String> {
-        let txn = lmdb::ReadTransaction::new(self.env.clone()).map_err(|err| err.to_string())?;
+    fn reload_cache(&mut self) -> Result<(), ReceiptStoreError> {
+        let txn = lmdb::ReadTransaction::new(self.env.clone())?;
         let access = txn.access();
-        let mut index_cursor = txn
-            .cursor(self.index_to_key_db.clone())
-            .map_err(|err| err.to_string())?;
+        let mut index_cursor = txn.cursor(self.index_to_key_db.clone()).map_err(|err| {
+            ReceiptStoreError::InternalError(InternalError::from_source_with_message(
+                Box::new(err),
+                "failed to get database cursor".to_string(),
+            ))
+        })?;
 
         // Set the cursor to the start of the range and get the first entry
         let mut first_entry = Some(match &self.range.start {
@@ -669,28 +669,47 @@ impl LmdbReceiptStoreIter {
                 .unwrap_or_else(|| index_cursor.next::<[u8], [u8]>(&access));
             match next_entry {
                 Ok((index, id)) => {
-                    let index = index
-                        .try_into()
-                        .map(u64::from_ne_bytes)
-                        .map_err(|err| err.to_string())?;
+                    let index = index.try_into().map(u64::from_ne_bytes).map_err(|err| {
+                        ReceiptStoreError::InternalError(InternalError::from_source_with_message(
+                            Box::new(err),
+                            "unable to convert from bytes to index".to_string(),
+                        ))
+                    })?;
                     // If this index is in the range, add the value to the cache; otherwise, exit.
                     if !self.range.contains(&index) {
                         break;
                     } else {
                         self.cache.push_back(
                             TransactionReceipt::from_bytes(
-                                access
-                                    .get::<_, [u8]>(&self.main_db, id)
-                                    .map_err(|err| err.to_string())?,
+                                access.get::<_, [u8]>(&self.main_db, id).map_err(|err| {
+                                    ReceiptStoreError::InternalError(InternalError::from_source(
+                                        Box::new(err),
+                                    ))
+                                })?,
                             )
-                            .map_err(|err| err.to_string())?,
+                            .map_err(|err| {
+                                ReceiptStoreError::InternalError(
+                                    InternalError::from_source_with_message(
+                                        Box::new(err),
+                                        "unable to convert from bytes to transaction receipt"
+                                            .to_string(),
+                                    ),
+                                )
+                            })?,
                         );
                         // Update the range start to reflect only what's left
                         self.range.start = Bound::Excluded(index);
                     }
                 }
                 Err(lmdb::error::Error::Code(lmdb::error::NOTFOUND)) => break,
-                Err(err) => return Err(err.to_string()),
+                Err(err) => {
+                    return Err(ReceiptStoreError::InternalError(
+                        InternalError::from_source_with_message(
+                            Box::new(err),
+                            "unable to get next database entry".to_string(),
+                        ),
+                    ))
+                }
             }
         }
 
@@ -699,15 +718,15 @@ impl LmdbReceiptStoreIter {
 }
 
 impl Iterator for LmdbReceiptStoreIter {
-    // type Item = Result<TransactionReceipt, ReceiptStoreError>;
-    type Item = TransactionReceipt;
+    type Item = Result<TransactionReceipt, ReceiptStoreError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Err(err) = self.reload_cache() {
-            error!("Failed to load iterator's cache: {}", err);
-        }
-        // self.cache.pop_front().map(Ok)
-        self.cache.pop_front()
+        if self.cache.is_empty() {
+            if let Err(err) = self.reload_cache() {
+                return Some(Err(err));
+            }
+        };
+        self.cache.pop_front().map(Ok)
     }
 }
 
