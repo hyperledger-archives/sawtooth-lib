@@ -15,6 +15,8 @@
  * ------------------------------------------------------------------------------
  */
 
+//! Database representations used to implement a diesel backend for the `ReceiptStore`.
+
 use std::convert::TryFrom;
 use std::io::Write;
 
