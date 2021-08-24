@@ -198,7 +198,7 @@ where
         match i16::from_sql(bytes)? {
             1 => Ok(StateChangeTypeModel::Set),
             2 => Ok(StateChangeTypeModel::Delete),
-            int => Err(format!("Invalid circuit status {}", int).into()),
+            int => Err(format!("Invalid state change type {}", int).into()),
         }
     }
 }
