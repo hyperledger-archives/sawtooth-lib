@@ -956,6 +956,67 @@ pub mod tests {
         assert!(test_result.is_ok());
     }
 
+    /// Verify that all transaction receipts in a SQLite `DieselReceiptStore` are returned
+    /// in the correct order when added to the database one at a time
+    ///
+    /// 1. Create a new `DieselReceiptStore`
+    /// 2. Generate 20 transaction receipts and individually add the first 10 to the receipt store
+    /// 3. Add the remaining 10 transaction receipts at the same time in a vector
+    /// 4. Call `list_receipts_since` on the receipt store, passing in None to indicate all
+    ///    receipts should be listed
+    /// 5. Check that the receipts are returned in order and that various fields
+    ///    contain the expected values
+    /// 6. Check that the number of receipts returned is 20
+    #[test]
+    fn test_sqlite_list_receipts_order() {
+        let pool = create_connection_pool_and_migrate();
+
+        let receipt_store = DieselReceiptStore::new(pool);
+
+        let txn_receipts = create_txn_receipts(20);
+
+        for r in txn_receipts[0..10].to_vec() {
+            receipt_store
+                .add_txn_receipts(vec![r])
+                .expect("Unable to add individual receipt");
+        }
+
+        receipt_store
+            .add_txn_receipts(txn_receipts[10..].to_vec())
+            .expect("Unable to add remaining 10 receipts");
+
+        let all_receipts = receipt_store
+            .list_receipts_since(None)
+            .expect("failed to list all transaction receipts");
+
+        let mut total = 0;
+        for (i, receipt) in all_receipts.enumerate() {
+            match receipt.transaction_result {
+                TransactionResult::Valid { events, .. } => {
+                    assert_eq!(
+                        events[0].attributes[0],
+                        (format!("a{}", i), format!("b{}", i))
+                    );
+                    assert_eq!(
+                        events[0].attributes[1],
+                        (format!("c{}", i), format!("d{}", i))
+                    );
+                    assert_eq!(
+                        events[1].attributes[0],
+                        (format!("e{}", i), format!("f{}", i))
+                    );
+                    assert_eq!(
+                        events[1].attributes[1],
+                        (format!("g{}", i), format!("h{}", i))
+                    );
+                }
+                _ => panic!("transaction result should be valid"),
+            }
+            total += 1;
+        }
+        assert_eq!(total, 20);
+    }
+
     /// Creates a connection pool for an in-memory SQLite database with only a single connection
     /// available. Each connection is backed by a different in-memory SQLite database, so limiting
     /// the pool to a single connection ensures that the same DB is used for all operations.
