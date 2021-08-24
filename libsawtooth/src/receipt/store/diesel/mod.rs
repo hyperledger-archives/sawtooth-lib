@@ -480,7 +480,7 @@ pub mod tests {
     /// 1. Create a new `DieselReceiptStore`
     /// 2. Generate 10 transaction receipts and add them to the receipt store
     /// 3. Call `list_receipts_since` on the receipt store, passing in an id to indicate all
-    ///    receipts added since that reciept should be listed
+    ///    receipts added since that receipt should be listed
     /// 4. Check that the receipts are returned in order and that various fields
     ///    contain the expected values
     /// 5. Check that the number of receipts returned is 7
