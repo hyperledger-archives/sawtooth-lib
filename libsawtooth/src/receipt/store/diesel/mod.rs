@@ -15,7 +15,13 @@
  * ------------------------------------------------------------------------------
  */
 
-// ! A Diesel implementation of `ReceiptStore`.
+//! A [`Diesel`](https://crates.io/crates/diesel) backend for [`ReceiptStore`].
+//!
+//! This module contains the [`DieselReceiptStore`], which provides an implementation
+//! of the [`ReceiptStore`] trait.
+//!
+//! [`DieselReceiptStore`]: struct.DieselReceiptStore.html
+//! [`ReceiptStore`]: trait.ReceiptStore.html
 
 pub mod models;
 mod operations;
