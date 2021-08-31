@@ -27,6 +27,8 @@ RUN apt-get update \
  && apt-get install -y \
     curl \
     gcc \
+    libpq-dev \
+    libsqlite3-dev \
     libssl-dev \
     pkg-config \
     unzip \
