@@ -8,6 +8,7 @@
 | Cian Montgomery | cianx | cianx |
 | Dan Middleton | dcmiddle | Dan |
 | Darian Plumb | dplumb94 | dplumb |
+| Isabel Tomb | isabeltomb | isabeltomb |
 | James Mitchell | jsmitchell | jsmitchell |
 | Logan Seeley | ltseeley | ltseeley |
 | Peter Schwarz | peterschwarz | pschwarz |
