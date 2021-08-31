@@ -24,7 +24,7 @@ pub mod schema;
 use diesel::r2d2::{ConnectionManager, Pool};
 use transact::protocol::receipt::TransactionReceipt;
 
-use crate::receipt::store::{error::ReceiptStoreError, ReceiptStore};
+use crate::receipt::store::{error::ReceiptStoreError, ReceiptIter, ReceiptStore};
 
 use operations::add_txn_receipts::ReceiptStoreAddTxnReceiptsOperation as _;
 use operations::count_txn_receipts::ReceiptStoreCountTxnReceiptsOperation as _;
@@ -108,10 +108,7 @@ impl ReceiptStore for DieselReceiptStore<diesel::sqlite::SqliteConnection> {
         ReceiptStoreOperations::new(&*self.connection_pool.get()?).count_txn_receipts()
     }
 
-    fn list_receipts_since(
-        &self,
-        id: Option<String>,
-    ) -> Result<Box<dyn Iterator<Item = TransactionReceipt>>, ReceiptStoreError> {
+    fn list_receipts_since(&self, id: Option<String>) -> Result<ReceiptIter, ReceiptStoreError> {
         ReceiptStoreOperations::new(&*self.connection_pool.get()?).list_receipts_since(id)
     }
 }
@@ -155,10 +152,7 @@ impl ReceiptStore for DieselReceiptStore<diesel::pg::PgConnection> {
         ReceiptStoreOperations::new(&*self.connection_pool.get()?).count_txn_receipts()
     }
 
-    fn list_receipts_since(
-        &self,
-        id: Option<String>,
-    ) -> Result<Box<dyn Iterator<Item = TransactionReceipt>>, ReceiptStoreError> {
+    fn list_receipts_since(&self, id: Option<String>) -> Result<ReceiptIter, ReceiptStoreError> {
         ReceiptStoreOperations::new(&*self.connection_pool.get()?).list_receipts_since(id)
     }
 }
@@ -445,7 +439,10 @@ pub mod tests {
 
             let mut total = 0;
             for (i, receipt) in all_receipts.enumerate() {
-                match receipt.transaction_result {
+                match receipt
+                    .expect("failed to get transaction receipt")
+                    .transaction_result
+                {
                     TransactionResult::Valid { events, .. } => {
                         assert_eq!(
                             events[0].attributes[0],
@@ -504,7 +501,10 @@ pub mod tests {
             let mut id = 3;
             let mut total = 0;
             for receipt in all_receipts {
-                match receipt.transaction_result {
+                match receipt
+                    .expect("failed to get transaction receipt")
+                    .transaction_result
+                {
                     TransactionResult::Valid { events, .. } => {
                         assert_eq!(
                             events[0].attributes[0],
@@ -912,7 +912,10 @@ pub mod tests {
             let mut total = 0;
             for (i, receipt) in all_receipts.enumerate() {
                 if i % 2 == 0 {
-                    match receipt.transaction_result {
+                    match receipt
+                        .expect("failed to get transaction receipt")
+                        .transaction_result
+                    {
                         TransactionResult::Valid { events, .. } => {
                             assert_eq!(
                                 events[0].attributes[0],
@@ -934,7 +937,10 @@ pub mod tests {
                         _ => panic!("transaction result should be valid"),
                     }
                 } else {
-                    match receipt.transaction_result {
+                    match receipt
+                        .expect("failed to get transaction receipt")
+                        .transaction_result
+                    {
                         TransactionResult::Invalid {
                             error_message,
                             error_data,
