@@ -1,5 +1,30 @@
 # Release Notes
 
+## Changes in libsawtooth 0.6.6
+
+### Experimental Changes
+
+- Add PendingBatchQueue to publisher behind the experimental feature
+  'pending-batch-queue'.
+- Add a `ReceiptStore` trait behind the experimental feature
+  `transaction-receipt-store`.
+- Add LMDB, SQLite and PostgreSQL implementations of the `ReceiptStore` trait.
+
+### Other Changes
+
+- Update depreciated `protobuf::parse_from_bytes` to `Message::parse_from_bytes`
+- Add a DEFAULT_SIZE value for 32bit platforms.
+- Update base64 dependency from 0.12 to 0.13.
+- Update glob dependency from 0.2 to 0.3.
+- Update reqwest dependency from 0.10 to 0.11.
+- Update rand dependency from 0.4 to 0.8.
+- Update redis dependency from 0.14 to 0.20.
+- Update protobuf dependency from 2.19 to 2.23.
+- Add an error module with generic errors `InternalError`, `InvalidStateError`,
+  and `ResourceTemporarilyUnavailableError` that can be used throughout
+  libsawtooth.
+- Add a migrations module that handles SQLite and PostgreSQL migrations.
+
 ## Changes in libsawtooth 0.6.5
 
 - Update the `cylinder` dependency to version `0.2`
