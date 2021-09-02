@@ -15,6 +15,8 @@
  * ------------------------------------------------------------------------------
  */
 
+//! Database representations used to implement a diesel backend for the `ReceiptStore`.
+
 use std::convert::TryFrom;
 use std::io::Write;
 
@@ -198,7 +200,7 @@ where
         match i16::from_sql(bytes)? {
             1 => Ok(StateChangeTypeModel::Set),
             2 => Ok(StateChangeTypeModel::Delete),
-            int => Err(format!("Invalid circuit status {}", int).into()),
+            int => Err(format!("Invalid state change type {}", int).into()),
         }
     }
 }
