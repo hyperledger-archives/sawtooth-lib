@@ -23,12 +23,15 @@ use protobuf::ProtobufError;
 use transact::database::error::DatabaseError;
 use transact::state::merkle::StateDatabaseError as TransactStateDatabaseError;
 
+use crate::error::InternalError;
+
 #[derive(Debug)]
 pub enum StateDatabaseError {
     NotFound(String),
     DeserializationError(DecodeError),
     SerializationError(EncodeError),
     ChangeLogEncodingError(String),
+    Internal(InternalError),
     InvalidRecord,
     InvalidHash(String),
     #[allow(dead_code)]
@@ -51,6 +54,7 @@ impl fmt::Display for StateDatabaseError {
             StateDatabaseError::ChangeLogEncodingError(ref msg) => {
                 write!(f, "Unable to serialize change log entry: {}", msg)
             }
+            StateDatabaseError::Internal(ref err) => f.write_str(&err.to_string()),
             StateDatabaseError::InvalidRecord => write!(f, "A node was malformed"),
             StateDatabaseError::InvalidHash(ref msg) => {
                 write!(f, "The given hash is invalid: {}", msg)
@@ -76,6 +80,7 @@ impl Error for StateDatabaseError {
             StateDatabaseError::DeserializationError(ref err) => Some(err),
             StateDatabaseError::SerializationError(ref err) => Some(err),
             StateDatabaseError::ChangeLogEncodingError(_) => None,
+            StateDatabaseError::Internal(ref err) => Some(err),
             StateDatabaseError::InvalidRecord => None,
             StateDatabaseError::InvalidHash(_) => None,
             StateDatabaseError::InvalidChangeLogIndex(_) => None,
