@@ -104,6 +104,9 @@ impl From<TransactStateDatabaseError> for StateDatabaseError {
             TransactStateDatabaseError::ChangeLogEncodingError(msg) => {
                 StateDatabaseError::ChangeLogEncodingError(msg)
             }
+            TransactStateDatabaseError::InternalError(err) => {
+                StateDatabaseError::Internal(InternalError::from_source(Box::new(err)))
+            }
             TransactStateDatabaseError::InvalidRecord => StateDatabaseError::InvalidRecord,
             TransactStateDatabaseError::InvalidHash(msg) => StateDatabaseError::InvalidHash(msg),
             TransactStateDatabaseError::InvalidChangeLogIndex(msg) => {

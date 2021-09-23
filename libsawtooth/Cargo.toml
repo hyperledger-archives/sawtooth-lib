@@ -38,7 +38,7 @@ protobuf = "2.23"
 redis = { version = "0.20", default-features = false, optional = true }
 reqwest = { version = "0.11", optional = true, features = ["blocking", "json"] }
 serde = { version = "1.0", optional = true, features = ["derive"] }
-transact = "0.3"
+transact = "0.3.8"
 uluru = { version = "0.4", optional = true }
 
 [dev-dependencies]
