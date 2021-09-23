@@ -91,3 +91,9 @@ validator-internals = [
   "openssl",
   "uluru",
 ]
+
+[package.metadata.docs.rs]
+features = [
+    "stable",
+    "experimental"
+]
