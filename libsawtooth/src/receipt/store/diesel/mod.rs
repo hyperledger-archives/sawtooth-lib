@@ -1062,6 +1062,131 @@ pub mod tests {
         assert_eq!(total, 20);
     }
 
+    /// Verify that transaction receipts stored in a SQLite `DieselReceiptStore` with multiple
+    /// `service_ids` can be listed
+    ///
+    /// 1. Create a new `DieselReceiptStore` with one service_id
+    /// 2. Use the same pool to create a second `DieselReceiptStore` with a different
+    ///    service_id
+    /// 3. Generate 10 transaction receipts and alternate adding them to the receipt store
+    ///    with the two different service_ids
+    /// 4. Call `list_receipts_since` on the first receipt store, passing in None to
+    ///    indicate all receipts should be listed
+    /// 5. Check that the receipts are returned in order and that various fields
+    ///    contain the expected values
+    /// 6. Check that the number of receipts returned is 5
+    /// 7. Call `list_receipts_since` on the second receipt store, passing in None to
+    ///    indicate all receipts should be listed
+    /// 8. Check that the receipts are returned in order and that various fields
+    ///    contain the expected values
+    /// 9. Check that the number of receipts returned is 5
+    #[test]
+    fn test_sqlite_multiple_service() {
+        let test_result = std::panic::catch_unwind(|| {
+            let pool = create_connection_pool_and_migrate();
+
+            let receipt_store_1 =
+                DieselReceiptStore::new(pool.clone(), Some("ABCDE-12345::AAaa".to_string()));
+
+            let receipt_store_2 =
+                DieselReceiptStore::new(pool, Some("FGHIJ-67890::BBbb".to_string()));
+
+            let txn_receipts = create_txn_receipts(10);
+
+            receipt_store_1
+                .add_txn_receipts(txn_receipts[0..3].to_vec())
+                .expect("Unable to add receipts to receipt store 1");
+
+            receipt_store_2
+                .add_txn_receipts(txn_receipts[3..6].to_vec())
+                .expect("Unable to add receipts to receipt store 2");
+
+            receipt_store_1
+                .add_txn_receipts(txn_receipts[6..8].to_vec())
+                .expect("Unable to add receipts to receipt store 1");
+
+            receipt_store_2
+                .add_txn_receipts(txn_receipts[8..].to_vec())
+                .expect("Unable to add receipts to receipt store 2");
+
+            let receipt_store_1_receipts = receipt_store_1
+                .list_receipts_since(None)
+                .expect("failed to list all transaction receipts from receipt store 1");
+
+            let mut total = 0;
+            for (i, receipt) in vec![0, 1, 2, 6, 7]
+                .into_iter()
+                .zip(receipt_store_1_receipts)
+            {
+                match receipt
+                    .expect("failed to get transaction receipt")
+                    .transaction_result
+                {
+                    TransactionResult::Valid { events, .. } => {
+                        assert_eq!(
+                            events[0].attributes[0],
+                            (format!("a{}", i), format!("b{}", i))
+                        );
+                        assert_eq!(
+                            events[0].attributes[1],
+                            (format!("c{}", i), format!("d{}", i))
+                        );
+                        assert_eq!(
+                            events[1].attributes[0],
+                            (format!("e{}", i), format!("f{}", i))
+                        );
+                        assert_eq!(
+                            events[1].attributes[1],
+                            (format!("g{}", i), format!("h{}", i))
+                        );
+                    }
+                    _ => panic!("transaction result should be valid"),
+                }
+                total += 1;
+            }
+            assert_eq!(total, 5);
+
+            let receipt_store_2_receipts = receipt_store_2
+                .list_receipts_since(None)
+                .expect("failed to list all transaction receipts from receipt store 2");
+
+            total = 0;
+            for (i, receipt) in vec![3, 4, 5, 8, 9]
+                .into_iter()
+                .zip(receipt_store_2_receipts)
+            {
+                match receipt
+                    .expect("failed to get transaction receipt")
+                    .transaction_result
+                {
+                    TransactionResult::Valid { events, .. } => {
+                        assert_eq!(
+                            events[0].attributes[0],
+                            (format!("a{}", i), format!("b{}", i))
+                        );
+                        assert_eq!(
+                            events[0].attributes[1],
+                            (format!("c{}", i), format!("d{}", i))
+                        );
+                        assert_eq!(
+                            events[1].attributes[0],
+                            (format!("e{}", i), format!("f{}", i))
+                        );
+                        assert_eq!(
+                            events[1].attributes[1],
+                            (format!("g{}", i), format!("h{}", i))
+                        );
+                    }
+                    _ => panic!("transaction result should be valid"),
+                }
+                total += 1;
+            }
+            assert_eq!(total, 5);
+        });
+
+        assert!(test_result.is_ok());
+    }
+
     /// Creates a connection pool for an in-memory SQLite database with only a single connection
     /// available. Each connection is backed by a different in-memory SQLite database, so limiting
     /// the pool to a single connection ensures that the same DB is used for all operations.
