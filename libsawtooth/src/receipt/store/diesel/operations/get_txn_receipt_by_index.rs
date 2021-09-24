@@ -72,7 +72,7 @@ where
                     Some(receipt) => receipt,
                     None => return Ok(None),
                 };
-                ReceiptStoreOperations::new(self.conn)
+                ReceiptStoreOperations::new(self.conn, self.service_id.clone())
                     .get_txn_receipt_by_id(&txn_receipt.transaction_id)
             })
     }
