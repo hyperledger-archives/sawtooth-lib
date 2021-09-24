@@ -44,6 +44,7 @@ use operations::ReceiptStoreOperations;
 /// A database-backed ReceiptStore, powered by [`Diesel`](https://crates.io/crates/diesel).
 pub struct DieselReceiptStore<C: diesel::Connection + 'static> {
     connection_pool: Pool<ConnectionManager<C>>,
+    service_id: Option<String>,
 }
 
 impl<C: diesel::Connection> DieselReceiptStore<C> {
@@ -52,8 +53,11 @@ impl<C: diesel::Connection> DieselReceiptStore<C> {
     /// # Arguments
     ///
     ///  * `connection_pool`: connection pool for the database
-    pub fn new(connection_pool: Pool<ConnectionManager<C>>) -> Self {
-        DieselReceiptStore { connection_pool }
+    pub fn new(connection_pool: Pool<ConnectionManager<C>>, service_id: Option<String>) -> Self {
+        DieselReceiptStore {
+            connection_pool,
+            service_id,
+        }
     }
 }
 
@@ -62,6 +66,7 @@ impl Clone for DieselReceiptStore<diesel::sqlite::SqliteConnection> {
     fn clone(&self) -> Self {
         Self {
             connection_pool: self.connection_pool.clone(),
+            service_id: self.service_id.clone(),
         }
     }
 }
@@ -71,6 +76,7 @@ impl Clone for DieselReceiptStore<diesel::pg::PgConnection> {
     fn clone(&self) -> Self {
         Self {
             connection_pool: self.connection_pool.clone(),
+            service_id: self.service_id.clone(),
         }
     }
 }
@@ -192,7 +198,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts(10);
 
@@ -226,7 +233,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts(10);
 
@@ -306,7 +314,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts(10);
 
@@ -382,7 +391,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts(10);
 
@@ -431,7 +441,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts(10);
 
@@ -492,7 +503,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts(10);
 
@@ -554,7 +566,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts(10);
 
@@ -603,7 +616,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts(10);
 
@@ -655,7 +669,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let mut receipts = Vec::new();
 
@@ -756,7 +771,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let mut receipts = Vec::new();
 
@@ -828,7 +844,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let mut receipts = Vec::new();
 
@@ -903,7 +920,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts_mixed_results(10);
 
@@ -983,7 +1001,7 @@ pub mod tests {
     fn test_sqlite_list_receipts_order() {
         let pool = create_connection_pool_and_migrate();
 
-        let receipt_store = DieselReceiptStore::new(pool);
+        let receipt_store = DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
         let txn_receipts = create_txn_receipts(20);
 
