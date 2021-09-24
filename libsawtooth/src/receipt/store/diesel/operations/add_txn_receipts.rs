@@ -55,7 +55,11 @@ impl<'a> ReceiptStoreAddTxnReceiptsOperation
 {
     fn add_txn_receipts(&self, receipts: Vec<TransactionReceipt>) -> Result<(), ReceiptStoreError> {
         self.conn.transaction::<(), _, _>(|| {
-            let index: i64 = match transaction_receipt::table
+            let mut query = transaction_receipt::table.into_boxed();
+            if let Some(service_id) = &self.service_id {
+                query = query.filter(transaction_receipt::service_id.eq(service_id));
+            };
+            let index: i64 = match query
                 .order(transaction_receipt::idx.desc())
                 .first::<TransactionReceiptModel>(self.conn)
                 .optional()?
@@ -71,6 +75,7 @@ impl<'a> ReceiptStoreAddTxnReceiptsOperation
                 let transaction_receipt_model = TransactionReceiptModel {
                     transaction_id: id.to_string(),
                     idx: index + i,
+                    service_id: self.service_id.clone(),
                 };
                 insert_into(transaction_receipt::table)
                     .values(transaction_receipt_model)
@@ -185,7 +190,11 @@ impl<'a> ReceiptStoreAddTxnReceiptsOperation
 {
     fn add_txn_receipts(&self, receipts: Vec<TransactionReceipt>) -> Result<(), ReceiptStoreError> {
         self.conn.transaction::<(), _, _>(|| {
-            let last_index: i64 = match transaction_receipt::table
+            let mut query = transaction_receipt::table.into_boxed();
+            if let Some(service_id) = &self.service_id {
+                query = query.filter(transaction_receipt::service_id.eq(service_id));
+            };
+            let last_index: i64 = match query
                 .order(transaction_receipt::idx.desc())
                 .first::<TransactionReceiptModel>(self.conn)
                 .optional()?
@@ -201,6 +210,7 @@ impl<'a> ReceiptStoreAddTxnReceiptsOperation
                 let transaction_receipt_model = TransactionReceiptModel {
                     transaction_id: id.to_string(),
                     idx: last_index + i,
+                    service_id: self.service_id.clone(),
                 };
                 insert_into(transaction_receipt::table)
                     .values(transaction_receipt_model)
