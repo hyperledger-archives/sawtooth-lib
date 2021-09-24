@@ -67,7 +67,11 @@ where
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
         self.conn
             .transaction::<Option<TransactionReceipt>, _, _>(|| {
-                let txn_receipt: TransactionReceiptModel = match transaction_receipt::table
+                let mut query = transaction_receipt::table.into_boxed();
+                if let Some(service_id) = &self.service_id {
+                    query = query.filter(transaction_receipt::service_id.eq(service_id));
+                };
+                let txn_receipt: TransactionReceiptModel = match query
                     .select(transaction_receipt::all_columns)
                     .filter(transaction_receipt::transaction_id.eq(id.to_string()))
                     .first::<TransactionReceiptModel>(self.conn)
