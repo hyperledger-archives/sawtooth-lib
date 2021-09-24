@@ -59,12 +59,16 @@ where
         self.conn.transaction::<ReceiptIter, _, _>(|| {
             // Collect the `TransactionReceiptModels` of all transaction receipts
             // that are to be listed
+            let mut query = transaction_receipt::table.into_boxed();
+            if let Some(service_id) = &self.service_id {
+                query = query.filter(transaction_receipt::service_id.eq(service_id));
+            };
             let transaction_receipt_models: Vec<TransactionReceiptModel> = match id {
-                Some(id) => transaction_receipt::table
+                Some(id) => query
                     .filter(transaction_receipt::transaction_id.gt(id))
                     .select(transaction_receipt::all_columns)
                     .load(self.conn)?,
-                None => transaction_receipt::table
+                None => query
                     .select(transaction_receipt::all_columns)
                     .load(self.conn)?,
             };
