@@ -27,10 +27,11 @@ pub(super) mod remove_txn_receipt_by_index;
 
 pub struct ReceiptStoreOperations<'a, C> {
     conn: &'a C,
+    service_id: Option<String>,
 }
 
 impl<'a, C: diesel::Connection> ReceiptStoreOperations<'a, C> {
-    pub fn new(conn: &'a C) -> Self {
-        ReceiptStoreOperations { conn }
+    pub fn new(conn: &'a C, service_id: Option<String>) -> Self {
+        ReceiptStoreOperations { conn, service_id }
     }
 }
