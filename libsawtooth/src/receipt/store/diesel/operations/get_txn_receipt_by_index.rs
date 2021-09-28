@@ -63,7 +63,11 @@ where
                         "Unable to convert index into i64".to_string(),
                     ))
                 })?;
-                let txn_receipt: TransactionReceiptModel = match transaction_receipt::table
+                let mut query = transaction_receipt::table.into_boxed();
+                if let Some(service_id) = &self.service_id {
+                    query = query.filter(transaction_receipt::service_id.eq(service_id));
+                };
+                let txn_receipt: TransactionReceiptModel = match query
                     .select(transaction_receipt::all_columns)
                     .filter(transaction_receipt::idx.eq(index))
                     .first::<TransactionReceiptModel>(self.conn)
@@ -72,7 +76,7 @@ where
                     Some(receipt) => receipt,
                     None => return Ok(None),
                 };
-                ReceiptStoreOperations::new(self.conn)
+                ReceiptStoreOperations::new(self.conn, self.service_id.clone())
                     .get_txn_receipt_by_id(&txn_receipt.transaction_id)
             })
     }

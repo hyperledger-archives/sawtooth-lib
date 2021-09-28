@@ -44,6 +44,7 @@ use operations::ReceiptStoreOperations;
 /// A database-backed ReceiptStore, powered by [`Diesel`](https://crates.io/crates/diesel).
 pub struct DieselReceiptStore<C: diesel::Connection + 'static> {
     connection_pool: Pool<ConnectionManager<C>>,
+    service_id: Option<String>,
 }
 
 impl<C: diesel::Connection> DieselReceiptStore<C> {
@@ -52,8 +53,11 @@ impl<C: diesel::Connection> DieselReceiptStore<C> {
     /// # Arguments
     ///
     ///  * `connection_pool`: connection pool for the database
-    pub fn new(connection_pool: Pool<ConnectionManager<C>>) -> Self {
-        DieselReceiptStore { connection_pool }
+    pub fn new(connection_pool: Pool<ConnectionManager<C>>, service_id: Option<String>) -> Self {
+        DieselReceiptStore {
+            connection_pool,
+            service_id,
+        }
     }
 }
 
@@ -62,6 +66,7 @@ impl Clone for DieselReceiptStore<diesel::sqlite::SqliteConnection> {
     fn clone(&self) -> Self {
         Self {
             connection_pool: self.connection_pool.clone(),
+            service_id: self.service_id.clone(),
         }
     }
 }
@@ -71,6 +76,7 @@ impl Clone for DieselReceiptStore<diesel::pg::PgConnection> {
     fn clone(&self) -> Self {
         Self {
             connection_pool: self.connection_pool.clone(),
+            service_id: self.service_id.clone(),
         }
     }
 }
@@ -81,41 +87,47 @@ impl ReceiptStore for DieselReceiptStore<diesel::sqlite::SqliteConnection> {
         &self,
         id: String,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?).get_txn_receipt_by_id(&id)
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+            .get_txn_receipt_by_id(&id)
     }
 
     fn get_txn_receipt_by_index(
         &self,
         index: u64,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?).get_txn_receipt_by_index(index)
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+            .get_txn_receipt_by_index(index)
     }
 
     fn add_txn_receipts(&self, receipts: Vec<TransactionReceipt>) -> Result<(), ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?).add_txn_receipts(receipts)
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+            .add_txn_receipts(receipts)
     }
 
     fn remove_txn_receipt_by_id(
         &self,
         id: String,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?).remove_txn_receipt_by_id(id)
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+            .remove_txn_receipt_by_id(id)
     }
 
     fn remove_txn_receipt_by_index(
         &self,
         index: u64,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?)
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
             .remove_txn_receipt_by_index(index)
     }
 
     fn count_txn_receipts(&self) -> Result<u64, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?).count_txn_receipts()
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+            .count_txn_receipts()
     }
 
     fn list_receipts_since(&self, id: Option<String>) -> Result<ReceiptIter, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?).list_receipts_since(id)
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+            .list_receipts_since(id)
     }
 }
 
@@ -125,41 +137,47 @@ impl ReceiptStore for DieselReceiptStore<diesel::pg::PgConnection> {
         &self,
         id: String,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?).get_txn_receipt_by_id(&id)
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+            .get_txn_receipt_by_id(&id)
     }
 
     fn get_txn_receipt_by_index(
         &self,
         index: u64,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?).get_txn_receipt_by_index(index)
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+            .get_txn_receipt_by_index(index)
     }
 
     fn add_txn_receipts(&self, receipts: Vec<TransactionReceipt>) -> Result<(), ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?).add_txn_receipts(receipts)
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+            .add_txn_receipts(receipts)
     }
 
     fn remove_txn_receipt_by_id(
         &self,
         id: String,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?).remove_txn_receipt_by_id(id)
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+            .remove_txn_receipt_by_id(id)
     }
 
     fn remove_txn_receipt_by_index(
         &self,
         index: u64,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?)
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
             .remove_txn_receipt_by_index(index)
     }
 
     fn count_txn_receipts(&self) -> Result<u64, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?).count_txn_receipts()
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+            .count_txn_receipts()
     }
 
     fn list_receipts_since(&self, id: Option<String>) -> Result<ReceiptIter, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?).list_receipts_since(id)
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+            .list_receipts_since(id)
     }
 }
 
@@ -192,7 +210,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts(10);
 
@@ -226,7 +245,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts(10);
 
@@ -306,7 +326,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts(10);
 
@@ -382,7 +403,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts(10);
 
@@ -431,7 +453,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts(10);
 
@@ -492,7 +515,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts(10);
 
@@ -554,7 +578,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts(10);
 
@@ -603,7 +628,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts(10);
 
@@ -655,7 +681,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let mut receipts = Vec::new();
 
@@ -756,7 +783,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let mut receipts = Vec::new();
 
@@ -828,7 +856,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let mut receipts = Vec::new();
 
@@ -903,7 +932,8 @@ pub mod tests {
         let test_result = std::panic::catch_unwind(|| {
             let pool = create_connection_pool_and_migrate();
 
-            let receipt_store = DieselReceiptStore::new(pool);
+            let receipt_store =
+                DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
             let txn_receipts = create_txn_receipts_mixed_results(10);
 
@@ -983,7 +1013,7 @@ pub mod tests {
     fn test_sqlite_list_receipts_order() {
         let pool = create_connection_pool_and_migrate();
 
-        let receipt_store = DieselReceiptStore::new(pool);
+        let receipt_store = DieselReceiptStore::new(pool, Some("ABCDE-12345::AAaa".to_string()));
 
         let txn_receipts = create_txn_receipts(20);
 
@@ -1030,6 +1060,131 @@ pub mod tests {
             total += 1;
         }
         assert_eq!(total, 20);
+    }
+
+    /// Verify that transaction receipts stored in a SQLite `DieselReceiptStore` with multiple
+    /// `service_ids` can be listed
+    ///
+    /// 1. Create a new `DieselReceiptStore` with one service_id
+    /// 2. Use the same pool to create a second `DieselReceiptStore` with a different
+    ///    service_id
+    /// 3. Generate 10 transaction receipts and alternate adding them to the receipt store
+    ///    with the two different service_ids
+    /// 4. Call `list_receipts_since` on the first receipt store, passing in None to
+    ///    indicate all receipts should be listed
+    /// 5. Check that the receipts are returned in order and that various fields
+    ///    contain the expected values
+    /// 6. Check that the number of receipts returned is 5
+    /// 7. Call `list_receipts_since` on the second receipt store, passing in None to
+    ///    indicate all receipts should be listed
+    /// 8. Check that the receipts are returned in order and that various fields
+    ///    contain the expected values
+    /// 9. Check that the number of receipts returned is 5
+    #[test]
+    fn test_sqlite_multiple_service() {
+        let test_result = std::panic::catch_unwind(|| {
+            let pool = create_connection_pool_and_migrate();
+
+            let receipt_store_1 =
+                DieselReceiptStore::new(pool.clone(), Some("ABCDE-12345::AAaa".to_string()));
+
+            let receipt_store_2 =
+                DieselReceiptStore::new(pool, Some("FGHIJ-67890::BBbb".to_string()));
+
+            let txn_receipts = create_txn_receipts(10);
+
+            receipt_store_1
+                .add_txn_receipts(txn_receipts[0..3].to_vec())
+                .expect("Unable to add receipts to receipt store 1");
+
+            receipt_store_2
+                .add_txn_receipts(txn_receipts[3..6].to_vec())
+                .expect("Unable to add receipts to receipt store 2");
+
+            receipt_store_1
+                .add_txn_receipts(txn_receipts[6..8].to_vec())
+                .expect("Unable to add receipts to receipt store 1");
+
+            receipt_store_2
+                .add_txn_receipts(txn_receipts[8..].to_vec())
+                .expect("Unable to add receipts to receipt store 2");
+
+            let receipt_store_1_receipts = receipt_store_1
+                .list_receipts_since(None)
+                .expect("failed to list all transaction receipts from receipt store 1");
+
+            let mut total = 0;
+            for (i, receipt) in vec![0, 1, 2, 6, 7]
+                .into_iter()
+                .zip(receipt_store_1_receipts)
+            {
+                match receipt
+                    .expect("failed to get transaction receipt")
+                    .transaction_result
+                {
+                    TransactionResult::Valid { events, .. } => {
+                        assert_eq!(
+                            events[0].attributes[0],
+                            (format!("a{}", i), format!("b{}", i))
+                        );
+                        assert_eq!(
+                            events[0].attributes[1],
+                            (format!("c{}", i), format!("d{}", i))
+                        );
+                        assert_eq!(
+                            events[1].attributes[0],
+                            (format!("e{}", i), format!("f{}", i))
+                        );
+                        assert_eq!(
+                            events[1].attributes[1],
+                            (format!("g{}", i), format!("h{}", i))
+                        );
+                    }
+                    _ => panic!("transaction result should be valid"),
+                }
+                total += 1;
+            }
+            assert_eq!(total, 5);
+
+            let receipt_store_2_receipts = receipt_store_2
+                .list_receipts_since(None)
+                .expect("failed to list all transaction receipts from receipt store 2");
+
+            total = 0;
+            for (i, receipt) in vec![3, 4, 5, 8, 9]
+                .into_iter()
+                .zip(receipt_store_2_receipts)
+            {
+                match receipt
+                    .expect("failed to get transaction receipt")
+                    .transaction_result
+                {
+                    TransactionResult::Valid { events, .. } => {
+                        assert_eq!(
+                            events[0].attributes[0],
+                            (format!("a{}", i), format!("b{}", i))
+                        );
+                        assert_eq!(
+                            events[0].attributes[1],
+                            (format!("c{}", i), format!("d{}", i))
+                        );
+                        assert_eq!(
+                            events[1].attributes[0],
+                            (format!("e{}", i), format!("f{}", i))
+                        );
+                        assert_eq!(
+                            events[1].attributes[1],
+                            (format!("g{}", i), format!("h{}", i))
+                        );
+                    }
+                    _ => panic!("transaction result should be valid"),
+                }
+                total += 1;
+            }
+            assert_eq!(total, 5);
+        });
+
+        assert!(test_result.is_ok());
     }
 
     /// Creates a connection pool for an in-memory SQLite database with only a single connection

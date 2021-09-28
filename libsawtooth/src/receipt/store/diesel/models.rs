@@ -43,6 +43,7 @@ use crate::receipt::store::error::ReceiptStoreError;
 pub struct TransactionReceiptModel {
     pub transaction_id: String,
     pub idx: i64,
+    pub service_id: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Associations, Identifiable, Insertable, Queryable, QueryableByName)]

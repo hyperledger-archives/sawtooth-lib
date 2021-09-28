@@ -19,6 +19,7 @@ table! {
     transaction_receipt (transaction_id) {
         transaction_id -> Text,
         idx -> Int8,
+        service_id -> Nullable<Text>,
     }
 }
 
