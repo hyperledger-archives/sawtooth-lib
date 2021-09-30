@@ -51,7 +51,9 @@ glob = "0.3"
 [features]
 default = []
 
-stable = []
+stable = [
+    "transaction-receipt-store",
+]
 
 experimental = [
     # The experimental feature extends stable:
@@ -67,7 +69,6 @@ experimental = [
     "redis-store",
     "sqlite",
     "stores",
-    "transaction-receipt-store",
     "transaction-receipt-store-lmdb",
     "validator-internals",
 ]
