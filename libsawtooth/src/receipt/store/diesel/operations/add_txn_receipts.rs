@@ -85,7 +85,8 @@ impl<'a> ReceiptStoreAddTxnReceiptsOperation
                     TransactionResult::Valid{ state_changes, events, data } => {
                         // Create a vector of `ValidTransactionResultDataModels` from
                         // the valid transaction result's data field
-                        let valid_transaction_result_data_models: Vec<NewValidTransactionResultDataModel> = data
+                        let valid_transaction_result_data_models:
+                            Vec<NewValidTransactionResultDataModel> = data
                             .iter()
                             .enumerate()
                             .map(|(i, d)| {
@@ -125,28 +126,37 @@ impl<'a> ReceiptStoreAddTxnReceiptsOperation
                                 })?,
                             };
 
-                            // Insert the event and return the event_id that is generated for the event
-                            // when it is inserted into the table
+                            // Insert the event and return the event_id that is generated for the
+                            // event when it is inserted into the table
                             let event_id: i64 = insert_into(valid_transaction_result_event::table)
                                 .values(event_model)
                                 .returning(valid_transaction_result_event::event_id)
                                 .get_result(self.conn)?;
 
                             let event_attribute_models: Vec<ValidTransactionResultEventAttributeModel> =
-                                ValidTransactionResultEventAttributeModel::list_from_event_with_ids(id, event_id, event)?;
+                                ValidTransactionResultEventAttributeModel::list_from_event_with_ids(
+                                    id,
+                                    event_id,
+                                    event)?;
                             insert_into(valid_transaction_result_event_attribute::table)
                                 .values(event_attribute_models)
                                 .execute(self.conn)?;
                         }
 
                         // Create a list of state changes, maintaining original order
-                        let state_change_models: Vec<NewValidTransactionResultStateChangeModel> = state_changes
+                        let state_change_models: Vec<NewValidTransactionResultStateChangeModel> =
+                            state_changes
                             .iter()
                             .enumerate()
                             .map(|(i, s)| {
                                 let ((key, value), state_change_type) = match s {
-                                    StateChange::Set { key, value } => ((key, Some(value.to_vec())), StateChangeTypeModel::Set),
-                                    StateChange::Delete { key } => ((key, None), StateChangeTypeModel::Delete),
+                                    StateChange::Set { key, value } => (
+                                        (key, Some(value.to_vec())),
+                                        StateChangeTypeModel::Set
+                                    ),
+                                    StateChange::Delete { key } => (
+                                        (key, None),
+                                        StateChangeTypeModel::Delete),
                                 };
                                 Ok(NewValidTransactionResultStateChangeModel {
                                     transaction_id: id.to_string(),
@@ -159,7 +169,8 @@ impl<'a> ReceiptStoreAddTxnReceiptsOperation
                                         ))
                                     })?,
                                 })
-                            }).collect::<Result<Vec<NewValidTransactionResultStateChangeModel>, ReceiptStoreError>>()?;
+                            }).collect::<Result<Vec<NewValidTransactionResultStateChangeModel>,
+                            ReceiptStoreError>>()?;
 
                         insert_into(valid_transaction_result_state_change::table)
                             .values(state_change_models)
@@ -217,28 +228,40 @@ impl<'a> ReceiptStoreAddTxnReceiptsOperation
                     .execute(self.conn)?;
 
                 match &receipt.transaction_result {
-                    TransactionResult::Valid{ state_changes, events, data } => {
+                    TransactionResult::Valid {
+                        state_changes,
+                        events,
+                        data,
+                    } => {
                         // Create a vector of `ValidTransactionResultDataModels` from
                         // the valid transaction result's data field
-                        let valid_transaction_result_data_models: Vec<NewValidTransactionResultDataModel> = data
+                        let valid_transaction_result_data_models: Vec<
+                            NewValidTransactionResultDataModel,
+                        > = data
                             .iter()
                             .enumerate()
                             .map(|(i, d)| {
                                 let index = match i32::try_from(i) {
                                     Ok(index) => index,
-                                    Err(_) => return Err(ReceiptStoreError::InternalError(InternalError::with_message("Unable to convert index into i32".to_string()))),
+                                    Err(_) => {
+                                        return Err(ReceiptStoreError::InternalError(
+                                            InternalError::with_message(
+                                                "Unable to convert index into i32".to_string(),
+                                            ),
+                                        ))
+                                    }
                                 };
                                 Ok(NewValidTransactionResultDataModel {
                                     transaction_id: id.to_string(),
                                     data: d.to_vec(),
                                     position: index,
                                 })
-                            }).collect::<Result<Vec<NewValidTransactionResultDataModel>, _>>()?;
+                            })
+                            .collect::<Result<Vec<NewValidTransactionResultDataModel>, _>>()?;
 
                         insert_into(valid_transaction_result_data::table)
                             .values(valid_transaction_result_data_models)
                             .execute(self.conn)?;
-
 
                         // Iterate through the valid transaction result events, creating
                         // a list of `ValidTransactionResultEventModels` each with a corresponding
@@ -267,41 +290,58 @@ impl<'a> ReceiptStoreAddTxnReceiptsOperation
                                 .first::<ValidTransactionResultEventModel>(self.conn)?
                                 .event_id;
 
-                            let event_attribute_models: Vec<ValidTransactionResultEventAttributeModel> =
-                                ValidTransactionResultEventAttributeModel::list_from_event_with_ids(id, event_id, event)?;
+                            let event_attribute_models:
+                                Vec<ValidTransactionResultEventAttributeModel> =
+                                ValidTransactionResultEventAttributeModel::list_from_event_with_ids(
+                                    id,
+                                    event_id,
+                                    event)?;
                             insert_into(valid_transaction_result_event_attribute::table)
                                 .values(event_attribute_models)
                                 .execute(self.conn)?;
                         }
 
                         // Create a list of state changes, maintaining original order
-                        let state_change_models: Vec<NewValidTransactionResultStateChangeModel> = state_changes
-                            .iter()
-                            .enumerate()
-                            .map(|(i, s)| {
-                                let ((key, value), state_change_type) = match s {
-                                    StateChange::Set { key, value } => ((key, Some(value.to_vec())), StateChangeTypeModel::Set),
-                                    StateChange::Delete { key } => ((key, None), StateChangeTypeModel::Delete),
-                                };
-                                Ok(NewValidTransactionResultStateChangeModel {
-                                    transaction_id: id.to_string(),
-                                    state_change_type,
-                                    key: key.to_string(),
-                                    value,
-                                    position: i32::try_from(i).map_err(|_| {
-                                        ReceiptStoreError::InternalError(InternalError::with_message(
-                                            "Unable to convert index into i32".to_string(),
-                                        ))
-                                    })?,
+                        let state_change_models: Vec<NewValidTransactionResultStateChangeModel> =
+                            state_changes
+                                .iter()
+                                .enumerate()
+                                .map(|(i, s)| {
+                                    let ((key, value), state_change_type) = match s {
+                                        StateChange::Set { key, value } => {
+                                            ((key, Some(value.to_vec())), StateChangeTypeModel::Set)
+                                        }
+                                        StateChange::Delete { key } => {
+                                            ((key, None), StateChangeTypeModel::Delete)
+                                        }
+                                    };
+                                    Ok(NewValidTransactionResultStateChangeModel {
+                                        transaction_id: id.to_string(),
+                                        state_change_type,
+                                        key: key.to_string(),
+                                        value,
+                                        position: i32::try_from(i).map_err(|_| {
+                                            ReceiptStoreError::InternalError(
+                                                InternalError::with_message(
+                                                    "Unable to convert index into i32".to_string(),
+                                                ),
+                                            )
+                                        })?,
+                                    })
                                 })
-                            }).collect::<Result<Vec<NewValidTransactionResultStateChangeModel>, ReceiptStoreError>>()?;
+                                .collect::<Result<
+                                    Vec<NewValidTransactionResultStateChangeModel>,
+                                    ReceiptStoreError,
+                                >>()?;
 
                         insert_into(valid_transaction_result_state_change::table)
                             .values(state_change_models)
                             .execute(self.conn)?;
-
                     }
-                    TransactionResult::Invalid{ error_message, error_data } => {
+                    TransactionResult::Invalid {
+                        error_message,
+                        error_data,
+                    } => {
                         let invalid_transaction_result_model = InvalidTransactionResultModel {
                             transaction_id: id.to_string(),
                             error_message: error_message.to_string(),

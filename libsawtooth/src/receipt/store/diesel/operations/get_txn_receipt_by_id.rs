@@ -152,8 +152,9 @@ where
                                 valid_transaction_result_event::transaction_id.eq(id.to_string()),
                             )
                             // Using `left_join` here ensures that if an event does not have any
-                            // associated attributes in the `valid_transaction_result_event_attribute` table
-                            // the event will still be collected
+                            // associated attributes in the
+                            // `valid_transaction_result_event_attribute` table the event will
+                            // still be collected
                             .left_join(
                                 valid_transaction_result_event_attribute::table
                                     .on(valid_transaction_result_event::transaction_id
