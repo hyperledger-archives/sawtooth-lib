@@ -1,5 +1,29 @@
 # Release Notes
 
+## Changes in libsawtooth 0.6.7
+
+### Highlights
+
+- Stabilize the `transaction-receipt-store` feature by moving it from
+  experimental to stable.
+- Stabilize the `transaction-receipt-store-lmdb` feature, this feature was
+  renamed to `lmdb` and moved to stable.
+- Stabilize the `postgres` feature by moving it from experimental to stable.
+- Stabilize the `sqlite` feature by moving it from experimental to stable.
+
+### Experimental Changes
+
+- Update the `ReceiptStore`s `list_receipts_since` method to an iterator of
+  `Result<TransactionReceipt, ReceiptStoreError>`
+- Modify the Diesel backed receipt store implementation to have a `service_id`
+  used to scope the diesel receipt store to a specific instance.
+
+### Other Changes
+
+- Disable Jenkins CI builds. GitHub Actions will be used going forward instead.
+- Add the experimental features to the list of features that will be used to
+  generate the rust documentation on docs.rs.
+
 ## Changes in libsawtooth 0.6.6
 
 ### Experimental Changes
