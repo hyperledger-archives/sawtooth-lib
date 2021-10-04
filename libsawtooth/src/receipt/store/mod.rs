@@ -20,7 +20,7 @@
 #[cfg(feature = "diesel")]
 pub mod diesel;
 mod error;
-#[cfg(feature = "transaction-receipt-store-lmdb")]
+#[cfg(feature = "lmdb")]
 pub mod lmdb;
 
 use transact::protocol::receipt::TransactionReceipt;
