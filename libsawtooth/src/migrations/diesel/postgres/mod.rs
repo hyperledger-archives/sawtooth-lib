@@ -32,7 +32,7 @@ use crate::error::InternalError;
 pub fn run_migrations(conn: &PgConnection) -> Result<(), InternalError> {
     embedded_migrations::run(conn).map_err(|err| InternalError::from_source(Box::new(err)))?;
 
-    info!("Successfully applied PostgreSQL migrations");
+    debug!("Successfully applied Sawtooth PostgreSQL migrations");
 
     Ok(())
 }
