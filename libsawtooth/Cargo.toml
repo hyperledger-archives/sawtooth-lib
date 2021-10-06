@@ -53,6 +53,8 @@ default = []
 
 stable = [
     "lmdb",
+    "postgres",
+    "sqlite",
     "transaction-receipt-store",
 ]
 
@@ -65,10 +67,8 @@ experimental = [
     "client-rest",
     "lmdb-store",
     "pending-batch-queue",
-    "postgres",
     "receipt-store",
     "redis-store",
-    "sqlite",
     "stores",
     "validator-internals",
 ]
@@ -79,10 +79,10 @@ client-rest = ["base64", "client", "reqwest", "serde"]
 lmdb = ["lmdb-zero"]
 lmdb-store = ["lmdb-zero", "stores"]
 pending-batch-queue = ["validator-internals"]
-postgres = ["diesel/postgres", "diesel_migrations", "transaction-receipt-store"]
+postgres = ["diesel/postgres", "diesel_migrations"]
 receipt-store = ["stores"]
 redis-store = ["redis", "stores"]
-sqlite = ["diesel/sqlite", "diesel_migrations", "transaction-receipt-store"]
+sqlite = ["diesel/sqlite", "diesel_migrations"]
 stores = []
 transaction-receipt-store = []
 validator-internals = [
