@@ -18,6 +18,7 @@ version = "0.6.8"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 license = "Apache-2.0"
+readme = "../README.md"
 description = """\
     Hyperledger Sawtooth is an enterprise blockchain platform for building \
     distributed ledger applications and networks.
