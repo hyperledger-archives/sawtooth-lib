@@ -81,7 +81,7 @@ impl LmdbOrderedStore {
 
         let env = Arc::new(unsafe {
             builder.open(filepath_str, flags, 0o600).map_err(|err| {
-                OrderedStoreError::InitializationFailed(format!("database not found: {}", err))
+                OrderedStoreError::InitializationFailed(format!("{}: \"{}\"", err, filepath_str))
             })
         }?);
 
