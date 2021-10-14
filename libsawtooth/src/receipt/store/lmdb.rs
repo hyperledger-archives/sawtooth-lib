@@ -118,9 +118,10 @@ impl LmdbReceiptStore {
             })?;
             let env = Arc::new(unsafe {
                 builder.open(path_str, flags, 0o600).map_err(|err| {
+                    let error_msg = format!("{}: \"{}\"", err, path_str);
                     ReceiptStoreError::InternalError(InternalError::from_source_with_message(
                         Box::new(err),
-                        "database not found".to_string(),
+                        error_msg,
                     ))
                 })
             }?);
