@@ -17,8 +17,6 @@ pub mod btree;
 mod error;
 #[cfg(feature = "lmdb-store")]
 pub mod lmdb;
-#[cfg(feature = "redis-store")]
-pub mod redis;
 
 use std::convert::TryInto;
 use std::ops::{Bound, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive};
