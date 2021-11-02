@@ -15,8 +15,6 @@
 #[cfg(feature = "btree-store")]
 pub mod btree;
 mod error;
-#[cfg(feature = "lmdb-store")]
-pub mod lmdb;
 
 use std::convert::TryInto;
 use std::ops::{Bound, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive};

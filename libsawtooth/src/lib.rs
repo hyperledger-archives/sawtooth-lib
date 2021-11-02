@@ -19,7 +19,6 @@ extern crate diesel;
 #[cfg(feature = "diesel")]
 extern crate diesel_migrations;
 #[cfg(any(
-    feature = "lmdb-store",
     feature = "validator-internals",
     feature = "client",
     feature = "postgres",
