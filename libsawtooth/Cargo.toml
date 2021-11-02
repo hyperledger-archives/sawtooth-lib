@@ -68,7 +68,6 @@ experimental = [
     "client-rest",
     "lmdb-store",
     "pending-batch-queue",
-    "receipt-store",
     "redis-store",
     "stores",
     "validator-internals",
@@ -81,7 +80,6 @@ lmdb = ["lmdb-zero"]
 lmdb-store = ["lmdb-zero", "stores"]
 pending-batch-queue = ["validator-internals"]
 postgres = ["diesel/postgres", "diesel_migrations"]
-receipt-store = ["stores"]
 redis-store = ["redis", "stores"]
 sqlite = ["diesel/sqlite", "diesel_migrations"]
 stores = []
