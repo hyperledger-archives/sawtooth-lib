@@ -62,7 +62,6 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
-    "btree-store",
     "client",
     "client-rest",
     "pending-batch-queue",
@@ -70,7 +69,6 @@ experimental = [
     "validator-internals",
 ]
 
-btree-store = ["stores"]
 client = []
 client-rest = ["base64", "client", "reqwest", "serde"]
 lmdb = ["lmdb-zero"]
