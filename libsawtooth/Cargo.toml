@@ -36,7 +36,6 @@ lmdb-zero = { version = "0.4", optional = true }
 metrics = { version = "0.12", features = ["std"], optional = true }
 openssl = { version = "0.10", optional = true }
 protobuf = "2.23"
-redis = { version = "0.20", default-features = false, optional = true }
 reqwest = { version = "0.11", optional = true, features = ["blocking", "json"] }
 serde = { version = "1.0", optional = true, features = ["derive"] }
 transact = "0.3"
@@ -63,26 +62,18 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
-    "btree-store",
     "client",
     "client-rest",
-    "lmdb-store",
     "pending-batch-queue",
-    "redis-store",
-    "stores",
     "validator-internals",
 ]
 
-btree-store = ["stores"]
 client = []
 client-rest = ["base64", "client", "reqwest", "serde"]
 lmdb = ["lmdb-zero"]
-lmdb-store = ["lmdb-zero", "stores"]
 pending-batch-queue = ["validator-internals"]
 postgres = ["diesel/postgres", "diesel_migrations"]
-redis-store = ["redis", "stores"]
 sqlite = ["diesel/sqlite", "diesel_migrations"]
-stores = []
 transaction-receipt-store = []
 validator-internals = [
   "cbor-codec",
