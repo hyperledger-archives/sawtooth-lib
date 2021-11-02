@@ -65,7 +65,6 @@ experimental = [
     "client",
     "client-rest",
     "pending-batch-queue",
-    "stores",
     "validator-internals",
 ]
 
@@ -75,7 +74,6 @@ lmdb = ["lmdb-zero"]
 pending-batch-queue = ["validator-internals"]
 postgres = ["diesel/postgres", "diesel_migrations"]
 sqlite = ["diesel/sqlite", "diesel_migrations"]
-stores = []
 transaction-receipt-store = []
 validator-internals = [
   "cbor-codec",
