@@ -20,7 +20,7 @@ extern crate diesel;
 extern crate diesel_migrations;
 #[cfg(any(
     feature = "validator-internals",
-    feature = "client",
+    feature = "client-rest",
     feature = "postgres",
     feature = "sqlite",
     feature = "lmdb"
