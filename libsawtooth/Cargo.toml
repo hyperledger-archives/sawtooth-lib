@@ -33,7 +33,7 @@ diesel_migrations = { version = "1.4", optional = true }
 hex = "0.4"
 log = "0.4"
 lmdb-zero = { version = "0.4", optional = true }
-metrics = { version = "0.12", features = ["std"], optional = true }
+metrics = { version = "0.17", features = ["std"], optional = true }
 protobuf = "2.23"
 reqwest = { version = "0.11", optional = true, features = ["blocking", "json"] }
 serde = { version = "1.0", optional = true, features = ["derive"] }

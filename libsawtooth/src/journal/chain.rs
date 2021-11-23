@@ -533,7 +533,7 @@ impl ChainController {
 
             gauge!(
                 "chain.ChainController.block_num",
-                chain_head.header().block_num() as i64
+                chain_head.header().block_num() as f64
             );
 
             let mut guard = self.chain_head_lock.acquire();
@@ -911,7 +911,7 @@ fn handle_block_commit(
 
             gauge!(
                 "chain.ChainController.committed_transactions_gauge",
-                total_committed_txns as i64
+                total_committed_txns as f64
             );
 
             info!("Chain head updated to {}", block.block());
@@ -924,7 +924,7 @@ fn handle_block_commit(
             );
             gauge!(
                 "chain.ChainController.block_num",
-                block.header().block_num() as i64
+                block.header().block_num() as f64
             );
 
             chain_head_guard.notify_on_chain_updated(

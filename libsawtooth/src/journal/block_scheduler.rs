@@ -236,11 +236,11 @@ impl<B: BlockStatusStore> BlockSchedulerState<B> {
     fn update_gauges(&self) {
         gauge!(
             "block_validator.BlockScheduler.blocks_processing",
-            self.processing.len() as i64
+            self.processing.len() as f64
         );
         gauge!(
             "block_validator.BlockScheduler.blocks_pending",
-            self.pending.len() as i64
+            self.pending.len() as f64
         );
     }
 }
