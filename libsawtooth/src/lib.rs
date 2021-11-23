@@ -23,7 +23,6 @@ extern crate diesel_migrations;
     feature = "client-rest",
     feature = "postgres",
     feature = "sqlite",
-    feature = "lmdb"
 ))]
 #[macro_use]
 extern crate log;
