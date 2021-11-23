@@ -15,6 +15,7 @@
 //! A trait for implementing a sawtooth client.
 
 mod error;
+#[cfg(feature = "client-rest")]
 pub mod rest;
 
 pub use error::SawtoothClientError;
