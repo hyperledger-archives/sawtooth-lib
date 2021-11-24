@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #[macro_use]
-#[cfg(feature = "diesel")]
+#[cfg(all(feature = "diesel", feature = "transaction-receipt-store"))]
 extern crate diesel;
 #[macro_use]
 #[cfg(feature = "diesel")]
