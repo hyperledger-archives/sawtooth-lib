@@ -847,12 +847,6 @@ mod test {
     }
 
     fn create_transaction(dependencies: Vec<String>, nonce: Vec<u8>) -> Transaction {
-        let dependencies = dependencies
-            .iter()
-            .map(hex::decode)
-            .collect::<Result<_, _>>()
-            .expect("Failed to convert dependencies to bytes");
-
         TransactionBuilder::new()
             .with_dependencies(dependencies)
             .with_family_name("test".into())

@@ -733,13 +733,12 @@ fn schedule_batches(
                 }
             };
             for dep in txn_header.dependencies() {
-                let dep_str = hex::encode(dep);
-                if !candidate_block.scheduled_txn_ids.contains(dep)
-                    && !commit_store.contains_transaction(&dep_str)?
+                if !candidate_block.scheduled_txn_ids.contains(&hex::decode(dep)?)
+                    && !commit_store.contains_transaction(dep)?
                 {
                     debug!(
                         "Missing dependency {}, rejecting batch/transaction: ({}, {})",
-                        dep_str,
+                        dep,
                         batch_id,
                         txn.header_signature(),
                     );
