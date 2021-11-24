@@ -65,7 +65,7 @@ impl BatchInjector for BlockInfoInjector {
             .with_family_version(FAMILY_VERSION.into())
             .with_inputs(vec![NAMESPACE.to_vec(), compute_config_address()])
             .with_outputs(vec![NAMESPACE.to_vec(), compute_config_address()])
-            .with_payload_hash_method(HashMethod::SHA512)
+            .with_payload_hash_method(HashMethod::Sha512)
             .with_payload(txn_payload)
             .into_batch_builder(&*self.signer)
             .map_err(|err| BlockPublisherError::Internal(err.to_string()))?

@@ -853,7 +853,7 @@ mod test {
             .with_family_version("1.0".into())
             .with_inputs(vec![])
             .with_outputs(vec![])
-            .with_payload_hash_method(HashMethod::SHA512)
+            .with_payload_hash_method(HashMethod::Sha512)
             .with_payload(vec![])
             .with_nonce(nonce)
             .build(&*new_signer())
