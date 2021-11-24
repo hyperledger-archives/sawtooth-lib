@@ -55,7 +55,7 @@ const BLOCK_VALIDATION_RESULT_CACHE_SIZE: usize = 512;
 const BLOCK_VALIDATION_QUEUE_RECV_TIMEOUT: u64 = 100;
 
 type BlockValidationResultCache =
-    uluru::LRUCache<[uluru::Entry<BlockValidationResult>; BLOCK_VALIDATION_RESULT_CACHE_SIZE]>;
+    uluru::LRUCache<BlockValidationResult, BLOCK_VALIDATION_RESULT_CACHE_SIZE>;
 
 #[derive(Clone, Default)]
 pub struct BlockValidationResultStore {
@@ -71,7 +71,7 @@ impl BlockValidationResultStore {
         self.validation_result_cache
             .lock()
             .expect("The mutex is poisoned")
-            .insert(result)
+            .insert(result);
     }
 
     pub fn get(&self, block_id: &str) -> Option<BlockValidationResult> {

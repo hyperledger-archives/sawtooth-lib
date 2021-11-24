@@ -86,7 +86,7 @@ impl PendingBatchQueue {
     pub fn pop(&mut self) -> Option<BatchPair> {
         self.batches.pop_front().map(|batch| {
             self.ids.remove(batch.batch().header_signature());
-            gauge!(PENDING_BATCH_GAUGE, self.batches.len() as i64);
+            gauge!(PENDING_BATCH_GAUGE, self.batches.len() as f64);
             batch
         })
     }
@@ -111,7 +111,7 @@ impl PendingBatchQueue {
                 self.batches.drain(..).collect()
             }
         };
-        gauge!(PENDING_BATCH_GAUGE, self.batches.len() as i64);
+        gauge!(PENDING_BATCH_GAUGE, self.batches.len() as f64);
         batches
     }
 
@@ -137,7 +137,7 @@ impl PendingBatchQueue {
         } else {
             self.ids.insert(batch.batch().header_signature().into());
             self.batches.push_back(batch);
-            gauge!(PENDING_BATCH_GAUGE, self.batches.len() as i64);
+            gauge!(PENDING_BATCH_GAUGE, self.batches.len() as f64);
             Ok(())
         }
     }
@@ -159,7 +159,7 @@ impl PendingBatchQueue {
             self.batches.push_front(batch);
         }
 
-        gauge!(PENDING_BATCH_GAUGE, self.batches.len() as i64);
+        gauge!(PENDING_BATCH_GAUGE, self.batches.len() as f64);
     }
 
     /// Removes batches with the given IDs from the queue
@@ -171,7 +171,7 @@ impl PendingBatchQueue {
         for id in batch_ids {
             self.ids.remove(*id);
         }
-        gauge!(PENDING_BATCH_GAUGE, self.batches.len() as i64);
+        gauge!(PENDING_BATCH_GAUGE, self.batches.len() as f64);
     }
 
     /// Updates the queue's upper bound by adding the number of consumed batches as a new sample
@@ -260,7 +260,7 @@ mod tests {
     use std::rc::Rc;
 
     use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
-    use metrics::{Key, Recorder};
+    use metrics::{GaugeValue, Key, Recorder};
     use transact::protocol::{
         batch::BatchBuilder,
         transaction::{HashMethod, TransactionBuilder},
@@ -614,26 +614,61 @@ mod tests {
             .expect("Failed to build batch")
     }
 
-    #[derive(Clone, Default)]
+    #[derive(Clone)]
     struct MockMetricsRecorder {
-        batch_queue_size: Rc<RefCell<i64>>,
+        batch_queue_size: Rc<RefCell<GaugeValue>>,
+    }
+
+    impl Default for MockMetricsRecorder {
+        fn default() -> Self {
+            Self {
+                batch_queue_size: Rc::new(RefCell::new(GaugeValue::Absolute(0.0))),
+            }
+        }
     }
 
     impl MockMetricsRecorder {
         pub fn batch_queue_size(&self) -> i64 {
-            *self.batch_queue_size.borrow_mut()
+            match &*self.batch_queue_size.borrow_mut() {
+                GaugeValue::Absolute(f) => *f as i64,
+                GaugeValue::Increment(f) => *f as i64,
+                GaugeValue::Decrement(f) => *f as i64,
+            }
         }
     }
 
     impl Recorder for MockMetricsRecorder {
-        fn increment_counter(&self, _key: Key, _value: u64) {}
+        fn increment_counter(&self, _key: &Key, _value: u64) {}
 
-        fn update_gauge(&self, key: Key, value: i64) {
+        fn update_gauge(&self, key: &Key, value: GaugeValue) {
             if key.name() == PENDING_BATCH_GAUGE {
                 *self.batch_queue_size.borrow_mut() = value
             }
         }
 
-        fn record_histogram(&self, _key: Key, _value: u64) {}
+        fn record_histogram(&self, _key: &Key, _value: f64) {}
+
+        fn register_histogram(
+            &self,
+            _key: &Key,
+            _unit: Option<metrics::Unit>,
+            _description: Option<&'static str>,
+        ) {
+        }
+
+        fn register_gauge(
+            &self,
+            _key: &Key,
+            _unit: Option<metrics::Unit>,
+            _description: Option<&'static str>,
+        ) {
+        }
+        fn register_counter(
+            &self,
+            _key: &Key,
+            _unit: Option<metrics::Unit>,
+            _description: Option<&'static str>,
+        ) {
+        }
     }
 }

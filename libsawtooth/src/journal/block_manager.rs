@@ -312,7 +312,7 @@ impl BlockManagerState {
 
         gauge!(
             "block_manager.BlockManager.pool_size",
-            block_by_block_id.len() as i64
+            block_by_block_id.len() as f64
         );
 
         Ok(())

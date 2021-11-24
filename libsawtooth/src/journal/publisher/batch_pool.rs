@@ -138,7 +138,7 @@ impl PendingBatchesPool {
 
         gauge!(
             "publisher.BlockPublisher.pending_batch_gauge",
-            self.batches.len() as i64
+            self.batches.len() as f64
         );
     }
 
@@ -153,7 +153,7 @@ impl PendingBatchesPool {
         }
         gauge!(
             "publisher.BlockPublisher.pending_batch_gauge",
-            self.batches.len() as i64
+            self.batches.len() as f64
         );
     }
 
