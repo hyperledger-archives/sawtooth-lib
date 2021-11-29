@@ -47,6 +47,7 @@ use std::sync::{
 use std::thread;
 
 use cylinder::Signer;
+use log::{debug, error, trace, warn};
 use transact::{
     execution::executor::ExecutionTaskSubmitter,
     protocol::{

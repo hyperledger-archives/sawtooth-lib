@@ -18,9 +18,6 @@ extern crate diesel;
 #[macro_use]
 #[cfg(feature = "diesel")]
 extern crate diesel_migrations;
-#[cfg(feature = "log")]
-#[macro_use]
-extern crate log;
 #[cfg(feature = "validator-internals")]
 #[macro_use]
 extern crate metrics;

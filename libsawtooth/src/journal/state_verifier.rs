@@ -27,6 +27,7 @@ use crate::{
         merkle::CborMerkleState, settings_view::SettingsView, state_view_factory::StateViewFactory,
     },
 };
+use log::{error, info};
 use transact::{
     database::error::DatabaseError,
     execution::executor::ExecutionTaskSubmitter,
