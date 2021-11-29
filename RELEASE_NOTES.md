@@ -1,5 +1,18 @@
 # Release Notes
 
+## Changes in libsawtooth 0.7.0
+
+### Highlights
+
+- Upgrade to Transact v0.4.
+- Remove the redis-store, lmdb-store, btree-store, and stores features, which
+  are replaced with domain-specific store traits such as ReceiptStore.
+- Fix state_change_type when using PostgreSQL; previously the database column
+  definition was incorrect resulting in errors.
+- Fix several feature guards, including around the client::rest module and use
+  of diesel.
+- Update various dependencies including replacing openssl with sha2.
+
 ## Changes in libsawtooth 0.6.7
 
 ### Highlights
