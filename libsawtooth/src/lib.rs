@@ -18,12 +18,7 @@ extern crate diesel;
 #[macro_use]
 #[cfg(feature = "diesel")]
 extern crate diesel_migrations;
-#[cfg(any(
-    feature = "validator-internals",
-    feature = "client-rest",
-    feature = "postgres",
-    feature = "sqlite",
-))]
+#[cfg(feature = "log")]
 #[macro_use]
 extern crate log;
 #[cfg(feature = "validator-internals")]
