@@ -1,5 +1,10 @@
 # Release Notes
 
+## Changes in libsawtooth 0.7.1
+
+- Make log dependency optional
+- Remove `macro_use` of crate "log"
+
 ## Changes in libsawtooth 0.7.0
 
 ### Highlights
