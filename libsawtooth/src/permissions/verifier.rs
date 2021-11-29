@@ -19,6 +19,7 @@
 //! Provides a permission verifier which checks permissions against batch and transaction
 //! signatories.
 
+use log::debug;
 use transact::protocol::{batch::BatchPair, transaction::Transaction};
 
 use crate::protocol::identity::{Permission, Policy};

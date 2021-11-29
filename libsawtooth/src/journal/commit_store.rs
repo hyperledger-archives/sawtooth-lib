@@ -15,6 +15,7 @@
  * ------------------------------------------------------------------------------
  */
 
+use log::error;
 use transact::database::error::DatabaseError;
 use transact::database::lmdb::LmdbDatabase;
 use transact::database::lmdb::LmdbDatabaseWriter;

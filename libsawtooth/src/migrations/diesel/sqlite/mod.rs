@@ -20,6 +20,7 @@
 embed_migrations!("./src/migrations/diesel/sqlite/migrations");
 
 use diesel::sqlite::SqliteConnection;
+use log::debug;
 
 use crate::error::InternalError;
 

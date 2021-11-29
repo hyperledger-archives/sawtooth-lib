@@ -15,6 +15,7 @@
 //! A client for interacting with sawtooth services.
 
 use base64::{decode, encode};
+use log::info;
 use protobuf::Message;
 use reqwest::{blocking::Client, header};
 use serde::Deserialize;

@@ -15,6 +15,7 @@
 //! Default `BatchInjectorFactory` for the block publisher
 
 use cylinder::Signer;
+use log::warn;
 
 use crate::journal::publisher::BlockPublisherError;
 use crate::protocol::block::BlockPair;

@@ -25,6 +25,7 @@ use std::sync::Arc;
 
 use lmdb_zero as lmdb;
 use lmdb_zero::error::LmdbResultExt;
+use log::error;
 use transact::{
     protocol::receipt::TransactionReceipt,
     protos::{FromBytes, IntoBytes},
