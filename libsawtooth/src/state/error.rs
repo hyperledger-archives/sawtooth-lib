@@ -23,6 +23,8 @@ use protobuf::ProtobufError;
 use transact::database::error::DatabaseError;
 use transact::state::merkle::StateDatabaseError as TransactStateDatabaseError;
 
+use crate::error::InternalError;
+
 #[derive(Debug)]
 pub enum StateDatabaseError {
     NotFound(String),
@@ -35,6 +37,7 @@ pub enum StateDatabaseError {
     InvalidChangeLogIndex(String),
     DatabaseError(DatabaseError),
     ProtobufConversionError(Box<dyn Error>),
+    InternalError(InternalError),
     UnknownError,
 }
 
@@ -64,6 +67,9 @@ impl fmt::Display for StateDatabaseError {
             StateDatabaseError::ProtobufConversionError(ref err) => {
                 write!(f, "A protobuf conversion error occurred: {}", err)
             }
+            StateDatabaseError::InternalError(ref err) => {
+                write!(f, "{}", err)
+            }
             StateDatabaseError::UnknownError => write!(f, "An unknown error occurred"),
         }
     }
@@ -81,6 +87,7 @@ impl Error for StateDatabaseError {
             StateDatabaseError::InvalidChangeLogIndex(_) => None,
             StateDatabaseError::DatabaseError(ref err) => Some(err),
             StateDatabaseError::ProtobufConversionError(ref err) => Some(&**err),
+            StateDatabaseError::InternalError(ref err) => Some(err),
             StateDatabaseError::UnknownError => None,
         }
     }
@@ -111,6 +118,9 @@ impl From<TransactStateDatabaseError> for StateDatabaseError {
                 StateDatabaseError::ProtobufConversionError(Box::new(err))
             }
             TransactStateDatabaseError::UnknownError => StateDatabaseError::UnknownError,
+            TransactStateDatabaseError::InternalError(err) => {
+                StateDatabaseError::InternalError(InternalError::from_source(Box::new(err)))
+            }
         }
     }
 }

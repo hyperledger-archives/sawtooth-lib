@@ -733,13 +733,12 @@ fn schedule_batches(
                 }
             };
             for dep in txn_header.dependencies() {
-                let dep_str = hex::encode(dep);
                 if !candidate_block.scheduled_txn_ids.contains(dep)
-                    && !commit_store.contains_transaction(&dep_str)?
+                    && !commit_store.contains_transaction(dep)?
                 {
                     debug!(
                         "Missing dependency {}, rejecting batch/transaction: ({}, {})",
-                        dep_str,
+                        dep,
                         batch_id,
                         txn.header_signature(),
                     );
@@ -955,7 +954,7 @@ struct CandidateBlock {
     /// Tracks the IDs of all batches that have been scheduled, in the order they were scheduled
     scheduled_batch_ids: Vec<String>,
     /// Tracks the IDs of all transactions that have been scheduled
-    scheduled_txn_ids: HashSet<Vec<u8>>,
+    scheduled_txn_ids: HashSet<String>,
 
     /// Used to receive batch execution results from the scheduler. This channel is consumed when
     /// the block is completed (summarized/finalized) or cancelled.

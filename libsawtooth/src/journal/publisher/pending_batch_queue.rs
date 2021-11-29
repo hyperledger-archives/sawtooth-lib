@@ -602,7 +602,7 @@ mod tests {
             .with_family_version("0.1".into())
             .with_inputs(vec![])
             .with_outputs(vec![])
-            .with_payload_hash_method(HashMethod::SHA512)
+            .with_payload_hash_method(HashMethod::Sha512)
             .with_payload(vec![])
             .with_nonce(vec![nonce])
             .build(signer)

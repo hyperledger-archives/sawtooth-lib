@@ -97,9 +97,8 @@ pub fn validate_transaction_dependencies(
             ))
         })?;
         for dep in txn_pair.header().dependencies() {
-            let dep = hex::encode(dep);
-            if !dependencies.contains(&dep) {
-                dependencies.push(dep);
+            if !dependencies.contains(dep) {
+                dependencies.push(dep.to_string());
             }
         }
     }
@@ -847,19 +846,13 @@ mod test {
     }
 
     fn create_transaction(dependencies: Vec<String>, nonce: Vec<u8>) -> Transaction {
-        let dependencies = dependencies
-            .iter()
-            .map(hex::decode)
-            .collect::<Result<_, _>>()
-            .expect("Failed to convert dependencies to bytes");
-
         TransactionBuilder::new()
             .with_dependencies(dependencies)
             .with_family_name("test".into())
             .with_family_version("1.0".into())
             .with_inputs(vec![])
             .with_outputs(vec![])
-            .with_payload_hash_method(HashMethod::SHA512)
+            .with_payload_hash_method(HashMethod::Sha512)
             .with_payload(vec![])
             .with_nonce(nonce)
             .build(&*new_signer())
