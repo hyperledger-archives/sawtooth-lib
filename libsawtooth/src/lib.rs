@@ -21,6 +21,7 @@ extern crate diesel_migrations;
 #[cfg(any(
     feature = "validator-internals",
     feature = "client-rest",
+    all(feature = "transaction-receipt-store", feature = "lmdb"),
     feature = "postgres",
     feature = "sqlite",
 ))]
