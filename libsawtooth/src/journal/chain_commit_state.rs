@@ -97,9 +97,8 @@ pub fn validate_transaction_dependencies(
             ))
         })?;
         for dep in txn_pair.header().dependencies() {
-            let dep = hex::encode(dep);
-            if !dependencies.contains(&dep) {
-                dependencies.push(dep);
+            if !dependencies.contains(dep) {
+                dependencies.push(dep.to_string());
             }
         }
     }
