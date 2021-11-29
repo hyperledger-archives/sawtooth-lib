@@ -31,7 +31,7 @@ cylinder = "0.2"
 diesel = { version = "1.0", features = ["r2d2", "serde_json"], optional = true }
 diesel_migrations = { version = "1.4", optional = true }
 hex = "0.4"
-log = "0.4"
+log = { version = "0.4", optional = true }
 lmdb-zero = { version = "0.4", optional = true }
 metrics = { version = "0.17", features = ["std"], optional = true }
 protobuf = "2.23"
@@ -69,15 +69,16 @@ experimental = [
 ]
 
 client = []
-client-rest = ["base64", "client", "reqwest", "serde"]
-lmdb = ["lmdb-zero"]
+client-rest = ["base64", "client", "log", "reqwest", "serde"]
+lmdb = ["lmdb-zero", "log"]
 pending-batch-queue = ["validator-internals"]
-postgres = ["diesel/postgres", "diesel_migrations"]
-sqlite = ["diesel/sqlite", "diesel_migrations"]
+postgres = ["diesel/postgres", "diesel_migrations", "log"]
+sqlite = ["diesel/sqlite", "diesel_migrations", "log"]
 transaction-receipt-store = []
 validator-internals = [
   "cbor-codec",
   "lmdb-zero",
+  "log",
   "metrics",
   "sha2",
   "uluru",

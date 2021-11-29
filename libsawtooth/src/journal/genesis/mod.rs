@@ -24,6 +24,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
 
 use cylinder::Signer;
+use log::{debug, error, info};
 use transact::execution::executor::ExecutionTaskSubmitter;
 use transact::protocol::receipt::TransactionResult;
 use transact::scheduler::{BatchExecutionResult, SchedulerError, SchedulerFactory};

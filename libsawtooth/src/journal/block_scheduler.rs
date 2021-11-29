@@ -18,6 +18,8 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
+use log::{debug, info, warn};
+
 use crate::journal::{
     block_manager::BlockManager, block_validator::BlockStatusStore, block_wrapper::BlockStatus,
     chain::COMMIT_STORE, NULL_BLOCK_IDENTIFIER,

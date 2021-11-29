@@ -17,6 +17,7 @@
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 
+use log::{debug, error, info};
 use transact::database::lmdb::LmdbDatabase;
 use transact::state::merkle::MerkleRadixTree;
 

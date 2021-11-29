@@ -20,6 +20,7 @@
 embed_migrations!("./src/migrations/diesel/postgres/migrations");
 
 use diesel::pg::PgConnection;
+use log::debug;
 
 use crate::error::InternalError;
 

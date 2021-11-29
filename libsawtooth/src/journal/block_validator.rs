@@ -15,6 +15,7 @@
  * ------------------------------------------------------------------------------
  */
 
+use log::{error, info, warn};
 use transact::execution::executor::ExecutionTaskSubmitter;
 use transact::protocol::receipt::TransactionResult;
 use transact::scheduler::{BatchExecutionResult, SchedulerError, SchedulerFactory};

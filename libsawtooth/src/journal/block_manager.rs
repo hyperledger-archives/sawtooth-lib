@@ -21,6 +21,8 @@ use std::collections::{HashMap, HashSet};
 use std::iter::Peekable;
 use std::sync::{Arc, RwLock};
 
+use log::{debug, error, warn};
+
 use crate::journal::block_store::{
     BatchIndex, BlockStoreError, IndexedBlockStore, TransactionIndex,
 };
