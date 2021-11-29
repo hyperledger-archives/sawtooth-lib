@@ -19,6 +19,7 @@
 use std::convert::TryFrom;
 use std::str::FromStr;
 
+use log::{debug, warn};
 use transact::protocol::{batch::Batch, transaction::Transaction};
 
 use crate::state::settings_view::SettingsView;
