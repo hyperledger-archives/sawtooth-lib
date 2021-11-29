@@ -1,7 +1,9 @@
-name: Lint libsawtooth
+name: 0-7 Lint libsawtooth
 
 on:
   pull_request:
+    branches:
+      - 0-7
 
 env:
   CARGO_TERM_COLOR: always

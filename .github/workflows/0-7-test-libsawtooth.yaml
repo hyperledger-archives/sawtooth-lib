@@ -1,7 +1,9 @@
-name: Test libsawtooth
+name: 0-7 Test libsawtooth
 
 on:
   pull_request:
+    branches:
+      - 0-7
 
 env:
   CARGO_TERM_COLOR: always
