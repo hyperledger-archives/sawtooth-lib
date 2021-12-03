@@ -237,7 +237,7 @@ impl ReceiptStore for LmdbReceiptStore {
         access
             .get::<_, [u8]>(&db.main_db, &id.into_bytes())
             .to_opt()?
-            .map(|val| TransactionReceipt::from_bytes(val))
+            .map(TransactionReceipt::from_bytes)
             .transpose()
             .map_err(|err| {
                 ReceiptStoreError::InternalError(InternalError::from_source(Box::new(err)))
@@ -266,7 +266,7 @@ impl ReceiptStore for LmdbReceiptStore {
                 Some(key) => access
                     .get::<_, [u8]>(&db.main_db, key)
                     .to_opt()?
-                    .map(|val| TransactionReceipt::from_bytes(val))
+                    .map(TransactionReceipt::from_bytes)
                     .transpose()
                     .map_err(|err| {
                         ReceiptStoreError::InternalError(InternalError::from_source(Box::new(err)))
