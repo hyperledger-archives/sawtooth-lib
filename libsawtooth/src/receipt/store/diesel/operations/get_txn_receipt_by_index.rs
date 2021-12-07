@@ -43,7 +43,7 @@ pub(in crate::receipt::store::diesel) trait ReceiptStoreGetTxnReceiptByIndexOper
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError>;
 }
 
-impl<'a, C> ReceiptStoreGetTxnReceiptByIndexOperation for ReceiptStoreOperations<'a, C>
+impl<'a, 's, C> ReceiptStoreGetTxnReceiptByIndexOperation for ReceiptStoreOperations<'a, 's, C>
 where
     C: diesel::Connection,
     String: diesel::deserialize::FromSql<Text, C::Backend>,
@@ -76,7 +76,7 @@ where
                     Some(receipt) => receipt,
                     None => return Ok(None),
                 };
-                ReceiptStoreOperations::new(self.conn, self.service_id.clone())
+                ReceiptStoreOperations::new(self.conn, self.service_id)
                     .get_txn_receipt_by_id(&txn_receipt.transaction_id)
             })
     }

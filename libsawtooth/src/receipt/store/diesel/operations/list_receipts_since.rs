@@ -46,7 +46,7 @@ pub(in crate::receipt::store::diesel) trait ReceiptStoreListReceiptsSinceOperati
     fn list_receipts_since(&self, id: Option<String>) -> Result<ReceiptIter, ReceiptStoreError>;
 }
 
-impl<'a, C> ReceiptStoreListReceiptsSinceOperation for ReceiptStoreOperations<'a, C>
+impl<'a, 's, C> ReceiptStoreListReceiptsSinceOperation for ReceiptStoreOperations<'a, 's, C>
 where
     C: diesel::Connection,
     String: diesel::deserialize::FromSql<Text, C::Backend>,

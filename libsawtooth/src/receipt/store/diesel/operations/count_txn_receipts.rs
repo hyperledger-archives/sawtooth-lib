@@ -31,7 +31,7 @@ pub(in crate::receipt::store::diesel) trait ReceiptStoreCountTxnReceiptsOperatio
     fn count_txn_receipts(&self) -> Result<u64, ReceiptStoreError>;
 }
 
-impl<'a, C> ReceiptStoreCountTxnReceiptsOperation for ReceiptStoreOperations<'a, C>
+impl<'a, 's, C> ReceiptStoreCountTxnReceiptsOperation for ReceiptStoreOperations<'a, 's, C>
 where
     C: diesel::Connection,
     String: diesel::deserialize::FromSql<Text, C::Backend>,
