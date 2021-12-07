@@ -25,13 +25,13 @@ pub(super) mod list_receipts_since;
 pub(super) mod remove_txn_receipt_by_id;
 pub(super) mod remove_txn_receipt_by_index;
 
-pub struct ReceiptStoreOperations<'a, C> {
+pub struct ReceiptStoreOperations<'a, 's, C> {
     conn: &'a C,
-    service_id: Option<String>,
+    service_id: Option<&'s str>,
 }
 
-impl<'a, C: diesel::Connection> ReceiptStoreOperations<'a, C> {
-    pub fn new(conn: &'a C, service_id: Option<String>) -> Self {
+impl<'a, 's, C: diesel::Connection> ReceiptStoreOperations<'a, 's, C> {
+    pub fn new(conn: &'a C, service_id: Option<&'s str>) -> Self {
         ReceiptStoreOperations { conn, service_id }
     }
 }

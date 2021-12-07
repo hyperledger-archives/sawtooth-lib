@@ -87,7 +87,7 @@ impl ReceiptStore for DieselReceiptStore<diesel::sqlite::SqliteConnection> {
         &self,
         id: String,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.as_deref())
             .get_txn_receipt_by_id(&id)
     }
 
@@ -95,12 +95,12 @@ impl ReceiptStore for DieselReceiptStore<diesel::sqlite::SqliteConnection> {
         &self,
         index: u64,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.as_deref())
             .get_txn_receipt_by_index(index)
     }
 
     fn add_txn_receipts(&self, receipts: Vec<TransactionReceipt>) -> Result<(), ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.as_deref())
             .add_txn_receipts(receipts)
     }
 
@@ -108,7 +108,7 @@ impl ReceiptStore for DieselReceiptStore<diesel::sqlite::SqliteConnection> {
         &self,
         id: String,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.as_deref())
             .remove_txn_receipt_by_id(id)
     }
 
@@ -116,17 +116,17 @@ impl ReceiptStore for DieselReceiptStore<diesel::sqlite::SqliteConnection> {
         &self,
         index: u64,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.as_deref())
             .remove_txn_receipt_by_index(index)
     }
 
     fn count_txn_receipts(&self) -> Result<u64, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.as_deref())
             .count_txn_receipts()
     }
 
     fn list_receipts_since(&self, id: Option<String>) -> Result<ReceiptIter, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.as_deref())
             .list_receipts_since(id)
     }
 }
@@ -137,7 +137,7 @@ impl ReceiptStore for DieselReceiptStore<diesel::pg::PgConnection> {
         &self,
         id: String,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.as_deref())
             .get_txn_receipt_by_id(&id)
     }
 
@@ -145,12 +145,12 @@ impl ReceiptStore for DieselReceiptStore<diesel::pg::PgConnection> {
         &self,
         index: u64,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.as_deref())
             .get_txn_receipt_by_index(index)
     }
 
     fn add_txn_receipts(&self, receipts: Vec<TransactionReceipt>) -> Result<(), ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.as_deref())
             .add_txn_receipts(receipts)
     }
 
@@ -158,7 +158,7 @@ impl ReceiptStore for DieselReceiptStore<diesel::pg::PgConnection> {
         &self,
         id: String,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.as_deref())
             .remove_txn_receipt_by_id(id)
     }
 
@@ -166,17 +166,17 @@ impl ReceiptStore for DieselReceiptStore<diesel::pg::PgConnection> {
         &self,
         index: u64,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.as_deref())
             .remove_txn_receipt_by_index(index)
     }
 
     fn count_txn_receipts(&self) -> Result<u64, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.as_deref())
             .count_txn_receipts()
     }
 
     fn list_receipts_since(&self, id: Option<String>) -> Result<ReceiptIter, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
+        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.as_deref())
             .list_receipts_since(id)
     }
 }
