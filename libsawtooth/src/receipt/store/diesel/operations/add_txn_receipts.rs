@@ -50,8 +50,8 @@ pub(in crate::receipt::store::diesel) trait ReceiptStoreAddTxnReceiptsOperation 
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> ReceiptStoreAddTxnReceiptsOperation
-    for ReceiptStoreOperations<'a, diesel::pg::PgConnection>
+impl<'a, 's> ReceiptStoreAddTxnReceiptsOperation
+    for ReceiptStoreOperations<'a, 's, diesel::pg::PgConnection>
 {
     fn add_txn_receipts(&self, receipts: Vec<TransactionReceipt>) -> Result<(), ReceiptStoreError> {
         self.conn.transaction::<(), _, _>(|| {
@@ -75,7 +75,7 @@ impl<'a> ReceiptStoreAddTxnReceiptsOperation
                 let transaction_receipt_model = TransactionReceiptModel {
                     transaction_id: id.to_string(),
                     idx: index + i,
-                    service_id: self.service_id.clone(),
+                    service_id: self.service_id.map(String::from),
                 };
                 insert_into(transaction_receipt::table)
                     .values(transaction_receipt_model)
@@ -196,8 +196,8 @@ impl<'a> ReceiptStoreAddTxnReceiptsOperation
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> ReceiptStoreAddTxnReceiptsOperation
-    for ReceiptStoreOperations<'a, diesel::sqlite::SqliteConnection>
+impl<'a, 's> ReceiptStoreAddTxnReceiptsOperation
+    for ReceiptStoreOperations<'a, 's, diesel::sqlite::SqliteConnection>
 {
     fn add_txn_receipts(&self, receipts: Vec<TransactionReceipt>) -> Result<(), ReceiptStoreError> {
         self.conn.transaction::<(), _, _>(|| {
@@ -221,7 +221,7 @@ impl<'a> ReceiptStoreAddTxnReceiptsOperation
                 let transaction_receipt_model = TransactionReceiptModel {
                     transaction_id: id.to_string(),
                     idx: last_index + i,
-                    service_id: self.service_id.clone(),
+                    service_id: self.service_id.map(String::from),
                 };
                 insert_into(transaction_receipt::table)
                     .values(transaction_receipt_model)

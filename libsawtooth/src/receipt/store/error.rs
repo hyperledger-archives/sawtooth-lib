@@ -53,6 +53,30 @@ impl std::fmt::Display for ReceiptStoreError {
     }
 }
 
+impl From<InternalError> for ReceiptStoreError {
+    fn from(err: InternalError) -> Self {
+        Self::InternalError(err)
+    }
+}
+
+impl From<ConstraintViolationError> for ReceiptStoreError {
+    fn from(err: ConstraintViolationError) -> Self {
+        Self::ConstraintViolationError(err)
+    }
+}
+
+impl From<InvalidStateError> for ReceiptStoreError {
+    fn from(err: InvalidStateError) -> Self {
+        Self::InvalidStateError(err)
+    }
+}
+
+impl From<ResourceTemporarilyUnavailableError> for ReceiptStoreError {
+    fn from(err: ResourceTemporarilyUnavailableError) -> Self {
+        Self::ResourceTemporarilyUnavailableError(err)
+    }
+}
+
 #[cfg(feature = "diesel")]
 impl From<diesel::r2d2::PoolError> for ReceiptStoreError {
     fn from(err: diesel::r2d2::PoolError) -> Self {

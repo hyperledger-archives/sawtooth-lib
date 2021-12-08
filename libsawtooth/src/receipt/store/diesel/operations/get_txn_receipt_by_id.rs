@@ -52,7 +52,7 @@ pub(in crate::receipt::store::diesel) trait ReceiptStoreGetTxnReceiptByIdOperati
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError>;
 }
 
-impl<'a, C> ReceiptStoreGetTxnReceiptByIdOperation for ReceiptStoreOperations<'a, C>
+impl<'a, 's, C> ReceiptStoreGetTxnReceiptByIdOperation for ReceiptStoreOperations<'a, 's, C>
 where
     C: diesel::Connection,
     String: diesel::deserialize::FromSql<Text, C::Backend>,
