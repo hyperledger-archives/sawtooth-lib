@@ -216,8 +216,8 @@ impl BlockPublisher {
             .lock()
             .map_err(|_| BlockPublisherError::Internal("Candidate block lock poisoned".into()))?;
 
-        if let Some(mut candidate_block) = candidate_block.as_mut() {
-            self.complete_candidate_block(&mut candidate_block)?;
+        if let Some(candidate_block) = candidate_block.as_mut() {
+            self.complete_candidate_block(candidate_block)?;
             candidate_block.summary.clone().ok_or_else(|| {
                 BlockPublisherError::Internal(
                     "Candidate block completed but summary not set".into(),
@@ -901,13 +901,11 @@ fn start_publisher_thread(
                         // batch
                         match candidate_block.lock() {
                             Ok(mut candidate_block) => {
-                                if let Some(mut candidate_block) = candidate_block.as_mut() {
+                                if let Some(candidate_block) = candidate_block.as_mut() {
                                     if candidate_block.can_schedule_batch() {
-                                        if let Err(err) = schedule_batch(
-                                            batch,
-                                            &commit_store,
-                                            &mut candidate_block,
-                                        ) {
+                                        if let Err(err) =
+                                            schedule_batch(batch, &commit_store, candidate_block)
+                                        {
                                             error!("Failed to schedule batch: {}", err);
                                         }
                                     }
