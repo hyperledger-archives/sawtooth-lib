@@ -32,8 +32,8 @@ use std::sync::{Arc, RwLock};
 use diesel::r2d2::{ConnectionManager, Pool};
 use transact::protocol::receipt::TransactionReceipt;
 
-use crate::error::InternalError;
 use crate::receipt::store::{error::ReceiptStoreError, ReceiptIter, ReceiptStore};
+use crate::store::pool::ConnectionPool;
 
 use operations::add_txn_receipts::ReceiptStoreAddTxnReceiptsOperation as _;
 use operations::count_txn_receipts::ReceiptStoreCountTxnReceiptsOperation as _;
@@ -43,54 +43,6 @@ use operations::list_receipts_since::ReceiptStoreListReceiptsSinceOperation as _
 use operations::remove_txn_receipt_by_id::ReceiptStoreRemoveTxnReceiptByIdOperation as _;
 use operations::remove_txn_receipt_by_index::ReceiptStoreRemoveTxnReceiptByIndexOperation as _;
 use operations::ReceiptStoreOperations;
-
-enum ConnectionPool<C: diesel::Connection + 'static> {
-    Normal(Pool<ConnectionManager<C>>),
-    WriteExclusive(Arc<RwLock<Pool<ConnectionManager<C>>>>),
-}
-
-impl<C: diesel::Connection> ConnectionPool<C> {
-    fn execute_write<F, T>(&self, f: F) -> Result<T, ReceiptStoreError>
-    where
-        F: FnOnce(&C) -> Result<T, ReceiptStoreError>,
-    {
-        match self {
-            Self::Normal(pool) => f(&*pool.get()?),
-            Self::WriteExclusive(locked_pool) => locked_pool
-                .write()
-                .map_err(|_| {
-                    InternalError::with_message("RwLockReceiptStore rwlock is poisoned".into())
-                        .into()
-                })
-                .and_then(|pool| f(&*pool.get()?)),
-        }
-    }
-
-    fn execute_read<F, T>(&self, f: F) -> Result<T, ReceiptStoreError>
-    where
-        F: FnOnce(&C) -> Result<T, ReceiptStoreError>,
-    {
-        match self {
-            Self::Normal(pool) => f(&*pool.get()?),
-            Self::WriteExclusive(locked_pool) => locked_pool
-                .read()
-                .map_err(|_| {
-                    InternalError::with_message("RwLockReceiptStore rwlock is poisoned".into())
-                        .into()
-                })
-                .and_then(|pool| f(&*pool.get()?)),
-        }
-    }
-}
-
-impl<C: diesel::Connection> Clone for ConnectionPool<C> {
-    fn clone(&self) -> Self {
-        match self {
-            Self::Normal(pool) => Self::Normal(pool.clone()),
-            Self::WriteExclusive(locked_pool) => Self::WriteExclusive(locked_pool.clone()),
-        }
-    }
-}
 
 /// A database-backed ReceiptStore, powered by [`Diesel`](https://crates.io/crates/diesel).
 pub struct DieselReceiptStore<C: diesel::Connection + 'static> {
