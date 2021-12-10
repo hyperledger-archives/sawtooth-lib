@@ -55,6 +55,7 @@ stable = [
     "lmdb",
     "postgres",
     "sqlite",
+    "store",
     "transaction-receipt-store",
 ]
 
@@ -72,8 +73,9 @@ client = []
 client-rest = ["base64", "client", "log", "reqwest", "serde"]
 lmdb = ["lmdb-zero", "log"]
 pending-batch-queue = ["validator-internals"]
-postgres = ["diesel/postgres", "diesel_migrations", "log"]
-sqlite = ["diesel/sqlite", "diesel_migrations", "log"]
+postgres = ["diesel/postgres", "diesel_migrations", "log", "store"]
+sqlite = ["diesel/sqlite", "diesel_migrations", "log", "store"]
+store = []
 transaction-receipt-store = []
 validator-internals = [
   "cbor-codec",

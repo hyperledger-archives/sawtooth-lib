@@ -42,3 +42,5 @@ pub mod receipt;
 pub mod scheduler;
 #[cfg(feature = "validator-internals")]
 pub mod state;
+#[cfg(feature = "store")]
+pub(crate) mod store;
