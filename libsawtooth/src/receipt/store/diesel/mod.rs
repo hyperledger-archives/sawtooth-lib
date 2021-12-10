@@ -27,9 +27,12 @@ pub mod models;
 mod operations;
 pub mod schema;
 
+use std::sync::{Arc, RwLock};
+
 use diesel::r2d2::{ConnectionManager, Pool};
 use transact::protocol::receipt::TransactionReceipt;
 
+use crate::error::InternalError;
 use crate::receipt::store::{error::ReceiptStoreError, ReceiptIter, ReceiptStore};
 
 use operations::add_txn_receipts::ReceiptStoreAddTxnReceiptsOperation as _;
@@ -41,9 +44,57 @@ use operations::remove_txn_receipt_by_id::ReceiptStoreRemoveTxnReceiptByIdOperat
 use operations::remove_txn_receipt_by_index::ReceiptStoreRemoveTxnReceiptByIndexOperation as _;
 use operations::ReceiptStoreOperations;
 
+enum ConnectionPool<C: diesel::Connection + 'static> {
+    Normal(Pool<ConnectionManager<C>>),
+    WriteExclusive(Arc<RwLock<Pool<ConnectionManager<C>>>>),
+}
+
+impl<C: diesel::Connection> ConnectionPool<C> {
+    fn execute_write<F, T>(&self, f: F) -> Result<T, ReceiptStoreError>
+    where
+        F: FnOnce(&C) -> Result<T, ReceiptStoreError>,
+    {
+        match self {
+            Self::Normal(pool) => f(&*pool.get()?),
+            Self::WriteExclusive(locked_pool) => locked_pool
+                .write()
+                .map_err(|_| {
+                    InternalError::with_message("RwLockReceiptStore rwlock is poisoned".into())
+                        .into()
+                })
+                .and_then(|pool| f(&*pool.get()?)),
+        }
+    }
+
+    fn execute_read<F, T>(&self, f: F) -> Result<T, ReceiptStoreError>
+    where
+        F: FnOnce(&C) -> Result<T, ReceiptStoreError>,
+    {
+        match self {
+            Self::Normal(pool) => f(&*pool.get()?),
+            Self::WriteExclusive(locked_pool) => locked_pool
+                .read()
+                .map_err(|_| {
+                    InternalError::with_message("RwLockReceiptStore rwlock is poisoned".into())
+                        .into()
+                })
+                .and_then(|pool| f(&*pool.get()?)),
+        }
+    }
+}
+
+impl<C: diesel::Connection> Clone for ConnectionPool<C> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Normal(pool) => Self::Normal(pool.clone()),
+            Self::WriteExclusive(locked_pool) => Self::WriteExclusive(locked_pool.clone()),
+        }
+    }
+}
+
 /// A database-backed ReceiptStore, powered by [`Diesel`](https://crates.io/crates/diesel).
 pub struct DieselReceiptStore<C: diesel::Connection + 'static> {
-    connection_pool: Pool<ConnectionManager<C>>,
+    connection_pool: ConnectionPool<C>,
     service_id: Option<String>,
 }
 
@@ -55,7 +106,26 @@ impl<C: diesel::Connection> DieselReceiptStore<C> {
     ///  * `connection_pool`: connection pool for the database
     pub fn new(connection_pool: Pool<ConnectionManager<C>>, service_id: Option<String>) -> Self {
         DieselReceiptStore {
-            connection_pool,
+            connection_pool: ConnectionPool::Normal(connection_pool),
+            service_id,
+        }
+    }
+
+    /// Create a new `DieselReceiptStore` with write exclusivity enabled.
+    ///
+    /// Write exclusivity is enforced by providing a connection pool that is wrapped in a
+    /// [`RwLock`]. This ensures that there may be only one writer, but many readers.
+    ///
+    /// # Arguments
+    ///
+    ///  * `connection_pool`: read-write lock-guarded connection pool for the database
+    ///  * `service_id`: an optional grouping for the receipts covered by this store
+    pub fn new_with_write_exclusivity(
+        connection_pool: Arc<RwLock<Pool<ConnectionManager<C>>>>,
+        service_id: Option<String>,
+    ) -> Self {
+        DieselReceiptStore {
+            connection_pool: ConnectionPool::WriteExclusive(connection_pool),
             service_id,
         }
     }
@@ -87,47 +157,57 @@ impl ReceiptStore for DieselReceiptStore<diesel::sqlite::SqliteConnection> {
         &self,
         id: String,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
-            .get_txn_receipt_by_id(&id)
+        self.connection_pool.execute_read(|conn| {
+            ReceiptStoreOperations::new(conn, self.service_id.as_deref()).get_txn_receipt_by_id(&id)
+        })
     }
 
     fn get_txn_receipt_by_index(
         &self,
         index: u64,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
-            .get_txn_receipt_by_index(index)
+        self.connection_pool.execute_read(|conn| {
+            ReceiptStoreOperations::new(conn, self.service_id.as_deref())
+                .get_txn_receipt_by_index(index)
+        })
     }
 
     fn add_txn_receipts(&self, receipts: Vec<TransactionReceipt>) -> Result<(), ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
-            .add_txn_receipts(receipts)
+        self.connection_pool.execute_write(move |conn| {
+            ReceiptStoreOperations::new(conn, self.service_id.as_deref()).add_txn_receipts(receipts)
+        })
     }
 
     fn remove_txn_receipt_by_id(
         &self,
         id: String,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
-            .remove_txn_receipt_by_id(id)
+        self.connection_pool.execute_write(|conn| {
+            ReceiptStoreOperations::new(conn, self.service_id.as_deref())
+                .remove_txn_receipt_by_id(id)
+        })
     }
 
     fn remove_txn_receipt_by_index(
         &self,
         index: u64,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
-            .remove_txn_receipt_by_index(index)
+        self.connection_pool.execute_write(|conn| {
+            ReceiptStoreOperations::new(conn, self.service_id.as_deref())
+                .remove_txn_receipt_by_index(index)
+        })
     }
 
     fn count_txn_receipts(&self) -> Result<u64, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
-            .count_txn_receipts()
+        self.connection_pool.execute_read(|conn| {
+            ReceiptStoreOperations::new(conn, self.service_id.as_deref()).count_txn_receipts()
+        })
     }
 
     fn list_receipts_since(&self, id: Option<String>) -> Result<ReceiptIter, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
-            .list_receipts_since(id)
+        self.connection_pool.execute_read(|conn| {
+            ReceiptStoreOperations::new(conn, self.service_id.as_deref()).list_receipts_since(id)
+        })
     }
 }
 
@@ -137,47 +217,57 @@ impl ReceiptStore for DieselReceiptStore<diesel::pg::PgConnection> {
         &self,
         id: String,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
-            .get_txn_receipt_by_id(&id)
+        self.connection_pool.execute_read(|conn| {
+            ReceiptStoreOperations::new(conn, self.service_id.as_deref()).get_txn_receipt_by_id(&id)
+        })
     }
 
     fn get_txn_receipt_by_index(
         &self,
         index: u64,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
-            .get_txn_receipt_by_index(index)
+        self.connection_pool.execute_read(|conn| {
+            ReceiptStoreOperations::new(conn, self.service_id.as_deref())
+                .get_txn_receipt_by_index(index)
+        })
     }
 
     fn add_txn_receipts(&self, receipts: Vec<TransactionReceipt>) -> Result<(), ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
-            .add_txn_receipts(receipts)
+        self.connection_pool.execute_write(|conn| {
+            ReceiptStoreOperations::new(conn, self.service_id.as_deref()).add_txn_receipts(receipts)
+        })
     }
 
     fn remove_txn_receipt_by_id(
         &self,
         id: String,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
-            .remove_txn_receipt_by_id(id)
+        self.connection_pool.execute_write(|conn| {
+            ReceiptStoreOperations::new(conn, self.service_id.as_deref())
+                .remove_txn_receipt_by_id(id)
+        })
     }
 
     fn remove_txn_receipt_by_index(
         &self,
         index: u64,
     ) -> Result<Option<TransactionReceipt>, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
-            .remove_txn_receipt_by_index(index)
+        self.connection_pool.execute_write(|conn| {
+            ReceiptStoreOperations::new(conn, self.service_id.as_deref())
+                .remove_txn_receipt_by_index(index)
+        })
     }
 
     fn count_txn_receipts(&self) -> Result<u64, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
-            .count_txn_receipts()
+        self.connection_pool.execute_read(|conn| {
+            ReceiptStoreOperations::new(conn, self.service_id.as_deref()).count_txn_receipts()
+        })
     }
 
     fn list_receipts_since(&self, id: Option<String>) -> Result<ReceiptIter, ReceiptStoreError> {
-        ReceiptStoreOperations::new(&*self.connection_pool.get()?, self.service_id.clone())
-            .list_receipts_since(id)
+        self.connection_pool.execute_read(|conn| {
+            ReceiptStoreOperations::new(conn, self.service_id.as_deref()).list_receipts_since(id)
+        })
     }
 }
 
@@ -1187,6 +1277,59 @@ pub mod tests {
         assert!(test_result.is_ok());
     }
 
+    /// Creates a store that is shared among threads.  On each thread, it performs a write and a
+    /// read (10 times to increase the likelihood of attempts at concurrent access).
+    ///
+    /// If concurrent writes are allowed this test will fail (though occasionally succeed).
+    #[test]
+    fn test_multi_threaded_read_write() {
+        // We build a custom pool here, such that multiple connections are allowed.
+        let connection_manager = ConnectionManager::<SqliteConnection>::new(&format!(
+            "file:test_multi_threaded_read_write?mode=memory&cache=shared"
+        ));
+        let pool = Pool::builder()
+            .build(connection_manager)
+            .expect("Failed to build connection pool");
+
+        run_sqlite_migrations(&*pool.get().expect("Failed to get connection for migrations"))
+            .expect("Failed to run migrations");
+
+        let store = DieselReceiptStore::new_with_write_exclusivity(
+            Arc::new(RwLock::new(pool)),
+            Some("ABCDE-12345::AAaa".to_string()),
+        );
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        let thread_count = 10;
+        for t in 0..thread_count {
+            let tstore = store.clone();
+            let signaller = tx.clone();
+            std::thread::Builder::new()
+                .name(format!("test_multi_threaded_read_write {}", t))
+                .spawn(move || {
+                    for i in 0..10 {
+                        let receipts = vec![create_txn_receipt(&format!("{}:", t), i)];
+                        let txn_id = receipts[0].transaction_id.clone();
+                        tstore
+                            .add_txn_receipts(receipts)
+                            .expect("Unable to add receipts");
+
+                        tstore
+                            .get_txn_receipt_by_id(txn_id)
+                            .expect("Unable to get receipt by id")
+                            .expect("Receipt not found");
+                    }
+
+                    signaller.send(()).unwrap()
+                })
+                .unwrap();
+        }
+        drop(tx);
+
+        // wait for all threads to finish
+        assert_eq!(rx.iter().count(), thread_count);
+    }
+
     /// Creates a connection pool for an in-memory SQLite database with only a single connection
     /// available. Each connection is backed by a different in-memory SQLite database, so limiting
     /// the pool to a single connection ensures that the same DB is used for all operations.
@@ -1203,46 +1346,47 @@ pub mod tests {
         pool
     }
 
-    fn create_txn_receipts(num_receipts: u8) -> Vec<TransactionReceipt> {
-        let mut receipts = Vec::new();
+    fn create_txn_receipt(txn_id_prefix: &str, iteration: usize) -> TransactionReceipt {
+        let event1 = Event {
+            event_type: "event".to_string(),
+            attributes: vec![
+                (format!("a{}", iteration), format!("b{}", iteration)),
+                (format!("c{}", iteration), format!("d{}", iteration)),
+            ],
+            data: "data".to_string().into_bytes(),
+        };
+        let event2 = Event {
+            event_type: "event".to_string(),
+            attributes: vec![
+                (format!("e{}", iteration), format!("f{}", iteration)),
+                (format!("g{}", iteration), format!("h{}", iteration)),
+            ],
+            data: "data".to_string().into_bytes(),
+        };
+        let state_change1 = StateChange::Set {
+            key: iteration.to_string(),
+            value: iteration.to_string().into_bytes(),
+        };
+        let state_change2 = StateChange::Set {
+            key: iteration.to_string(),
+            value: format!("value{}", iteration).into_bytes(),
+        };
+        let txn_result = TransactionResult::Valid {
+            state_changes: vec![state_change1, state_change2],
+            events: vec![event1, event2],
+            data: vec!["data".to_string().into_bytes()],
+        };
+        let receipt = TransactionReceipt {
+            transaction_id: format!("{}{}", txn_id_prefix, iteration),
+            transaction_result: txn_result,
+        };
+        receipt
+    }
 
-        for i in 0..num_receipts as u8 {
-            let event1 = Event {
-                event_type: "event".to_string(),
-                attributes: vec![
-                    (format!("a{}", i), format!("b{}", i)),
-                    (format!("c{}", i), format!("d{}", i)),
-                ],
-                data: "data".to_string().into_bytes(),
-            };
-            let event2 = Event {
-                event_type: "event".to_string(),
-                attributes: vec![
-                    (format!("e{}", i), format!("f{}", i)),
-                    (format!("g{}", i), format!("h{}", i)),
-                ],
-                data: "data".to_string().into_bytes(),
-            };
-            let state_change1 = StateChange::Set {
-                key: i.to_string(),
-                value: i.to_string().into_bytes(),
-            };
-            let state_change2 = StateChange::Set {
-                key: i.to_string(),
-                value: format!("value{}", i).into_bytes(),
-            };
-            let txn_result = TransactionResult::Valid {
-                state_changes: vec![state_change1, state_change2],
-                events: vec![event1, event2],
-                data: vec!["data".to_string().into_bytes()],
-            };
-            let receipt = TransactionReceipt {
-                transaction_id: i.to_string(),
-                transaction_result: txn_result,
-            };
-            receipts.push(receipt);
-        }
-        receipts
+    fn create_txn_receipts(num_receipts: u8) -> Vec<TransactionReceipt> {
+        (0..num_receipts)
+            .map(|i| create_txn_receipt("", i as usize))
+            .collect()
     }
 
     fn create_txn_receipts_mixed_results(num_receipts: u8) -> Vec<TransactionReceipt> {
