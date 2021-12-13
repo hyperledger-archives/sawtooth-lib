@@ -1,5 +1,13 @@
 # Release Notes
 
+## Changes in libsawtooth 0.7.2
+
+- Add optional write-exclusivity. This adds the ability to configure the diesel
+  store with write exclusivity via the constuctor `new_with_write_exclusivity`.
+  This constructor is provided a connection pool wrapped in an
+  `Arc<RwLock<..>>`. With this enabled, it can guarantee single writers,
+  multiple readers. This is particularly valuable when using SQLite.
+
 ## Changes in libsawtooth 0.7.1
 
 - Make log dependency optional
