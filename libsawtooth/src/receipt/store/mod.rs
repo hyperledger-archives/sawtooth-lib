@@ -87,6 +87,8 @@ pub trait ReceiptStore: Sync + Send {
     /// * `id` - The transaction ID of the receipt preceding the receipts to be
     ///          listed, if no id is provided all receipts are listed
     fn list_receipts_since(&self, id: Option<String>) -> Result<ReceiptIter, ReceiptStoreError>;
+
+    fn clone_box(&self) -> Box<dyn ReceiptStore>;
 }
 
 /// Return type of the receipt store's `list_receipts_since` method.
