@@ -161,6 +161,10 @@ impl ReceiptStore for DieselReceiptStore<diesel::sqlite::SqliteConnection> {
             ReceiptStoreOperations::new(conn, self.service_id.as_deref()).list_receipts_since(id)
         })
     }
+
+    fn clone_box(&self) -> Box<dyn ReceiptStore> {
+        Box::new(self.clone())
+    }
 }
 
 #[cfg(feature = "postgres")]
@@ -220,6 +224,10 @@ impl ReceiptStore for DieselReceiptStore<diesel::pg::PgConnection> {
         self.connection_pool.execute_read(|conn| {
             ReceiptStoreOperations::new(conn, self.service_id.as_deref()).list_receipts_since(id)
         })
+    }
+
+    fn clone_box(&self) -> Box<dyn ReceiptStore> {
+        Box::new(self.clone())
     }
 }
 

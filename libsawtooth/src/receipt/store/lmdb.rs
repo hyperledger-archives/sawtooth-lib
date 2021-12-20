@@ -504,6 +504,13 @@ impl ReceiptStore for LmdbReceiptStore {
         };
         Ok(Box::new(iter))
     }
+
+    fn clone_box(&self) -> Box<dyn ReceiptStore> {
+        Box::new(Self {
+            databases: self.databases.clone(),
+            current_db: self.current_db.clone(),
+        })
+    }
 }
 
 /// A range that defines the start and end bounds for a range iterator on an `LmdbReceiptStore`.
