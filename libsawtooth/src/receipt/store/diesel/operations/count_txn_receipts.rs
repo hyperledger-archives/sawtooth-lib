@@ -40,7 +40,11 @@ where
 {
     fn count_txn_receipts(&self) -> Result<u64, ReceiptStoreError> {
         self.conn.transaction::<u64, _, _>(|| {
-            let count = transaction_receipt::table
+            let mut query = transaction_receipt::table.into_boxed();
+            if let Some(service_id) = &self.service_id {
+                query = query.filter(transaction_receipt::service_id.eq(service_id));
+            };
+            let count = query
                 .select(transaction_receipt::all_columns)
                 .select(count_star())
                 .first::<i64>(self.conn)?;
