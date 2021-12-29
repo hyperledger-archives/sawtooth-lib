@@ -1163,6 +1163,18 @@ pub mod tests {
                 .list_receipts_since(None)
                 .expect("failed to list all transaction receipts from receipt store 1");
 
+            let num_receipts_receipt_store_1 = receipt_store_1
+                .count_txn_receipts()
+                .expect("failed to count transaction receipts");
+
+            assert_eq!(num_receipts_receipt_store_1, 5);
+
+            let num_receipts_receipt_store_2 = receipt_store_2
+                .count_txn_receipts()
+                .expect("failed to count transaction receipts");
+
+            assert_eq!(num_receipts_receipt_store_2, 5);
+
             let mut total = 0;
             for (i, receipt) in vec![0, 1, 2, 6, 7]
                 .into_iter()
