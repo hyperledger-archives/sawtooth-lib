@@ -206,7 +206,7 @@ impl SawtoothClient for RestApiSawtoothClient {
     ) -> Result<Vec<String>, SawtoothClientError> {
         let mut url = format!("{}/batches", &self.url);
         if let Some(wait_time) = wait {
-            url = url + &format!("?wait={}", wait_time.as_secs().to_string());
+            url = url + &format!("?wait={}", wait_time.as_secs());
         }
 
         let mut batch_file = File::open(filename).map_err(|err| {
