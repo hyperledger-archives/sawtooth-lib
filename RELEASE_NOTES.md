@@ -1,5 +1,11 @@
 # Release Notes
 
+## Changes in libsawtooth 0.7.3
+
+- Add an index on the `transaction_receipt` table on the columns `(idx,
+  service_id)`.  This removes a performance issue when adding receipts to
+  instances with large numbers of rows.
+
 ## Changes in libsawtooth 0.7.2
 
 - Add optional write-exclusivity. This adds the ability to configure the diesel
