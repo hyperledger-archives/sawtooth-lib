@@ -73,8 +73,8 @@ impl FromProto<GenesisDataProto> for GenesisData {
         Ok(GenesisData {
             batches: genesis_data
                 .get_batches()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(BatchPair::from_proto)
                 .collect::<Result<_, _>>()?,
         })
