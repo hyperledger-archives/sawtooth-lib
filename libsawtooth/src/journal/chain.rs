@@ -829,7 +829,7 @@ fn handle_block_commit(
                     .get(&[blk.header().previous_block_id()])
                     .next()
                     .unwrap_or(None)
-                    .map(|b| hex::encode(b.header().state_root_hash().to_vec()))
+                    .map(|b| hex::encode(b.header().state_root_hash()))
                     .ok_or_else(|| {
                         ChainControllerError::ChainUpdateError(format!(
                             "Unable to find block {}",
