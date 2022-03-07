@@ -161,14 +161,12 @@ impl PermissionVerifier {
                 ))?
                 .map(|role| role.policy_name().to_string());
 
-            let policy = if let Some(name) = policy_name
-                .as_ref()
-                .or_else(|| general_txn_policy_name.as_ref())
-            {
-                identity_source.get_policy_by_name(name)?
-            } else {
-                None
-            };
+            let policy =
+                if let Some(name) = policy_name.as_ref().or(general_txn_policy_name.as_ref()) {
+                    identity_source.get_policy_by_name(name)?
+                } else {
+                    None
+                };
 
             if let Some(policy) = policy {
                 if !Self::is_allowed(txn_header.signer_public_key(), &policy) {
