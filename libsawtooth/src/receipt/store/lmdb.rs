@@ -259,7 +259,7 @@ impl ReceiptStore for LmdbReceiptStore {
 
         Ok(
             match access
-                .get::<_, [u8]>(&db.index_to_key_db, &index.to_ne_bytes().to_vec())
+                .get::<_, [u8]>(&db.index_to_key_db, &index.to_ne_bytes()[..])
                 .to_opt()?
             {
                 Some(key) => access
@@ -639,18 +639,14 @@ impl LmdbReceiptStoreIter {
         let mut first_entry = Some(match &self.range.start {
             Bound::Included(index) => {
                 // Get the first entry >= index; that will be the first entry.
-                index_cursor.seek_range_k::<[u8], [u8]>(&access, &index.to_ne_bytes().to_vec())
+                index_cursor.seek_range_k::<[u8], [u8]>(&access, &index.to_ne_bytes())
             }
             Bound::Excluded(index) => {
                 // Get the first entry >= index. If that entry == index, get the next entry since this
                 // is an exclusive bound.
-                match index_cursor
-                    .seek_range_k::<[u8], [u8]>(&access, &index.to_ne_bytes().to_vec())
-                {
+                match index_cursor.seek_range_k::<[u8], [u8]>(&access, &index.to_ne_bytes()) {
                     // If this is the same as the range's index,
-                    Ok((found_index, _))
-                        if found_index == index.to_ne_bytes().to_vec().as_slice() =>
-                    {
+                    Ok((found_index, _)) if found_index == &index.to_ne_bytes()[..] => {
                         index_cursor.next::<[u8], [u8]>(&access)
                     }
                     other => other,
