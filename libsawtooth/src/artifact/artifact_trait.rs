@@ -15,6 +15,14 @@
  * ------------------------------------------------------------------------------
  */
 
-mod artifact_trait;
+/// An artifact.
+///
+/// An artifact is an identifiable product of the publishing process and the core value to be
+/// validated by a system based on Sawtooth.
+pub trait Artifact: Clone + Send {
+    /// The type of the identifier.
+    type Identifier: ?Sized;
 
-pub use artifact_trait::Artifact;
+    /// Returns a reference to this artifact's identifier.
+    fn artifact_id(&self) -> &Self::Identifier;
+}
