@@ -63,12 +63,14 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
+    "artifact",
     "client",
     "client-rest",
     "pending-batch-queue",
     "validator-internals",
 ]
 
+artifact = []
 client = []
 client-rest = ["base64", "client", "log", "reqwest", "serde"]
 lmdb = ["lmdb-zero", "log"]
