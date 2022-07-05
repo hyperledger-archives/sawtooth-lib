@@ -12,5 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod error;
 #[cfg(any(feature = "postgres", feature = "sqlite"))]
 pub(crate) mod pool;
+
+pub use error::StoreError;
