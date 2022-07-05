@@ -24,6 +24,8 @@ extern crate diesel_migrations;
 #[macro_use]
 extern crate metrics;
 
+#[cfg(feature = "artifact")]
+pub mod artifact;
 #[cfg(feature = "client")]
 pub mod client;
 #[cfg(feature = "validator-internals")]
