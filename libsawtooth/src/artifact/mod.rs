@@ -15,6 +15,10 @@
  * ------------------------------------------------------------------------------
  */
 
+#[cfg(feature = "artifact-store")]
+mod artifact_store;
 mod artifact_trait;
 
+#[cfg(feature = "artifact-store")]
+pub use artifact_store::ArtifactStore;
 pub use artifact_trait::Artifact;
