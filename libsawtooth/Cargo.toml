@@ -64,6 +64,7 @@ experimental = [
     "stable",
     # The following features are experimental:
     "artifact",
+    "artifact-creator",
     "artifact-store",
     "client",
     "client-rest",
@@ -72,6 +73,7 @@ experimental = [
 ]
 
 artifact = []
+artifact-creator = ["artifact"]
 artifact-store = ["artifact"]
 client = []
 client-rest = ["base64", "client", "log", "reqwest", "serde"]
