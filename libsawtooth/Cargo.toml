@@ -69,6 +69,7 @@ experimental = [
     "client",
     "client-rest",
     "pending-batch-queue",
+    "publisher",
     "validator-internals",
 ]
 
@@ -80,6 +81,7 @@ client-rest = ["base64", "client", "log", "reqwest", "serde"]
 lmdb = ["lmdb-zero", "log"]
 pending-batch-queue = ["validator-internals"]
 postgres = ["diesel/postgres", "diesel_migrations", "log", "store"]
+publisher = ["artifact-creator"]
 sqlite = ["diesel/sqlite", "diesel_migrations", "log", "store"]
 store = []
 transaction-receipt-store = []
