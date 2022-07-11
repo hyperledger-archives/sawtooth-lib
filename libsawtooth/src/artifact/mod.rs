@@ -15,10 +15,14 @@
  * ------------------------------------------------------------------------------
  */
 
+#[cfg(feature = "artifact-creator")]
+mod artifact_creator;
 #[cfg(feature = "artifact-store")]
 mod artifact_store;
 mod artifact_trait;
 
+#[cfg(feature = "artifact-creator")]
+pub use artifact_creator::{ArtifactCreator, ArtifactCreatorFactory};
 #[cfg(feature = "artifact-store")]
 pub use artifact_store::ArtifactStore;
 pub use artifact_trait::Artifact;
