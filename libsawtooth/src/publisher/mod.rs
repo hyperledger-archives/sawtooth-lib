@@ -20,10 +20,14 @@
 mod batch;
 mod batch_verifier;
 mod context;
+mod factory;
+mod handler;
 mod message;
 mod pending_batches;
 
 pub use batch::Batch;
 pub use batch_verifier::{BatchExecutionResult, BatchVerifier, BatchVerifierFactory};
 pub use context::PublishingContext;
+pub use factory::PublishFactory;
+pub use handler::PublishHandle;
 pub use pending_batches::PendingBatches;
