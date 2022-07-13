@@ -15,8 +15,6 @@
  * ------------------------------------------------------------------------------
  */
 
-//! Contains traits and struct required publishing new artifacts
+//! A trait that represents a `Batch`
 
-mod batch;
-
-pub use batch::Batch;
+pub trait Batch: Send {}
