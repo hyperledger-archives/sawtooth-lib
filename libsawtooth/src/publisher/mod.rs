@@ -18,7 +18,10 @@
 //! Contains traits and struct required publishing new artifacts
 
 mod batch;
+mod batch_verifier;
 mod context;
 
 pub use batch::Batch;
+pub use batch_verifier::{BatchExecutionResult, BatchVerifier, BatchVerifierFactory};
 pub use context::PublishingContext;
+
