@@ -15,15 +15,13 @@
  * ------------------------------------------------------------------------------
  */
 
-//! Contains traits and struct required publishing new artifacts
+//! Contains a trait for getting pending batches
 
-mod batch;
-mod batch_verifier;
-mod context;
-mod message;
-mod pending_batches;
+use crate::error::InternalError;
 
-pub use batch::Batch;
-pub use batch_verifier::{BatchExecutionResult, BatchVerifier, BatchVerifierFactory};
-pub use context::PublishingContext;
-pub use pending_batches::PendingBatches;
+use super::Batch;
+
+/// Return the next `Batch` that should be executed
+pub trait PendingBatches<B: Batch>: Send {
+    fn next(&mut self) -> Result<Option<B>, InternalError>;
+}
