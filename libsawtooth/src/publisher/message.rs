@@ -15,14 +15,11 @@
  * ------------------------------------------------------------------------------
  */
 
-//! Contains traits and struct required publishing new artifacts
+//! Contains the message used by the publisher
 
-mod batch;
-mod batch_verifier;
-mod context;
-mod message;
-
-pub use batch::Batch;
-pub use batch_verifier::{BatchExecutionResult, BatchVerifier, BatchVerifierFactory};
-pub use context::PublishingContext;
-
+pub enum PublishMessage {
+    Cancel,
+    Finish,
+    Next,
+    Dropped,
+}
