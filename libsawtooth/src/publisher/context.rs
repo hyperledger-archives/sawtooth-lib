@@ -15,10 +15,7 @@
  * ------------------------------------------------------------------------------
  */
 
-//! Contains traits and struct required publishing new artifacts
+//! Contains the trait for the context used by the publisher
 
-mod batch;
-mod context;
-
-pub use batch::Batch;
-pub use context::PublishingContext;
+/// The context used by the publisher
+pub trait PublishingContext: Send {}
