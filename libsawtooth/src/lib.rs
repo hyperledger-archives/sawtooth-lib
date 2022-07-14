@@ -40,6 +40,8 @@ pub mod migrations;
 pub mod permissions;
 pub mod protocol;
 pub mod protos;
+#[cfg(feature = "publisher")]
+pub mod publisher;
 #[cfg(any(feature = "transaction-receipt-store", feature = "validator-internals"))]
 pub mod receipt;
 #[cfg(feature = "validator-internals")]

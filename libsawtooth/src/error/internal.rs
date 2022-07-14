@@ -17,6 +17,9 @@
 use std::error;
 use std::fmt;
 
+#[cfg(feature = "publisher")]
+use log::debug;
+
 struct Source {
     prefix: Option<String>,
     source: Box<dyn error::Error>,
@@ -125,6 +128,19 @@ impl InternalError {
             message: Some(message),
             source: None,
         }
+    }
+
+    /// Reduces the `InternalError` to the display string
+    ///
+    /// If the error includes a source, the debug format will be logged to provide
+    /// information that may be lost on the conversion.
+    #[cfg(feature = "publisher")]
+    pub fn reduce_to_string(self) -> String {
+        if self.source.is_some() {
+            debug!("{:?}", self);
+        }
+
+        self.to_string()
     }
 }
 
