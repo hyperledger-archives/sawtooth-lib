@@ -22,11 +22,11 @@
 //! with some threads reading and writing to a context while others create contexts.
 use std::sync::{Arc, Mutex};
 
-use crate::context::error::ContextManagerError;
-use crate::context::{manager, ContextId, ContextLifecycle};
 use crate::error::InternalError;
-use crate::protocol::receipt::{Event, TransactionReceipt};
-use crate::state::Read;
+use crate::transact::context::error::ContextManagerError;
+use crate::transact::context::{manager, ContextId, ContextLifecycle};
+use crate::transact::protocol::receipt::{Event, TransactionReceipt};
+use crate::transact::state::Read;
 
 /// A thread-safe ContextManager.
 #[derive(Clone)]

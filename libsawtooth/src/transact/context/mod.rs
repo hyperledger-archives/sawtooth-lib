@@ -24,9 +24,9 @@
 mod error;
 pub mod manager;
 
-use crate::context::manager::ContextManagerError;
 use crate::error::InternalError;
-use crate::protocol::receipt::{Event, StateChange, TransactionReceipt};
+use crate::transact::protocol::receipt::{Event, StateChange, TransactionReceipt};
+use error::ContextManagerError;
 use std::mem;
 use uuid::Uuid;
 
@@ -216,7 +216,7 @@ impl Context {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::protocol::receipt::StateChange;
+    use crate::transact::protocol::receipt::StateChange;
 
     static KEY1: &str = "111111111111111111111111111111111111111111111111111111111111111111";
     static KEY2: &str = "222222222222222222222222222222222222222222222222222222222222222222";

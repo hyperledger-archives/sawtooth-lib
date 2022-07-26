@@ -21,12 +21,15 @@ use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::str;
 
-use crate::collections::RefMap;
-pub use crate::context::error::ContextManagerError;
-use crate::context::{Context, ContextId, ContextLifecycle};
 use crate::error::InternalError;
-use crate::protocol::receipt::{Event, StateChange, TransactionReceipt, TransactionReceiptBuilder};
-use crate::state::Read;
+use crate::transact::collections::RefMap;
+use crate::transact::protocol::receipt::{
+    Event, StateChange, TransactionReceipt, TransactionReceiptBuilder,
+};
+use crate::transact::state::Read;
+
+pub use super::error::ContextManagerError;
+use super::{Context, ContextId, ContextLifecycle};
 
 #[derive(Clone)]
 pub struct ContextManager {
@@ -252,10 +255,10 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
-    use crate::protocol::receipt::{EventBuilder, TransactionResult};
-    use crate::state;
-    use crate::state::hashmap::HashMapState;
-    use crate::state::Write;
+    use crate::transact::protocol::receipt::{EventBuilder, TransactionResult};
+    use crate::transact::state;
+    use crate::transact::state::hashmap::HashMapState;
+    use crate::transact::state::Write;
 
     static KEY1: &str = "111111111111111111111111111111111111111111111111111111111111111111";
     static KEY2: &str = "222222222222222222222222222222222222222222222222222222222222222222";

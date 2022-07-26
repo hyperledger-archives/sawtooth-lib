@@ -16,8 +16,8 @@
  */
 use std::error::Error;
 
-use crate::protocol::receipt::TransactionReceiptBuilderError;
-use crate::state::error::StateReadError;
+use crate::transact::protocol::receipt::TransactionReceiptBuilderError;
+use crate::transact::state::error::StateReadError;
 
 #[derive(Debug)]
 pub enum ContextManagerError {

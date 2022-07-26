@@ -113,9 +113,9 @@
 //! Hyperledger Transact provides optional support for smart contract engines implemented for
 //! Hyperledger Sawtooth through the `sawtooth-compat` feature.
 
-#[cfg(feature = "context")]
+#[cfg(feature = "transact-context")]
 mod collections;
-#[cfg(feature = "context")]
+#[cfg(feature = "transact-context")]
 pub mod context;
 #[cfg(feature = "contract")]
 pub mod contract;
