@@ -34,7 +34,7 @@ pub mod error;
 #[cfg(feature = "database-lmdb")]
 pub mod lmdb;
 
-pub use crate::database::error::DatabaseError;
+pub use error::DatabaseError;
 
 pub type DatabaseCursor<'a> = Box<dyn DatabaseReaderCursor<Item = (Vec<u8>, Vec<u8>)> + 'a>;
 

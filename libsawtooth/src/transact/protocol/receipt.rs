@@ -27,7 +27,7 @@ use protobuf::Message;
 use crate::protos::{
     self, FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
-use crate::state;
+use crate::transact::state;
 
 /// A change to be applied to state, in terms of keys and values.
 ///

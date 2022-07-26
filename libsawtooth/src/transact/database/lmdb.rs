@@ -17,7 +17,7 @@
 
 //! An LMDB (Lightning Memory-Mapped DB) implementation of the database traits.
 
-use crate::database::{
+use crate::transact::database::{
     Database, DatabaseCursor, DatabaseReader, DatabaseReaderCursor, DatabaseWriter,
 };
 use std::collections::HashMap;
@@ -27,7 +27,7 @@ use std::sync::Arc;
 use lmdb::error::LmdbResultExt as _;
 use lmdb_zero as lmdb;
 
-use crate::database::error::DatabaseError;
+use crate::transact::database::error::DatabaseError;
 
 // 32-bit architectures
 #[cfg(any(target_arch = "x86", target_arch = "arm"))]

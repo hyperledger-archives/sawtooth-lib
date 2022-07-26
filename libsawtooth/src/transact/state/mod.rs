@@ -34,10 +34,10 @@ mod state_trait;
 
 use std::collections::HashMap;
 
-pub use crate::state::error::{StatePruneError, StateReadError, StateWriteError};
 pub use committer::Committer;
 pub use dry_run_committer::DryRunCommitter;
 pub use error::StateError;
+pub use error::{StatePruneError, StateReadError, StateWriteError};
 pub use pruner::Pruner;
 pub use reader::{Reader, ValueIter, ValueIterResult};
 pub use state_trait::State;

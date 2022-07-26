@@ -22,8 +22,8 @@
 //!
 //! Atomicity is provided via a RwLock.
 
-use crate::database::error::DatabaseError;
-use crate::database::{
+use crate::transact::database::error::DatabaseError;
+use crate::transact::database::{
     Database, DatabaseCursor, DatabaseReader, DatabaseReaderCursor, DatabaseWriter,
 };
 use std::collections::BTreeMap;
@@ -508,7 +508,7 @@ impl Iterator for BTreeDatabaseCursor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::database::Database;
+    use crate::transact::database::Database;
 
     /// Asserts that there are COUNT many objects in DB.
     fn assert_database_count<'a>(count: usize, reader: &'a dyn DatabaseReader) {
