@@ -59,6 +59,7 @@ stable = [
     "store",
     "transact",
     "transact-context",
+    "transact-database-lmdb",
     "transaction-receipt-store",
 ]
 
@@ -89,6 +90,7 @@ sqlite = ["diesel/sqlite", "diesel_migrations", "log", "store"]
 store = []
 transact = []
 transact-context = ["transact", "uuid"]
+transact-database-lmdb = ["transact", "lmdb-zero"]
 transaction-receipt-store = []
 validator-internals = [
   "cbor-codec",

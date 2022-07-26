@@ -31,7 +31,7 @@
 
 pub mod btree;
 pub mod error;
-#[cfg(feature = "database-lmdb")]
+#[cfg(feature = "transact-database-lmdb")]
 pub mod lmdb;
 
 pub use error::DatabaseError;
