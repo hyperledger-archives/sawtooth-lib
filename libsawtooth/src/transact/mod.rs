@@ -113,17 +113,6 @@
 //! Hyperledger Transact provides optional support for smart contract engines implemented for
 //! Hyperledger Sawtooth through the `sawtooth-compat` feature.
 
-// This must be allowed until diesel is upgraded to 2.0
-#![allow(clippy::extra_unused_lifetimes)]
-#![cfg_attr(feature = "nightly", feature(test))]
-
-#[cfg(feature = "diesel")]
-#[macro_use]
-extern crate diesel;
-#[cfg(feature = "diesel_migrations")]
-#[macro_use]
-extern crate diesel_migrations;
-
 #[cfg(feature = "context")]
 mod collections;
 #[cfg(feature = "context")]
@@ -134,7 +123,6 @@ pub mod database;
 pub mod error;
 #[cfg(feature = "execution")]
 pub mod execution;
-pub mod families;
 #[cfg(feature = "handler")]
 pub mod handler;
 pub mod protocol;
@@ -147,18 +135,3 @@ pub mod scheduler;
 pub mod state;
 #[cfg(feature = "workload")]
 pub mod workload;
-
-// #[macro_use]` on the `sabre-sdk` enables the sabre log macros, this however cannot be
-// enabled at the same time as the `log` crate's macros due to linker conflicts
-#[cfg(all(feature = "sabre-compat", feature = "log"))]
-compile_error!("Incompatible features enabled: 'sabre-compat' and 'log'");
-
-#[cfg(feature = "log")]
-#[macro_use]
-extern crate log;
-#[cfg(all(feature = "sabre-compat", feature = "family-smallbank"))]
-#[macro_use]
-extern crate sabre_sdk;
-#[cfg(feature = "serde_derive")]
-#[macro_use]
-extern crate serde_derive;

@@ -31,6 +31,7 @@ pub mod client;
 #[cfg(feature = "validator-internals")]
 pub mod consensus;
 pub mod error;
+pub mod families;
 #[cfg(feature = "validator-internals")]
 pub mod hashlib;
 #[cfg(feature = "validator-internals")]
