@@ -125,8 +125,6 @@ pub mod execution;
 #[cfg(feature = "handler")]
 pub mod handler;
 pub mod protocol;
-#[allow(renamed_and_removed_lints)]
-pub mod protos;
 #[cfg(feature = "sawtooth-compat")]
 pub mod sawtooth;
 #[cfg(feature = "scheduler")]
