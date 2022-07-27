@@ -27,15 +27,15 @@ use cylinder::Signer;
 use protobuf::Message;
 
 use crate::error::InvalidStateError;
-use crate::protocol::{
+use crate::protos::smallbank::{
+    SmallbankTransactionPayload, SmallbankTransactionPayload_PayloadType,
+};
+use crate::transact::protocol::{
     batch::{BatchBuilder, BatchPair},
     sabre::payload::ExecuteContractActionBuilder,
     transaction::TransactionPair,
 };
-use crate::protos::smallbank::{
-    SmallbankTransactionPayload, SmallbankTransactionPayload_PayloadType,
-};
-use crate::workload::{BatchWorkload, ExpectedBatchResult, TransactionWorkload};
+use crate::transact::workload::{BatchWorkload, ExpectedBatchResult, TransactionWorkload};
 
 use self::playlist::make_addresses;
 use self::playlist::SmallbankGeneratingIter;

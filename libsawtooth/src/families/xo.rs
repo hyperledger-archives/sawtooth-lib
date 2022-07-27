@@ -1,12 +1,12 @@
 use crate::error::InvalidStateError;
-use crate::protocol::batch::BatchBuilder;
-use crate::protocol::batch::BatchPair;
-use crate::protocol::transaction::HashMethod;
-use crate::protocol::transaction::TransactionBuilder;
-use crate::protocol::transaction::TransactionPair;
-use crate::workload::BatchWorkload;
-use crate::workload::ExpectedBatchResult;
-use crate::workload::TransactionWorkload;
+use crate::transact::protocol::batch::BatchBuilder;
+use crate::transact::protocol::batch::BatchPair;
+use crate::transact::protocol::transaction::HashMethod;
+use crate::transact::protocol::transaction::TransactionBuilder;
+use crate::transact::protocol::transaction::TransactionPair;
+use crate::transact::workload::BatchWorkload;
+use crate::transact::workload::ExpectedBatchResult;
+use crate::transact::workload::TransactionWorkload;
 
 use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
 use rand::{distributions::Alphanumeric, prelude::*};
@@ -183,8 +183,8 @@ fn new_signer() -> Box<dyn Signer> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workload::tests::test_batch_workload;
-    use crate::workload::tests::test_transaction_workload;
+    use crate::transact::workload::tests::test_batch_workload;
+    use crate::transact::workload::tests::test_transaction_workload;
 
     #[test]
     fn test_xo_transaction_workload() {
