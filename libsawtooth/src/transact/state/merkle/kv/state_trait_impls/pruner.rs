@@ -16,9 +16,9 @@
  */
 
 use crate::error::{InternalError, InvalidStateError};
-use crate::state::{Pruner, StateError};
+use crate::transact::state::{Pruner, StateError};
 
-use crate::state::merkle::kv::{error::StateDatabaseError, MerkleRadixTree, MerkleState};
+use crate::transact::state::merkle::kv::{error::StateDatabaseError, MerkleRadixTree, MerkleState};
 
 impl Pruner for MerkleState {
     fn prune(&self, state_ids: Vec<Self::StateId>) -> Result<Vec<Self::Key>, StateError> {

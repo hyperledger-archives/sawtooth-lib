@@ -16,9 +16,9 @@
  */
 
 use crate::error::{InternalError, InvalidStateError};
-use crate::state::{Committer, StateChange, StateError};
+use crate::transact::state::{Committer, StateChange, StateError};
 
-use crate::state::merkle::kv::{error::StateDatabaseError, MerkleRadixTree, MerkleState};
+use crate::transact::state::merkle::kv::{error::StateDatabaseError, MerkleRadixTree, MerkleState};
 
 impl Committer for MerkleState {
     type StateChange = StateChange;

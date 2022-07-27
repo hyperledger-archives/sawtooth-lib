@@ -22,7 +22,7 @@ mod reader;
 
 use super::MerkleState;
 
-impl crate::state::State for MerkleState {
+impl crate::transact::state::State for MerkleState {
     type StateId = String;
     type Key = String;
     type Value = Vec<u8>;

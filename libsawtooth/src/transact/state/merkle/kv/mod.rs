@@ -25,11 +25,11 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use sha2::{Digest, Sha512};
 
-use crate::database::error::DatabaseError;
-use crate::database::{Database, DatabaseReader, DatabaseWriter};
 use crate::error::{InternalError, InvalidStateError};
-use crate::state::error::{StatePruneError, StateReadError, StateWriteError};
-use crate::state::{Prune, Read, StateChange, Write};
+use crate::transact::database::error::DatabaseError;
+use crate::transact::database::{Database, DatabaseReader, DatabaseWriter};
+use crate::transact::state::error::{StatePruneError, StateReadError, StateWriteError};
+use crate::transact::state::{Prune, Read, StateChange, Write};
 
 use super::node::Node;
 use super::{MerkleRadixLeafReadError, MerkleRadixLeafReader};
@@ -808,7 +808,7 @@ fn hash(input: &[u8]) -> Vec<u8> {
 mod tests {
     use super::*;
 
-    use crate::database::btree::BTreeDatabase;
+    use crate::transact::database::btree::BTreeDatabase;
 
     #[test]
     /// This test checks that the MerkleRadixLeafReader produces the correct error types under the

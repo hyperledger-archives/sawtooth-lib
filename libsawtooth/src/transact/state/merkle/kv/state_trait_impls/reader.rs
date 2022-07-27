@@ -18,9 +18,9 @@
 use std::collections::HashMap;
 
 use crate::error::{InternalError, InvalidStateError};
-use crate::state::{Reader, StateError, ValueIter, ValueIterResult};
+use crate::transact::state::{Reader, StateError, ValueIter, ValueIterResult};
 
-use crate::state::merkle::kv::{error::StateDatabaseError, MerkleRadixTree, MerkleState};
+use crate::transact::state::merkle::kv::{error::StateDatabaseError, MerkleRadixTree, MerkleState};
 
 impl Reader for MerkleState {
     type Filter = str;

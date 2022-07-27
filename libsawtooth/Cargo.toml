@@ -69,6 +69,7 @@ stable = [
     "transact-protocol-transaction",
     "transact-protocol-transaction-builder",
     "transact-scheduler",
+    "transact-state-merkle",
     "transaction-receipt-store",
 ]
 
@@ -118,6 +119,7 @@ transact-protocol-transaction-builder = [
   "sha2",
 ]
 transact-scheduler = ["transact-context", "log", "transact-protocol-batch"]
+transact-state-merkle = ["cbor-codec", "log"]
 transaction-receipt-store = []
 validator-internals = [
   "cbor-codec",

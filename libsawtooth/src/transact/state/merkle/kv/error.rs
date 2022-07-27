@@ -23,7 +23,7 @@ use cbor::decoder::DecodeError;
 use cbor::encoder::EncodeError;
 use protobuf::ProtobufError;
 
-use crate::database::error::DatabaseError;
+use crate::transact::database::error::DatabaseError;
 
 #[derive(Debug)]
 pub enum StateDatabaseError {

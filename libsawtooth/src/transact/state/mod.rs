@@ -26,7 +26,7 @@ mod committer;
 mod dry_run_committer;
 pub mod error;
 pub mod hashmap;
-#[cfg(feature = "state-merkle")]
+#[cfg(feature = "transact-state-merkle")]
 pub mod merkle;
 mod pruner;
 mod reader;
