@@ -120,14 +120,14 @@ pub mod context;
 #[cfg(feature = "contract")]
 pub mod contract;
 pub mod database;
-#[cfg(feature = "execution")]
+#[cfg(feature = "transact-execution")]
 pub mod execution;
-#[cfg(feature = "handler")]
+#[cfg(feature = "transact-handler")]
 pub mod handler;
 pub mod protocol;
 #[cfg(feature = "sawtooth-compat")]
 pub mod sawtooth;
-#[cfg(feature = "scheduler")]
+#[cfg(feature = "transact-scheduler")]
 pub mod scheduler;
 pub mod state;
 #[cfg(feature = "workload")]

@@ -15,11 +15,13 @@
  * -----------------------------------------------------------------------------
  */
 
-use crate::context::ContextId;
-use crate::execution::adapter::{ExecutionAdapter, ExecutionAdapterError, ExecutionOperationError};
-use crate::execution::{ExecutionRegistry, TransactionFamily};
-use crate::protocol::transaction::TransactionPair;
-use crate::scheduler::ExecutionTaskCompletionNotification;
+use crate::transact::context::ContextId;
+use crate::transact::execution::adapter::{
+    ExecutionAdapter, ExecutionAdapterError, ExecutionOperationError,
+};
+use crate::transact::execution::{ExecutionRegistry, TransactionFamily};
+use crate::transact::protocol::transaction::TransactionPair;
+use crate::transact::scheduler::ExecutionTaskCompletionNotification;
 use std::sync::{Arc, Mutex};
 
 struct TestExecutionAdapterState {
@@ -157,8 +159,8 @@ mod tests {
 
     use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
 
-    use crate::context::ContextId;
-    use crate::protocol::transaction::{HashMethod, TransactionBuilder};
+    use crate::transact::context::ContextId;
+    use crate::transact::protocol::transaction::{HashMethod, TransactionBuilder};
 
     static FAMILY_VERSION: &str = "1.0";
 

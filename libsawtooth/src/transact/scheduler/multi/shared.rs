@@ -17,8 +17,8 @@
 
 //! Internal MultiScheduler state shared across threads.
 
-use crate::protocol::batch::BatchPair;
-use crate::scheduler::{
+use crate::transact::protocol::batch::BatchPair;
+use crate::transact::scheduler::{
     default_error_callback, default_result_callback, BatchExecutionResult, Scheduler,
     SchedulerError,
 };

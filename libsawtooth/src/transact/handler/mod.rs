@@ -27,8 +27,8 @@ mod error;
 #[cfg(feature = "sabre-compat")]
 pub mod sabre;
 
-pub use crate::handler::error::{ApplyError, ContextError};
-use crate::protocol::transaction::TransactionPair;
+pub use crate::transact::handler::error::{ApplyError, ContextError};
+use crate::transact::protocol::transaction::TransactionPair;
 
 pub trait TransactionContext {
     /// get_state_entry queries the validator state for data at the

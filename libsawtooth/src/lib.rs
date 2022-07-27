@@ -24,6 +24,10 @@ extern crate diesel_migrations;
 #[macro_use]
 extern crate metrics;
 
+#[cfg(feature = "log")]
+#[macro_use]
+extern crate log;
+
 #[cfg(feature = "artifact")]
 pub mod artifact;
 #[cfg(feature = "client")]

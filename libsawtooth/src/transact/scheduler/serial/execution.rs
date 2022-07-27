@@ -18,9 +18,9 @@
 //! Implementation of the components used for interfacing with the component
 //! reponsible for the execution of transactions (usually the Executor).
 
-use crate::scheduler::ExecutionTask;
-use crate::scheduler::ExecutionTaskCompletionNotification;
-use crate::scheduler::ExecutionTaskCompletionNotifier;
+use crate::transact::scheduler::ExecutionTask;
+use crate::transact::scheduler::ExecutionTaskCompletionNotification;
+use crate::transact::scheduler::ExecutionTaskCompletionNotifier;
 
 use std::sync::mpsc::{Receiver, Sender};
 
@@ -121,8 +121,8 @@ mod tests {
     use log::{set_boxed_logger, set_max_level, Level, LevelFilter, Log, Metadata, Record};
     use rusty_fork::rusty_fork_test;
 
-    use crate::context::ContextId;
-    use crate::protocol::transaction::{HashMethod, TransactionBuilder};
+    use crate::transact::context::ContextId;
+    use crate::transact::protocol::transaction::{HashMethod, TransactionBuilder};
 
     // This macro runs each of the tests in a separate process, which is necessary because the
     // logger is per-process. If we ran the tests normally (which is accomplished with threads), the

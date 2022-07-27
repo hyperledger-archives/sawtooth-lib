@@ -21,15 +21,17 @@
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
-use crate::context::manager::sync::ContextManager;
-use crate::context::manager::ContextManagerError;
-use crate::context::ContextId;
-use crate::execution::adapter::{ExecutionAdapter, ExecutionAdapterError, ExecutionOperationError};
-use crate::execution::{ExecutionRegistry, TransactionFamily};
-use crate::handler::{ApplyError, ContextError, TransactionContext, TransactionHandler};
-use crate::protocol::receipt::Event;
-use crate::protocol::transaction::TransactionPair;
-use crate::scheduler::{ExecutionTaskCompletionNotification, InvalidTransactionResult};
+use crate::transact::context::manager::sync::ContextManager;
+use crate::transact::context::manager::ContextManagerError;
+use crate::transact::context::ContextId;
+use crate::transact::execution::adapter::{
+    ExecutionAdapter, ExecutionAdapterError, ExecutionOperationError,
+};
+use crate::transact::execution::{ExecutionRegistry, TransactionFamily};
+use crate::transact::handler::{ApplyError, ContextError, TransactionContext, TransactionHandler};
+use crate::transact::protocol::receipt::Event;
+use crate::transact::protocol::transaction::TransactionPair;
+use crate::transact::scheduler::{ExecutionTaskCompletionNotification, InvalidTransactionResult};
 
 // A type declaration to make the use of this complicated type-bounded box easier to work with
 type OnDoneCallback =
@@ -303,15 +305,17 @@ mod test {
 
     use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
 
-    use crate::context::ContextLifecycle;
     use crate::families::command::{CommandTransactionBuilder, CommandTransactionHandler};
-    use crate::protocol::command::{
+    use crate::transact::context::ContextLifecycle;
+    use crate::transact::protocol::command::{
         AddEvent, AddReceiptData, BytesEntry, Command, DeleteState, GetState, ReturnInternalError,
         ReturnInvalid, SetState, Sleep, SleepType,
     };
-    use crate::protocol::receipt::TransactionResult;
-    use crate::scheduler::{ExecutionTaskCompletionNotification, InvalidTransactionResult};
-    use crate::state::hashmap::HashMapState;
+    use crate::transact::protocol::receipt::TransactionResult;
+    use crate::transact::scheduler::{
+        ExecutionTaskCompletionNotification, InvalidTransactionResult,
+    };
+    use crate::transact::state::hashmap::HashMapState;
 
     fn create_bytes_entry(state_writes: Vec<(String, Vec<u8>)>) -> Vec<BytesEntry> {
         state_writes

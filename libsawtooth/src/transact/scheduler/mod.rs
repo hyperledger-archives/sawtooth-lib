@@ -34,10 +34,10 @@ pub mod serial;
 
 use std::error::Error;
 
-use crate::context::ContextId;
-use crate::protocol::batch::BatchPair;
-use crate::protocol::receipt::{TransactionReceipt, TransactionResult};
-use crate::protocol::transaction::TransactionPair;
+use crate::transact::context::ContextId;
+use crate::transact::protocol::batch::BatchPair;
+use crate::transact::protocol::receipt::{TransactionReceipt, TransactionResult};
+use crate::transact::protocol::transaction::TransactionPair;
 
 /// A transation and associated information required to execute it.
 pub struct ExecutionTask {
@@ -246,12 +246,12 @@ fn default_error_callback(error: SchedulerError) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::context::manager::ContextManagerError;
-    use crate::context::ContextLifecycle;
     use crate::error::InternalError;
-    use crate::protocol::batch::BatchBuilder;
-    use crate::protocol::receipt::TransactionReceiptBuilder;
-    use crate::protocol::transaction::{HashMethod, Transaction, TransactionBuilder};
+    use crate::transact::context::manager::ContextManagerError;
+    use crate::transact::context::ContextLifecycle;
+    use crate::transact::protocol::batch::BatchBuilder;
+    use crate::transact::protocol::receipt::TransactionReceiptBuilder;
+    use crate::transact::protocol::transaction::{HashMethod, Transaction, TransactionBuilder};
 
     use std::sync::mpsc;
 

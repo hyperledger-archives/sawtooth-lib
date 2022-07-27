@@ -17,8 +17,8 @@
 
 use super::internal::{ExecutorCommand, ExecutorCommandSender};
 
-use crate::scheduler::ExecutionTask;
-use crate::scheduler::ExecutionTaskCompletionNotifier;
+use crate::transact::scheduler::ExecutionTask;
+use crate::transact::scheduler::ExecutionTaskCompletionNotifier;
 use log::warn;
 use std::sync::{
     atomic::{AtomicBool, Ordering},

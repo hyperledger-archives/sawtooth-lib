@@ -21,10 +21,10 @@ mod reader;
 
 use internal::ExecutorThread;
 
-use crate::execution::adapter::ExecutionAdapter;
-use crate::scheduler::multi::SubSchedulerHandler;
-use crate::scheduler::ExecutionTask;
-use crate::scheduler::ExecutionTaskCompletionNotifier;
+use crate::transact::execution::adapter::ExecutionAdapter;
+use crate::transact::scheduler::multi::SubSchedulerHandler;
+use crate::transact::scheduler::ExecutionTask;
+use crate::transact::scheduler::ExecutionTaskCompletionNotifier;
 use std::sync::mpsc::Sender;
 
 pub use self::error::ExecutorError;
@@ -125,12 +125,12 @@ mod tests {
 
     use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
 
-    use crate::context::ContextId;
-    use crate::execution::adapter::test_adapter::TestExecutionAdapter;
-    use crate::protocol::transaction::{HashMethod, TransactionBuilder, TransactionPair};
-    use crate::scheduler::ExecutionTask;
-    use crate::scheduler::ExecutionTaskCompletionNotification;
-    use crate::scheduler::ExecutionTaskCompletionNotifier;
+    use crate::transact::context::ContextId;
+    use crate::transact::execution::adapter::test_adapter::TestExecutionAdapter;
+    use crate::transact::protocol::transaction::{HashMethod, TransactionBuilder, TransactionPair};
+    use crate::transact::scheduler::ExecutionTask;
+    use crate::transact::scheduler::ExecutionTaskCompletionNotification;
+    use crate::transact::scheduler::ExecutionTaskCompletionNotifier;
 
     static FAMILY_NAME1: &str = "test1";
     static FAMILY_NAME2: &str = "test2";

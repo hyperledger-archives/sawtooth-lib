@@ -17,10 +17,10 @@
 
 //! Internal serial scheduler state shared across threads.
 
-use crate::protocol::batch::BatchPair;
-use crate::scheduler::BatchExecutionResult;
-use crate::scheduler::SchedulerError;
-use crate::scheduler::{default_error_callback, default_result_callback};
+use crate::transact::protocol::batch::BatchPair;
+use crate::transact::scheduler::BatchExecutionResult;
+use crate::transact::scheduler::SchedulerError;
+use crate::transact::scheduler::{default_error_callback, default_result_callback};
 
 use std::collections::VecDeque;
 

@@ -21,8 +21,8 @@ mod core;
 mod execution;
 mod shared;
 
-use crate::context::ContextLifecycle;
-use crate::protocol::batch::BatchPair;
+use crate::transact::context::ContextLifecycle;
+use crate::transact::protocol::batch::BatchPair;
 
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
@@ -215,8 +215,8 @@ impl SchedulerFactory for SerialSchedulerFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::scheduler::tests::*;
-    use crate::scheduler::ExecutionTaskCompletionNotification;
+    use crate::transact::scheduler::tests::*;
+    use crate::transact::scheduler::ExecutionTaskCompletionNotification;
 
     // General Scheduler tests
 

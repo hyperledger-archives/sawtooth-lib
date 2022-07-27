@@ -17,17 +17,17 @@
 
 //! Implementation of core scheduler thread.
 
-use crate::context::manager::ContextManagerError;
-use crate::context::{ContextId, ContextLifecycle};
-use crate::protocol::batch::BatchPair;
-use crate::protocol::receipt::TransactionReceipt;
-use crate::protocol::receipt::TransactionResult;
-use crate::protocol::transaction::Transaction;
-use crate::scheduler::BatchExecutionResult;
-use crate::scheduler::ExecutionTask;
-use crate::scheduler::ExecutionTaskCompletionNotification;
-use crate::scheduler::InvalidTransactionResult;
-use crate::scheduler::SchedulerError;
+use crate::transact::context::manager::ContextManagerError;
+use crate::transact::context::{ContextId, ContextLifecycle};
+use crate::transact::protocol::batch::BatchPair;
+use crate::transact::protocol::receipt::TransactionReceipt;
+use crate::transact::protocol::receipt::TransactionResult;
+use crate::transact::protocol::transaction::Transaction;
+use crate::transact::scheduler::BatchExecutionResult;
+use crate::transact::scheduler::ExecutionTask;
+use crate::transact::scheduler::ExecutionTaskCompletionNotification;
+use crate::transact::scheduler::InvalidTransactionResult;
+use crate::transact::scheduler::SchedulerError;
 
 use std::collections::VecDeque;
 use std::sync::mpsc::{Receiver, SendError, Sender};

@@ -35,6 +35,7 @@ log = { version = "0.4", optional = true }
 lmdb-zero = { version = "0.4", optional = true }
 metrics = { version = "0.17", features = ["std"], optional = true }
 protobuf = "2.23"
+rand = { version = "0.8", optional = true }
 reqwest = { version = "0.11", optional = true, features = ["blocking", "json"] }
 serde = { version = "1.0", optional = true, features = ["derive"] }
 sha2 = { version = "0.9", optional = true }
@@ -44,6 +45,7 @@ uuid = { version = "0.8", optional = true, features = ["v4"] }
 
 [dev-dependencies]
 rand = "0.8"
+rusty-fork = "0.3"
 
 [build-dependencies]
 protoc-rust = "2.0"
@@ -60,6 +62,13 @@ stable = [
     "transact",
     "transact-context",
     "transact-database-lmdb",
+    "transact-execution",
+    "transact-handler",
+    "transact-protocol-batch",
+    "transact-protocol-batch-builder",
+    "transact-protocol-transaction",
+    "transact-protocol-transaction-builder",
+    "transact-scheduler",
     "transaction-receipt-store",
 ]
 
@@ -91,6 +100,24 @@ store = []
 transact = []
 transact-context = ["transact", "uuid"]
 transact-database-lmdb = ["transact", "lmdb-zero"]
+transact-execution = [
+  "transact-context",
+  "transact-handler",
+  "log",
+  "transact-protocol-transaction",
+  "transact-scheduler"
+]
+transact-handler = ["transact-protocol-transaction"]
+transact-protocol-batch = ["transact-protocol-transaction"]
+transact-protocol-batch-builder = ["transact-protocol-batch"]
+transact-protocol-transaction = []
+transact-protocol-transaction-builder = [
+  "transact-protocol-transaction",
+  "transact-protocol-batch-builder",
+  "rand",
+  "sha2",
+]
+transact-scheduler = ["transact-context", "log", "transact-protocol-batch"]
 transaction-receipt-store = []
 validator-internals = [
   "cbor-codec",

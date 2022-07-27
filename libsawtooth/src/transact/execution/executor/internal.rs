@@ -32,9 +32,9 @@ use std::thread::JoinHandle;
 
 use log::warn;
 
-use crate::execution::adapter::{ExecutionAdapter, ExecutionAdapterError};
-use crate::execution::{ExecutionRegistry, TransactionFamily};
-use crate::scheduler::{ExecutionTask, ExecutionTaskCompletionNotifier};
+use crate::transact::execution::adapter::{ExecutionAdapter, ExecutionAdapterError};
+use crate::transact::execution::{ExecutionRegistry, TransactionFamily};
+use crate::transact::scheduler::{ExecutionTask, ExecutionTaskCompletionNotifier};
 
 use super::reader::ExecutionTaskReader;
 
@@ -457,10 +457,10 @@ mod tests {
 
     use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
 
-    use crate::context::ContextId;
-    use crate::execution::adapter::test_adapter::TestExecutionAdapter;
-    use crate::protocol::transaction::{HashMethod, TransactionBuilder, TransactionPair};
-    use crate::scheduler::ExecutionTaskCompletionNotification;
+    use crate::transact::context::ContextId;
+    use crate::transact::execution::adapter::test_adapter::TestExecutionAdapter;
+    use crate::transact::protocol::transaction::{HashMethod, TransactionBuilder, TransactionPair};
+    use crate::transact::scheduler::ExecutionTaskCompletionNotification;
 
     static FAMILY_NAME: &str = "test";
     static FAMILY_VERSION: &str = "1.0";

@@ -17,7 +17,7 @@
 
 //! Implementation of core MultiScheduler thread.
 
-use crate::scheduler::{BatchExecutionResult, SchedulerError};
+use crate::transact::scheduler::{BatchExecutionResult, SchedulerError};
 
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::Receiver;

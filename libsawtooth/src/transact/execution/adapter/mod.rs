@@ -23,12 +23,12 @@ pub mod static_adapter;
 #[cfg(test)]
 pub mod test_adapter;
 
-pub use crate::execution::adapter::error::{ExecutionAdapterError, ExecutionOperationError};
+use crate::transact::context::ContextId;
+use crate::transact::execution::ExecutionRegistry;
+use crate::transact::protocol::transaction::TransactionPair;
+use crate::transact::scheduler::ExecutionTaskCompletionNotification;
 
-use crate::context::ContextId;
-use crate::execution::ExecutionRegistry;
-use crate::protocol::transaction::TransactionPair;
-use crate::scheduler::ExecutionTaskCompletionNotification;
+pub use self::error::{ExecutionAdapterError, ExecutionOperationError};
 
 /// Implementers of this trait proxy the transaction to the correct component to execute
 /// the transaction.

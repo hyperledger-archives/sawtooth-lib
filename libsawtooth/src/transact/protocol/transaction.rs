@@ -24,24 +24,24 @@
 use std::error::Error as StdError;
 use std::fmt;
 
-#[cfg(feature = "protocol-transaction-builder")]
+#[cfg(feature = "transact-protocol-transaction-builder")]
 use cylinder::{Signer, SigningError};
 use protobuf::Message;
-#[cfg(feature = "protocol-transaction-builder")]
+#[cfg(feature = "transact-protocol-transaction-builder")]
 use rand::distributions::Alphanumeric;
-#[cfg(feature = "protocol-transaction-builder")]
+#[cfg(feature = "transact-protocol-transaction-builder")]
 use rand::Rng;
-#[cfg(feature = "protocol-transaction-builder")]
+#[cfg(feature = "transact-protocol-transaction-builder")]
 use sha2::{Digest, Sha512};
 
 use crate::protos::{
     self, FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
 
-#[cfg(feature = "protocol-transaction-builder")]
+#[cfg(feature = "transact-protocol-transaction-builder")]
 use super::batch::BatchBuilder;
 
-#[cfg(feature = "protocol-transaction-builder")]
+#[cfg(feature = "transact-protocol-transaction-builder")]
 static DEFAULT_NONCE_SIZE: usize = 32;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -140,18 +140,6 @@ fn write_vec_as_hex(f: &mut fmt::Formatter, field_name: &str, data: &[Vec<u8>]) 
             .join(", "),
     )?;
     f.write_str("]")
-}
-
-impl From<hex::FromHexError> for ProtoConversionError {
-    fn from(e: hex::FromHexError) -> Self {
-        ProtoConversionError::SerializationError(format!("{}", e))
-    }
-}
-
-impl From<std::string::FromUtf8Error> for ProtoConversionError {
-    fn from(e: std::string::FromUtf8Error) -> Self {
-        ProtoConversionError::SerializationError(format!("{}", e))
-    }
 }
 
 impl FromProto<protos::transaction::TransactionHeader> for TransactionHeader {
@@ -410,14 +398,14 @@ impl From<ProtoConversionError> for TransactionBuildError {
     }
 }
 
-#[cfg(feature = "protocol-transaction-builder")]
+#[cfg(feature = "transact-protocol-transaction-builder")]
 impl From<SigningError> for TransactionBuildError {
     fn from(err: SigningError) -> Self {
         Self::SigningError(err.to_string())
     }
 }
 
-#[cfg(feature = "protocol-transaction-builder")]
+#[cfg(feature = "transact-protocol-transaction-builder")]
 #[derive(Default, Clone)]
 pub struct TransactionBuilder {
     batcher_public_key: Option<Vec<u8>>,
@@ -431,7 +419,7 @@ pub struct TransactionBuilder {
     payload: Option<Vec<u8>>,
 }
 
-#[cfg(feature = "protocol-transaction-builder")]
+#[cfg(feature = "transact-protocol-transaction-builder")]
 impl TransactionBuilder {
     pub fn new() -> Self {
         TransactionBuilder::default()
@@ -648,7 +636,7 @@ mod tests {
         assert_eq!(signer_pub_key.as_slice(), pair.header().signer_public_key());
     }
 
-    #[cfg(feature = "protocol-transaction-builder")]
+    #[cfg(feature = "transact-protocol-transaction-builder")]
     #[test]
     fn transaction_builder_chain() {
         let signer = new_signer();
@@ -675,7 +663,7 @@ mod tests {
         check_builder_transaction(&*signer, &pair);
     }
 
-    #[cfg(feature = "protocol-transaction-builder")]
+    #[cfg(feature = "transact-protocol-transaction-builder")]
     #[test]
     fn transaction_builder_seperate() {
         let signer = new_signer();
@@ -923,7 +911,7 @@ mod benchmarks {
     static SIGNATURE1: &str =
         "sig1sig1sig1sig1sig1sig1sig1sig1sig1sig1sig1sig1sig1sig1sig1sig1sig1sig1";
 
-    #[cfg(feature = "protocol-transaction-builder")]
+    #[cfg(feature = "transact-protocol-transaction-builder")]
     #[bench]
     fn bench_transaction_builder(b: &mut Bencher) {
         let signer = new_signer();
