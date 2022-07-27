@@ -14,9 +14,9 @@
 
 use std::error::Error as StdError;
 
-use crate::contract::address::AddresserError;
-use crate::handler::ContextError;
 use crate::protos::ProtoConversionError;
+use crate::transact::contract::address::AddresserError;
+use crate::transact::handler::ContextError;
 
 #[derive(Debug)]
 pub enum ContractContextError {

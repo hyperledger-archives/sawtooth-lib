@@ -15,15 +15,15 @@
  * -----------------------------------------------------------------------------
  */
 
-#[cfg(feature = "contract-address-double-key-hash")]
+#[cfg(feature = "transact-contract-address-double-key-hash")]
 pub mod double_key_hash;
 mod error;
-#[cfg(feature = "contract-address-key-hash")]
+#[cfg(feature = "transact-contract-address-key-hash")]
 pub mod key_hash;
-#[cfg(feature = "contract-address-triple-key-hash")]
+#[cfg(feature = "transact-contract-address-triple-key-hash")]
 pub mod triple_key_hash;
 
-pub use crate::contract::address::error::AddresserError;
+pub use crate::transact::contract::address::error::AddresserError;
 
 use sha2::{Digest, Sha512};
 

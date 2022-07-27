@@ -108,6 +108,13 @@ experimental = [
     "pending-batch-queue",
     "publisher",
     "transact-contract",
+    "transact-contract-address",
+    "transact-contract-address-double-key-hash",
+    "transact-contract-address-key-hash",
+    "transact-contract-address-triple-key-hash",
+    "transact-contract-context",
+    "transact-contract-context-key-value",
+    "transact-key-value-state",
     "validator-internals",
 ]
 
@@ -130,7 +137,13 @@ store = []
 transact = []
 transact-context = ["transact", "uuid"]
 transact-contract = []
+transact-contract-address = ["transact-contract"]
+transact-contract-address-key-hash = ["transact-contract-address"]
+transact-contract-address-double-key-hash = ["transact-contract-address"]
+transact-contract-address-triple-key-hash = ["transact-contract-address"]
 transact-contract-archive = ["bzip2", "transact-contract", "glob", "semver", "serde", "serde_yaml", "tar"]
+transact-contract-context = ["transact-contract", "transact-contract-address"]
+transact-contract-context-key-value = ["transact-contract-context", "transact-key-value-state"]
 transact-database-lmdb = ["transact", "lmdb-zero"]
 transact-execution = [
   "transact-context",
@@ -140,6 +153,7 @@ transact-execution = [
   "transact-scheduler"
 ]
 transact-handler = ["transact-protocol-transaction"]
+transact-key-value-state = []
 transact-protocol-batch = ["transact-protocol-transaction"]
 transact-protocol-batch-builder = ["transact-protocol-batch"]
 transact-protocol-sabre = ["transact-protocol-transaction-builder"]

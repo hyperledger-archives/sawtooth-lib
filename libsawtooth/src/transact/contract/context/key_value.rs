@@ -16,14 +16,14 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
-use crate::contract::address::Addresser;
-use crate::contract::context::error::ContractContextError;
-use crate::handler::TransactionContext;
-use crate::protocol::key_value_state::{
+use crate::protos::{FromBytes, IntoBytes};
+use crate::transact::contract::address::Addresser;
+use crate::transact::contract::context::error::ContractContextError;
+use crate::transact::handler::TransactionContext;
+use crate::transact::protocol::key_value_state::{
     StateEntry, StateEntryBuilder, StateEntryList, StateEntryListBuilder, StateEntryValue,
     StateEntryValueBuilder, ValueType,
 };
-use crate::protos::{FromBytes, IntoBytes};
 
 /// KeyValueTransactionContext used to implement a simplified state consisting of natural keys and
 /// a ValueType, an enum object used to represent a range of primitive data types. Uses an
@@ -364,12 +364,12 @@ mod tests {
 
     use std::sync::{Arc, Mutex};
 
-    use crate::contract::address::{
+    use crate::transact::contract::address::{
         double_key_hash::DoubleKeyHashAddresser, key_hash::KeyHashAddresser,
         triple_key_hash::TripleKeyHashAddresser,
     };
 
-    use crate::handler::ContextError;
+    use crate::transact::handler::ContextError;
 
     /// Simple state backed by a HashMap.
     struct TestState {

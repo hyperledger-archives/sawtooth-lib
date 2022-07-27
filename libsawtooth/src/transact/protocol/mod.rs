@@ -23,7 +23,7 @@
 #[cfg(feature = "transact-protocol-batch")]
 pub mod batch;
 pub mod command;
-#[cfg(feature = "key-value-state")]
+#[cfg(feature = "transact-key-value-state")]
 pub mod key_value_state;
 pub mod receipt;
 #[cfg(any(feature = "transact-protocol-sabre", feature = "family-sabre"))]

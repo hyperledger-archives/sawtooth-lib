@@ -16,5 +16,5 @@
  */
 
 pub mod error;
-#[cfg(feature = "contract-context-key-value")]
+#[cfg(feature = "transact-contract-context-key-value")]
 pub mod key_value;
