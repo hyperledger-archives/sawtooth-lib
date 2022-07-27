@@ -117,7 +117,7 @@
 mod collections;
 #[cfg(feature = "transact-context")]
 pub mod context;
-#[cfg(feature = "contract")]
+#[cfg(feature = "transact-contract")]
 pub mod contract;
 pub mod database;
 #[cfg(feature = "transact-execution")]

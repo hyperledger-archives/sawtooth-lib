@@ -44,6 +44,7 @@ use std::path::{Path, PathBuf};
 use bzip2::read::BzDecoder;
 use glob::glob;
 use semver::{Version, VersionReq};
+use serde::{Deserialize, Serialize};
 use tar::Archive;
 
 pub use error::Error;
