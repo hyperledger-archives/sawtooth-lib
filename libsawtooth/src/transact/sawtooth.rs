@@ -29,8 +29,8 @@ use sawtooth_sdk::processor::handler::{
     TransactionContext as SawtoothContext, TransactionHandler as SawtoothTransactionHandler,
 };
 
-use crate::handler::{ApplyError, ContextError, TransactionContext, TransactionHandler};
-use crate::protocol::transaction::{TransactionHeader, TransactionPair};
+use crate::transact::handler::{ApplyError, ContextError, TransactionContext, TransactionHandler};
+use crate::transact::protocol::transaction::{TransactionHeader, TransactionPair};
 
 /// Adapts a Sawtooth Transaction Handler to a Transact TransactionHandler.
 ///
@@ -43,11 +43,11 @@ use crate::protocol::transaction::{TransactionHeader, TransactionPair};
 /// can be adapted as follows:
 ///
 ///     # use sawtooth_xo::handler::XoTransactionHandler;
-///     # use transact::context::manager::sync::ContextManager;
-///     # use transact::database::btree::BTreeDatabase;
-///     # use transact::execution::adapter::static_adapter::StaticExecutionAdapter;
-///     # use transact::sawtooth::SawtoothToTransactHandlerAdapter;
-///     # use transact::state::merkle::{self, MerkleRadixTree, MerkleState};
+///     # use sawtooth::transact::context::manager::sync::ContextManager;
+///     # use sawtooth::transact::database::btree::BTreeDatabase;
+///     # use sawtooth::transact::execution::adapter::static_adapter::StaticExecutionAdapter;
+///     # use sawtooth::transact::sawtooth::SawtoothToTransactHandlerAdapter;
+///     # use sawtooth::transact::state::merkle::{self, MerkleRadixTree, MerkleState};
 ///     #
 ///     # let db = Box::new(BTreeDatabase::new(&merkle::INDEXES));
 ///     # let context_manager = ContextManager::new(Box::new(MerkleState::new(db.clone())));
@@ -223,19 +223,19 @@ mod xo_compat_test {
     use sawtooth_xo::handler::XoTransactionHandler;
     use sha2::{Digest, Sha512};
 
-    use crate::context::manager::sync::ContextManager;
-    use crate::database::{btree::BTreeDatabase, Database};
-    use crate::execution::{
+    use crate::transact::context::manager::sync::ContextManager;
+    use crate::transact::database::{btree::BTreeDatabase, Database};
+    use crate::transact::execution::{
         adapter::static_adapter::StaticExecutionAdapter,
         executor::{ExecutionTaskSubmitter, Executor},
     };
-    use crate::protocol::{
+    use crate::transact::protocol::{
         batch::{BatchBuilder, BatchPair},
         receipt::{StateChange, TransactionResult},
         transaction::{HashMethod, TransactionBuilder},
     };
-    use crate::scheduler::{serial::SerialScheduler, BatchExecutionResult, Scheduler};
-    use crate::state::merkle::{self, MerkleRadixTree, MerkleState};
+    use crate::transact::scheduler::{serial::SerialScheduler, BatchExecutionResult, Scheduler};
+    use crate::transact::state::merkle::{self, MerkleRadixTree, MerkleState};
 
     use super::*;
 

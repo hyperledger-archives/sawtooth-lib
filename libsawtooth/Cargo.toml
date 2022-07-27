@@ -42,6 +42,8 @@ metrics = { version = "0.17", features = ["std"], optional = true }
 protobuf = "2.23"
 rand = { version = "0.8", optional = true }
 reqwest = { version = "0.11", optional = true, features = ["blocking", "json"] }
+sabre-sdk = { version ="0.7.1", optional = true }
+sawtooth-sdk = { version = "0.5", optional = true }
 semver = { version = "1", optional = true }
 serde = { version = "1.0", optional = true, features = ["derive"] }
 serde_json = { version = "1", optional = true }
@@ -57,6 +59,7 @@ yaml-rust =  { version = "0.4", optional = true }
 [dev-dependencies]
 rand = "0.8"
 rusty-fork = "0.3"
+sawtooth-xo = "0.5"
 serial_test = "0.5"
 tempdir = "0.3"
 
@@ -121,6 +124,18 @@ experimental = [
     "validator-internals",
 ]
 
+# stable features in support of wasm
+wasm = [
+    # The following features are stable:
+    "transact-sabre-compat",
+]
+
+wasm-experimental = [
+    # The experimental feature extends stable:
+    "wasm",
+    # The following features are experimental:
+]
+
 artifact = []
 artifact-creator = ["artifact"]
 artifact-store = ["artifact"]
@@ -176,6 +191,8 @@ transact-protocol-transaction-builder = [
   "rand",
   "sha2",
 ]
+transact-sabre-compat = ["transact", "transact-handler", "sabre-sdk"]
+transact-sawtooth-compat = ["transact", "transact-handler", "sawtooth-sdk"]
 transact-scheduler = ["transact-context", "log", "transact-protocol-batch"]
 transact-state-merkle = ["cbor-codec", "log"]
 transact-state-merkle-sql = ["diesel", "diesel_migrations", "lru"]

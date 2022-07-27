@@ -24,7 +24,7 @@
 //! writing from state, as well appending events and other opaque data to the receipt.
 
 mod error;
-#[cfg(feature = "sabre-compat")]
+#[cfg(feature = "transact-sabre-compat")]
 pub mod sabre;
 
 pub use crate::transact::handler::error::{ApplyError, ContextError};

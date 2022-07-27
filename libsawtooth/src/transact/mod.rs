@@ -125,7 +125,7 @@ pub mod execution;
 #[cfg(feature = "transact-handler")]
 pub mod handler;
 pub mod protocol;
-#[cfg(feature = "sawtooth-compat")]
+#[cfg(feature = "transact-sawtooth-compat")]
 pub mod sawtooth;
 #[cfg(feature = "transact-scheduler")]
 pub mod scheduler;
