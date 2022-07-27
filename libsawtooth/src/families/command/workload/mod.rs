@@ -22,14 +22,14 @@ mod command_iter;
 use cylinder::Signer;
 
 use crate::error::InvalidStateError;
-use crate::protocol::{
+use crate::protos::IntoBytes;
+use crate::transact::protocol::{
     batch::{BatchBuilder, BatchPair},
     command::{Command, CommandPayload},
     sabre::payload::ExecuteContractActionBuilder,
     transaction::TransactionPair,
 };
-use crate::protos::IntoBytes;
-use crate::workload::{BatchWorkload, ExpectedBatchResult, TransactionWorkload};
+use crate::transact::workload::{BatchWorkload, ExpectedBatchResult, TransactionWorkload};
 
 #[cfg(feature = "family-command-transaction-builder")]
 use super::transaction_builder::CommandTransactionBuilder as CmdTransactionBuilder;

@@ -130,5 +130,5 @@ pub mod sawtooth;
 #[cfg(feature = "transact-scheduler")]
 pub mod scheduler;
 pub mod state;
-#[cfg(feature = "workload")]
+#[cfg(feature = "transact-workload")]
 pub mod workload;

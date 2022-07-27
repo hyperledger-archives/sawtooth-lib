@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::handler::TransactionContext;
+use crate::transact::handler::TransactionContext;
 use wasmi::{ImportsBuilder, Module, ModuleInstance, RuntimeValue};
 
 use super::wasm_externals::{ExternalsError, WasmExternals};

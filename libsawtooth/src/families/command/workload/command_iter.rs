@@ -20,7 +20,7 @@ use rand::distributions::Standard;
 use rand::prelude::*;
 use sha2::{Digest, Sha512};
 
-use crate::protocol::command;
+use crate::transact::protocol::command;
 
 /// An iterator that generates `command`s
 pub struct CommandGeneratingIter {

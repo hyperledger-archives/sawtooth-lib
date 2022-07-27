@@ -17,11 +17,11 @@ use protobuf::RepeatedField;
 
 use std::error::Error as StdError;
 
-use crate::protocol::transaction::{HashMethod, TransactionBuilder};
 use crate::protos;
 use crate::protos::{
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
+use crate::transact::protocol::transaction::{HashMethod, TransactionBuilder};
 
 use super::AddressingError;
 use super::{

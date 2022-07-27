@@ -15,7 +15,7 @@
 //! An implementations of `AdminPermission` that always returns true
 
 use crate::families::sabre::state::SabreState;
-use crate::handler::ApplyError;
+use crate::transact::handler::ApplyError;
 
 use super::AdminPermission;
 

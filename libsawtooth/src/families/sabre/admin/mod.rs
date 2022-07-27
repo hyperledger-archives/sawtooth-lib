@@ -25,7 +25,7 @@ pub use self::allow_all::AllowAllAdminPermission;
 pub use self::settings::SettingsAdminPermission;
 
 use crate::families::sabre::state::SabreState;
-use crate::handler::ApplyError;
+use crate::transact::handler::ApplyError;
 
 /// Used to verify if a signer is an admin
 pub trait AdminPermission: Send {

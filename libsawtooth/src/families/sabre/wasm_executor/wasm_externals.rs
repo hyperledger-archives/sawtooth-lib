@@ -26,7 +26,7 @@ use wasmi::{
     ValueType,
 };
 
-use crate::handler::{ContextError, TransactionContext};
+use crate::transact::handler::{ContextError, TransactionContext};
 
 // External function indices
 

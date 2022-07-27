@@ -31,10 +31,10 @@
 
 use std::{thread, time};
 
-use crate::handler::{ApplyError, TransactionContext, TransactionHandler};
-use crate::protocol::command::{Command, CommandPayload, SleepType};
-use crate::protocol::transaction::TransactionPair;
 use crate::protos::FromBytes;
+use crate::transact::handler::{ApplyError, TransactionContext, TransactionHandler};
+use crate::transact::protocol::command::{Command, CommandPayload, SleepType};
+use crate::transact::protocol::transaction::TransactionPair;
 
 const COMMAND_FAMILY_NAME: &str = "command";
 const COMMAND_NAMESPACE: &str = "06abbc";

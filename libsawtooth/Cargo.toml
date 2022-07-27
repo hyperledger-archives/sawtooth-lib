@@ -42,6 +42,7 @@ sha2 = { version = "0.9", optional = true }
 transact = "0.5"
 uluru = { version = "3", optional = true }
 uuid = { version = "0.8", optional = true, features = ["v4"] }
+wasmi = { version = "0.9", optional = true }
 
 [dev-dependencies]
 rand = "0.8"
@@ -55,6 +56,11 @@ glob = "0.3"
 default = []
 
 stable = [
+    "family-command",
+    "family-command-transaction-builder",
+    "family-command-workload",
+    "family-sabre",
+    "family-smallbank",
     "lmdb",
     "postgres",
     "sqlite",
@@ -66,10 +72,12 @@ stable = [
     "transact-handler",
     "transact-protocol-batch",
     "transact-protocol-batch-builder",
+    "transact-protocol-sabre",
     "transact-protocol-transaction",
     "transact-protocol-transaction-builder",
     "transact-scheduler",
     "transact-state-merkle",
+    "transact-workload",
     "transaction-receipt-store",
 ]
 
@@ -92,6 +100,11 @@ artifact-creator = ["artifact"]
 artifact-store = ["artifact"]
 client = []
 client-rest = ["base64", "client", "log", "reqwest", "serde"]
+family-command = ["transact-handler"]
+family-command-transaction-builder = ["family-command", "transact-protocol-transaction-builder"]
+family-command-workload = ["family-command", "transact-protocol-sabre", "transact-workload"]
+family-sabre = ["transact-handler", "wasmi"]
+family-smallbank = ["transact-handler", "sha2"]
 lmdb = ["lmdb-zero", "log"]
 pending-batch-queue = ["validator-internals"]
 postgres = ["diesel/postgres", "diesel_migrations", "log", "store"]
@@ -111,6 +124,7 @@ transact-execution = [
 transact-handler = ["transact-protocol-transaction"]
 transact-protocol-batch = ["transact-protocol-transaction"]
 transact-protocol-batch-builder = ["transact-protocol-batch"]
+transact-protocol-sabre = ["transact-protocol-transaction-builder"]
 transact-protocol-transaction = []
 transact-protocol-transaction-builder = [
   "transact-protocol-transaction",
@@ -120,6 +134,7 @@ transact-protocol-transaction-builder = [
 ]
 transact-scheduler = ["transact-context", "log", "transact-protocol-batch"]
 transact-state-merkle = ["cbor-codec", "log"]
+transact-workload = []
 transaction-receipt-store = []
 validator-internals = [
   "cbor-codec",

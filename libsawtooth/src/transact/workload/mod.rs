@@ -29,8 +29,8 @@ mod runner;
 mod transaction_reader;
 
 use crate::error::InvalidStateError;
-use crate::protocol::batch::BatchPair;
-use crate::protocol::transaction::TransactionPair;
+use crate::transact::protocol::batch::BatchPair;
+use crate::transact::protocol::transaction::TransactionPair;
 #[cfg(feature = "workload-runner")]
 pub use crate::workload::runner::{HttpRequestCounter, WorkloadRunner};
 

@@ -13,15 +13,15 @@
 // limitations under the License.
 use protobuf::Message;
 
-use crate::handler::{ApplyError, TransactionContext};
-use crate::protocol::sabre::state::{
+use crate::protos::setting::Setting;
+use crate::protos::{FromBytes, IntoBytes};
+use crate::transact::handler::{ApplyError, TransactionContext};
+use crate::transact::protocol::sabre::state::{
     Contract, ContractList, ContractListBuilder, ContractRegistry, ContractRegistryList,
     ContractRegistryListBuilder, NamespaceRegistry, NamespaceRegistryList,
     NamespaceRegistryListBuilder,
 };
-use crate::protocol::sabre::ADMINISTRATORS_SETTING_ADDRESS;
-use crate::protos::sabre_payload::Setting;
-use crate::protos::{FromBytes, IntoBytes};
+use crate::transact::protocol::sabre::ADMINISTRATORS_SETTING_ADDRESS;
 
 use super::addressing::{
     make_contract_address, make_contract_registry_address, make_namespace_registry_address,

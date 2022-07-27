@@ -14,7 +14,7 @@
 
 use sha2::{Digest, Sha512};
 
-use crate::handler::ApplyError;
+use crate::transact::handler::ApplyError;
 
 /// The namespace registry prefix for global state (00ec00)
 const NAMESPACE_REGISTRY_PREFIX: &str = "00ec00";
@@ -26,7 +26,7 @@ const CONTRACT_REGISTRY_PREFIX: &str = "00ec01";
 const CONTRACT_PREFIX: &str = "00ec02";
 
 pub fn hash(to_hash: &str, num: usize) -> Result<String, ApplyError> {
-    let temp = Sha512::digest(to_hash)
+    let temp = Sha512::digest(to_hash.as_bytes())
         .iter()
         .map(|b| format!("{:02x}", b))
         .collect::<String>();

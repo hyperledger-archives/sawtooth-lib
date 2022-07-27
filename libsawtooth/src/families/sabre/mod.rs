@@ -19,4 +19,6 @@ mod payload;
 mod state;
 mod wasm_executor;
 
-pub use crate::protocol::sabre::{ADMINISTRATORS_SETTING_ADDRESS, ADMINISTRATORS_SETTING_KEY};
+pub use crate::transact::protocol::sabre::{
+    ADMINISTRATORS_SETTING_ADDRESS, ADMINISTRATORS_SETTING_KEY,
+};

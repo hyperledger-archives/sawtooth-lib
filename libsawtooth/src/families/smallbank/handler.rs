@@ -19,8 +19,8 @@
 use protobuf::Message;
 use sha2::{Digest, Sha512};
 
-use crate::handler::{ApplyError, TransactionContext, TransactionHandler};
-use crate::protocol::transaction::TransactionPair;
+use crate::transact::handler::{ApplyError, TransactionContext, TransactionHandler};
+use crate::transact::protocol::transaction::TransactionPair;
 
 use crate::protos::smallbank::{
     Account, SmallbankTransactionPayload, SmallbankTransactionPayload_AmalgamateTransactionData,

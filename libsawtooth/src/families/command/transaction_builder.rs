@@ -18,11 +18,11 @@
 use cylinder::Signer;
 
 use crate::error::InvalidStateError;
-use crate::protocol::{
+use crate::protos::IntoBytes;
+use crate::transact::protocol::{
     command::{Command, CommandPayload},
     transaction::{HashMethod, TransactionBuilder, TransactionPair},
 };
-use crate::protos::IntoBytes;
 
 /// Builds a `command` tansaction with the list of commands stored in `commands`
 #[derive(Default)]

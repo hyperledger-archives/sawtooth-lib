@@ -26,7 +26,7 @@ pub mod command;
 #[cfg(feature = "key-value-state")]
 pub mod key_value_state;
 pub mod receipt;
-#[cfg(any(feature = "protocol-sabre", feature = "family-sabre"))]
+#[cfg(any(feature = "transact-protocol-sabre", feature = "family-sabre"))]
 pub mod sabre;
 #[cfg(feature = "transact-protocol-transaction")]
 pub mod transaction;

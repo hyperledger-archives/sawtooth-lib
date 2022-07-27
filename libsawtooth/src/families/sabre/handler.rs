@@ -16,19 +16,19 @@
 
 use sha2::{Digest, Sha512};
 
-use crate::handler::{ApplyError, TransactionContext, TransactionHandler};
-use crate::protocol::sabre::payload::{
+use crate::transact::handler::{ApplyError, TransactionContext, TransactionHandler};
+use crate::transact::protocol::sabre::payload::{
     Action, CreateContractAction, CreateContractRegistryAction, CreateNamespaceRegistryAction,
     CreateNamespaceRegistryPermissionAction, DeleteContractAction, DeleteContractRegistryAction,
     DeleteNamespaceRegistryAction, DeleteNamespaceRegistryPermissionAction, ExecuteContractAction,
     UpdateContractRegistryOwnersAction, UpdateNamespaceRegistryOwnersAction,
 };
-use crate::protocol::sabre::state::{
+use crate::transact::protocol::sabre::state::{
     ContractBuilder, ContractRegistry, ContractRegistryBuilder, NamespaceRegistry,
     NamespaceRegistryBuilder, PermissionBuilder, VersionBuilder,
 };
-use crate::protocol::sabre::SABRE_PROTOCOL_VERSION;
-use crate::protocol::transaction::TransactionPair;
+use crate::transact::protocol::sabre::SABRE_PROTOCOL_VERSION;
+use crate::transact::protocol::transaction::TransactionPair;
 
 use super::admin::AdminPermission;
 use super::payload::SabreRequestPayload;

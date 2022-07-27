@@ -16,8 +16,8 @@
 //! signer is listed as an admin.
 
 use crate::families::sabre::state::SabreState;
-use crate::handler::ApplyError;
-use crate::protocol::sabre::ADMINISTRATORS_SETTING_KEY;
+use crate::transact::handler::ApplyError;
+use crate::transact::protocol::sabre::ADMINISTRATORS_SETTING_KEY;
 
 use super::AdminPermission;
 
