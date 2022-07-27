@@ -17,10 +17,10 @@
 
 //! Defines methods and utilities to interact with merkle radix tables in a PostgreSQL database.
 
-embed_migrations!("./src/state/merkle/sql/migration/postgres/migrations");
+embed_migrations!("./src/transact/state/merkle/sql/migration/postgres/migrations");
 
 use crate::error::InternalError;
-use crate::state::merkle::sql::backend::{Connection, Execute, PostgresBackend};
+use crate::transact::state::merkle::sql::backend::{Connection, Execute, PostgresBackend};
 
 use super::MigrationManager;
 

@@ -18,8 +18,8 @@
 use diesel::pg::PgConnection;
 
 use crate::error::InternalError;
-use crate::state::merkle::node::Node;
-use crate::state::merkle::sql::backend::{Backend, Connection, Execute};
+use crate::transact::state::merkle::node::Node;
+use crate::transact::state::merkle::sql::backend::{Backend, Connection, Execute};
 
 use super::operations::delete_tree::MerkleRadixDeleteTreeOperation as _;
 use super::operations::get_leaves::MerkleRadixGetLeavesOperation as _;

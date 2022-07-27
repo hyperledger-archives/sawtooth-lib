@@ -24,8 +24,9 @@ use diesel::{
     sql_types::Text,
     sqlite::Sqlite,
 };
+use serde::{Deserialize, Serialize};
 
-use crate::state::merkle::sql::store::schema::sqlite_merkle_radix_tree_node;
+use crate::transact::state::merkle::sql::store::schema::sqlite_merkle_radix_tree_node;
 
 #[derive(Insertable, Queryable, QueryableByName, Identifiable)]
 #[cfg_attr(test, derive(Debug, PartialEq))]

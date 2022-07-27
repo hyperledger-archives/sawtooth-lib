@@ -19,8 +19,8 @@ use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Text};
 
 use crate::error::InternalError;
-use crate::state::merkle::sql::store::models::MerkleRadixTree;
-use crate::state::merkle::sql::store::schema::merkle_radix_tree;
+use crate::transact::state::merkle::sql::store::models::MerkleRadixTree;
+use crate::transact::state::merkle::sql::store::schema::merkle_radix_tree;
 
 use super::MerkleRadixOperations;
 
@@ -54,11 +54,11 @@ mod tests {
 
     use diesel::dsl::insert_into;
 
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
-    use crate::state::merkle::sql::backend::postgres::test::run_postgres_test;
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
+    use crate::transact::state::merkle::sql::backend::postgres::test::run_postgres_test;
     #[cfg(feature = "sqlite")]
-    use crate::state::merkle::sql::migration;
-    use crate::state::merkle::sql::store::models::NewMerkleRadixTree;
+    use crate::transact::state::merkle::sql::migration;
+    use crate::transact::state::merkle::sql::store::models::NewMerkleRadixTree;
 
     /// This tests that trees names can be listed.
     #[cfg(feature = "sqlite")]
@@ -83,7 +83,7 @@ mod tests {
     }
 
     /// This tests that trees names can be listed.
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
     #[test]
     fn postgres_list_trees() -> Result<(), Box<dyn std::error::Error>> {
         run_postgres_test(|url| {

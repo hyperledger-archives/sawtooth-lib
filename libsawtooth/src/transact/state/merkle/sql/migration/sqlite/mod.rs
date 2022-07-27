@@ -17,10 +17,12 @@
 
 //! Defines methods and utilities to interact with merkle-radix tables in a SQLite database.
 
-embed_migrations!("./src/state/merkle/sql/migration/sqlite/migrations");
+embed_migrations!("./src/transact/state/merkle/sql/migration/sqlite/migrations");
 
 use crate::error::InternalError;
-use crate::state::merkle::sql::backend::{Connection, SqliteBackend, WriteExclusiveExecute};
+use crate::transact::state::merkle::sql::backend::{
+    Connection, SqliteBackend, WriteExclusiveExecute,
+};
 
 use super::MigrationManager;
 

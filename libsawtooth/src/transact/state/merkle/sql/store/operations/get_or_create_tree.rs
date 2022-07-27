@@ -21,12 +21,14 @@ use diesel::dsl::select;
 use diesel::prelude::*;
 
 use crate::error::InternalError;
-use crate::state::merkle::sql::store::models::NewMerkleRadixTree;
-use crate::state::merkle::sql::store::schema::merkle_radix_tree;
+use crate::transact::state::merkle::sql::store::models::NewMerkleRadixTree;
+use crate::transact::state::merkle::sql::store::schema::merkle_radix_tree;
 #[cfg(feature = "sqlite")]
-use crate::state::merkle::sql::store::{models::sqlite, schema::sqlite_merkle_radix_tree_node};
+use crate::transact::state::merkle::sql::store::{
+    models::sqlite, schema::sqlite_merkle_radix_tree_node,
+};
 #[cfg(feature = "postgres")]
-use crate::state::merkle::sql::store::{
+use crate::transact::state::merkle::sql::store::{
     models::{postgres, MerkleRadixTree},
     schema::postgres_merkle_radix_tree_node,
 };
@@ -121,10 +123,10 @@ impl<'a> MerkleRadixGetOrCreateTreeOperation for MerkleRadixOperations<'a, PgCon
 mod test {
     use super::*;
 
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
-    use crate::state::merkle::sql::backend::postgres::test::run_postgres_test;
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
+    use crate::transact::state::merkle::sql::backend::postgres::test::run_postgres_test;
     #[cfg(feature = "sqlite")]
-    use crate::state::merkle::sql::migration::sqlite::run_migrations;
+    use crate::transact::state::merkle::sql::migration::sqlite::run_migrations;
 
     /// This tests that a tree id can be returned from its name.
     #[cfg(feature = "sqlite")]
@@ -150,7 +152,7 @@ mod test {
         Ok(())
     }
 
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
     #[test]
     fn postgres_test_get_or_create_tree() -> Result<(), Box<dyn std::error::Error>> {
         run_postgres_test(|url| {

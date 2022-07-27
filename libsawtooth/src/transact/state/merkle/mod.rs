@@ -58,7 +58,7 @@
 mod error;
 pub mod kv;
 mod node;
-#[cfg(feature = "state-merkle-sql")]
+#[cfg(feature = "transact-state-merkle-sql")]
 pub mod sql;
 
 use crate::transact::state::Read;

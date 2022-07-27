@@ -20,13 +20,13 @@
 //! A Backend provides a light-weight abstraction over database connections.
 
 #[cfg(feature = "postgres")]
-pub(in crate::state::merkle::sql) mod postgres;
+pub(in crate::transact::state::merkle::sql) mod postgres;
 #[cfg(feature = "sqlite")]
 mod sqlite;
 
 use crate::error::InternalError;
 
-#[cfg(feature = "state-merkle-sql-postgres-tests")]
+#[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
 pub use postgres::test::run_postgres_test;
 #[cfg(feature = "postgres")]
 pub use postgres::{

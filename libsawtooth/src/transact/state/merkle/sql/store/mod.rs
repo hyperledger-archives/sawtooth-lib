@@ -29,8 +29,8 @@ mod sqlite;
 use std::collections::HashSet;
 
 use crate::error::InternalError;
-use crate::state::merkle::sql::cache::DataCache;
-use crate::state::merkle::{
+use crate::transact::state::merkle::sql::cache::DataCache;
+use crate::transact::state::merkle::{
     node::Node,
     sql::backend::{Backend, Connection},
 };

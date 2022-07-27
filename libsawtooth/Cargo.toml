@@ -33,7 +33,9 @@ diesel = { version = "1.0", features = ["r2d2", "serde_json"], optional = true }
 diesel_migrations = { version = "1.4", optional = true }
 glob = { version = "0.3", optional = true }
 hex = "0.4"
+lazy_static = { version = "1.4.0", optional = true }
 log = { version = "0.4", optional = true }
+lru = { version = "0.7", optional = true }
 lmdb-zero = { version = "0.4", optional = true }
 metrics = { version = "0.17", features = ["std"], optional = true }
 protobuf = "2.23"
@@ -41,6 +43,7 @@ rand = { version = "0.8", optional = true }
 reqwest = { version = "0.11", optional = true, features = ["blocking", "json"] }
 semver = { version = "1", optional = true }
 serde = { version = "1.0", optional = true, features = ["derive"] }
+serde_json = { version = "1", optional = true }
 serde_yaml = { version = "0.8", optional = true }
 sha2 = { version = "0.9", optional = true }
 tar = { version = "0.4", optional = true }
@@ -85,6 +88,7 @@ stable = [
     "transact-protocol-transaction-builder",
     "transact-scheduler",
     "transact-state-merkle",
+    "transact-state-merkle-sql",
     "transact-workload",
     "transaction-receipt-store",
 ]
@@ -118,7 +122,7 @@ lmdb = ["lmdb-zero", "log"]
 pending-batch-queue = ["validator-internals"]
 postgres = ["diesel/postgres", "diesel_migrations", "log", "store"]
 publisher = ["artifact-creator"]
-sqlite = ["diesel/sqlite", "diesel_migrations", "log", "store"]
+sqlite = ["diesel/sqlite", "diesel_migrations", "log", "serde_json", "store"]
 store = []
 transact = []
 transact-context = ["transact", "uuid"]
@@ -145,6 +149,8 @@ transact-protocol-transaction-builder = [
 ]
 transact-scheduler = ["transact-context", "log", "transact-protocol-batch"]
 transact-state-merkle = ["cbor-codec", "log"]
+transact-state-merkle-sql = ["diesel", "diesel_migrations", "lru"]
+transact-state-merkle-sql-postgres-tests = ["postgres", "lazy_static"]
 transact-workload = []
 transaction-receipt-store = []
 validator-internals = [

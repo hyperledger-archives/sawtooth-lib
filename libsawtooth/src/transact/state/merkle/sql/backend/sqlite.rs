@@ -34,12 +34,12 @@ use crate::error::{InternalError, InvalidStateError};
 
 use super::{Backend, Connection, WriteExclusiveExecute};
 
+type PooledSqliteConnection = PooledConnection<ConnectionManager<sqlite::SqliteConnection>>;
+
 /// A connection to a SQLite database.
 ///
 /// Available if the feature "sqlite" is enabled.
-pub struct SqliteConnection(
-    pub(in crate::state::merkle::sql) PooledConnection<ConnectionManager<sqlite::SqliteConnection>>,
-);
+pub struct SqliteConnection(pub(in crate::transact::state::merkle::sql) PooledSqliteConnection);
 
 impl Connection for SqliteConnection {
     type ConnectionType = sqlite::SqliteConnection;

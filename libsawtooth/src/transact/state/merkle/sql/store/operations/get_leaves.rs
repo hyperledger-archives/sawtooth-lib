@@ -22,7 +22,7 @@ use diesel::sql_types::{BigInt, Binary, Bool, Nullable, Text};
 use diesel::{pg::types::sql_types::Array, sql_types::SmallInt};
 
 use crate::error::InternalError;
-use crate::state::merkle::sql::cache::DataCache;
+use crate::transact::state::merkle::sql::cache::DataCache;
 
 use super::MerkleRadixOperations;
 
@@ -263,21 +263,21 @@ mod tests {
     #[cfg(feature = "sqlite")]
     use diesel::dsl::select;
 
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
-    use crate::state::merkle::sql::{
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
+    use crate::transact::state::merkle::sql::{
         backend::postgres::test::run_postgres_test,
         store::{models::postgres, schema::postgres_merkle_radix_tree_node},
     };
     #[cfg(feature = "sqlite")]
-    use crate::state::merkle::sql::{
+    use crate::transact::state::merkle::sql::{
         migration,
         store::{models::sqlite, schema::sqlite_merkle_radix_tree_node},
     };
 
-    use crate::state::merkle::sql::store::models::NewMerkleRadixLeaf;
+    use crate::transact::state::merkle::sql::store::models::NewMerkleRadixLeaf;
     #[cfg(feature = "sqlite")]
-    use crate::state::merkle::sql::store::operations::last_insert_rowid;
-    use crate::state::merkle::sql::store::schema::merkle_radix_leaf;
+    use crate::transact::state::merkle::sql::store::operations::last_insert_rowid;
+    use crate::transact::state::merkle::sql::store::schema::merkle_radix_leaf;
 
     const MIN_CACHED_DATA_SIZE: usize = 10; // 10 bytes
     const CACHE_SIZE: u16 = 16; // number of entries in cache
@@ -304,7 +304,7 @@ mod tests {
     }
 
     /// Test that the get entries on a non-existent root returns a empty entries.
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
     #[test]
     fn postgres_get_entries_empty_tree() -> Result<(), Box<dyn std::error::Error>> {
         run_postgres_test(|url| {
@@ -371,7 +371,7 @@ mod tests {
 
     /// Test that a single leaf, with intermediate nodes will return the correct entry address and
     /// bytes.
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
     #[test]
     fn postgres_get_entries_single_entry() -> Result<(), Box<dyn std::error::Error>> {
         run_postgres_test(|url| {
@@ -475,7 +475,7 @@ mod tests {
     ///
     /// Note, in this test, in order to verify that the cache has been hit, we set a different
     /// value than what is set in the database.
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
     #[test]
     fn postgres_get_entries_single_entry_cached() -> Result<(), Box<dyn std::error::Error>> {
         run_postgres_test(|url| {
@@ -580,7 +580,7 @@ mod tests {
 
     /// Test that a single leaf, with intermediate nodes will return the correct entry address and
     /// the bytes, and the value is large enough to be written to the cache.
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
     #[test]
     fn postgres_get_entries_single_large_entry_cached() -> Result<(), Box<dyn std::error::Error>> {
         run_postgres_test(|url| {

@@ -21,10 +21,10 @@ use diesel::prelude::*;
 use crate::error::InternalError;
 
 #[cfg(feature = "postgres")]
-use crate::state::merkle::sql::store::schema::postgres_merkle_radix_tree_node;
+use crate::transact::state::merkle::sql::store::schema::postgres_merkle_radix_tree_node;
 #[cfg(feature = "sqlite")]
-use crate::state::merkle::sql::store::schema::sqlite_merkle_radix_tree_node;
-use crate::state::merkle::sql::store::schema::{
+use crate::transact::state::merkle::sql::store::schema::sqlite_merkle_radix_tree_node;
+use crate::transact::state::merkle::sql::store::schema::{
     merkle_radix_change_log_addition, merkle_radix_change_log_deletion, merkle_radix_leaf,
     merkle_radix_tree,
 };
@@ -119,23 +119,23 @@ mod tests {
     #[cfg(feature = "sqlite")]
     use diesel::dsl::select;
 
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
-    use crate::state::merkle::sql::{
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
+    use crate::transact::state::merkle::sql::{
         backend::postgres::test::run_postgres_test,
         store::{models::postgres, schema::postgres_merkle_radix_tree_node},
     };
     #[cfg(feature = "sqlite")]
-    use crate::state::merkle::sql::{
+    use crate::transact::state::merkle::sql::{
         migration,
         store::{models::sqlite, schema::sqlite_merkle_radix_tree_node},
     };
 
-    use crate::state::merkle::sql::store::models::{
+    use crate::transact::state::merkle::sql::store::models::{
         MerkleRadixLeaf, MerkleRadixTree, NewMerkleRadixLeaf,
     };
     #[cfg(feature = "sqlite")]
-    use crate::state::merkle::sql::store::operations::last_insert_rowid;
-    use crate::state::merkle::sql::store::schema::merkle_radix_leaf;
+    use crate::transact::state::merkle::sql::store::operations::last_insert_rowid;
+    use crate::transact::state::merkle::sql::store::schema::merkle_radix_leaf;
 
     /// Given a tree with a single leaf, validate that the delete operation deletes all values in
     /// the tables with a foreign key on `tree.id`.
@@ -209,7 +209,7 @@ mod tests {
 
     /// Given a tree with a single leaf, validate that the delete operation deletes all values in
     /// the tables with a foreign key on `tree.id`.
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
     #[test]
     fn postgres_delete_tree() -> Result<(), Box<dyn std::error::Error>> {
         run_postgres_test(|url| {

@@ -65,9 +65,9 @@ use std::collections::{HashMap, HashSet};
 use sha2::{Digest, Sha512};
 
 use crate::error::InternalError;
-use crate::state::error::StateWriteError;
-use crate::state::State;
-use crate::state::StateChange;
+use crate::transact::state::error::StateWriteError;
+use crate::transact::state::State;
+use crate::transact::state::StateChange;
 
 use super::node::Node;
 

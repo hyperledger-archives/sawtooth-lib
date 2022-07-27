@@ -18,8 +18,8 @@
 use diesel::SqliteConnection;
 
 use crate::error::InternalError;
-use crate::state::merkle::node::Node;
-use crate::state::merkle::sql::backend::{Backend, Connection, WriteExclusiveExecute};
+use crate::transact::state::merkle::node::Node;
+use crate::transact::state::merkle::sql::backend::{Backend, Connection, WriteExclusiveExecute};
 
 use super::operations::delete_tree::MerkleRadixDeleteTreeOperation as _;
 use super::operations::get_leaves::MerkleRadixGetLeavesOperation as _;

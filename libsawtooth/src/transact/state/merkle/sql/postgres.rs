@@ -20,8 +20,8 @@ use std::collections::HashMap;
 use diesel::pg::PgConnection;
 
 use crate::error::{InternalError, InvalidStateError};
-use crate::state::merkle::{node::Node, MerkleRadixLeafReadError, MerkleRadixLeafReader};
-use crate::state::{
+use crate::transact::state::merkle::{node::Node, MerkleRadixLeafReadError, MerkleRadixLeafReader};
+use crate::transact::state::{
     Committer, DryRunCommitter, Prune, Pruner, Read, Reader, StateChange, StateError,
     StatePruneError, StateReadError, StateWriteError, ValueIter, ValueIterResult, Write,
 };
@@ -400,7 +400,7 @@ impl<'a> Pruner for SqlMerkleState<InTransactionPostgresBackend<'a>> {
     }
 }
 
-#[cfg(feature = "state-merkle-sql-postgres-tests")]
+#[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
 #[cfg(test)]
 mod test {
     use super::*;
@@ -412,8 +412,10 @@ mod test {
         r2d2::{ConnectionManager, Pool},
     };
 
-    use crate::state::merkle::sql::backend::{run_postgres_test, Execute, PostgresBackendBuilder};
-    use crate::state::Committer;
+    use crate::transact::state::merkle::sql::backend::{
+        run_postgres_test, Execute, PostgresBackendBuilder,
+    };
+    use crate::transact::state::Committer;
 
     /// This test creates multiple trees in the same backend/db instance and verifies that values
     /// added to one are not added to the other.

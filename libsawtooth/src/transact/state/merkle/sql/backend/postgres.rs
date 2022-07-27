@@ -25,12 +25,11 @@ use crate::error::{InternalError, InvalidStateError};
 
 use super::{Backend, Connection, Execute};
 
+type PooledPostgresConnection = PooledConnection<ConnectionManager<diesel::pg::PgConnection>>;
 /// A connection to a Postgres database.
 ///
 /// Available if the feature "postgres" is enabled.
-pub struct PostgresConnection(
-    pub(in crate::state::merkle::sql) PooledConnection<ConnectionManager<diesel::pg::PgConnection>>,
-);
+pub struct PostgresConnection(pub(in crate::transact::state::merkle::sql) PooledPostgresConnection);
 
 impl Connection for PostgresConnection {
     type ConnectionType = diesel::pg::PgConnection;
@@ -196,7 +195,7 @@ impl PostgresBackendBuilder {
     }
 }
 
-#[cfg(feature = "state-merkle-sql-postgres-tests")]
+#[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
 pub mod test {
     use std::env;
     use std::error::Error;
@@ -210,7 +209,7 @@ pub mod test {
     };
     use lazy_static::lazy_static;
 
-    use crate::state::merkle::sql::migration;
+    use crate::transact::state::merkle::sql::migration;
 
     lazy_static! {
         static ref SERIAL_TEST_LOCK: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
@@ -248,7 +247,7 @@ pub mod test {
             let migration_result: Result<(), Box<dyn Error>> = loop {
                 match revert_latest_migration_in_directory(
                     &conn,
-                    &PathBuf::from("./src/state/merkle/sql/migration/postgres/migrations"),
+                    &PathBuf::from("./src/transact/state/merkle/sql/migration/postgres/migrations"),
                 ) {
                     Ok(_s) => (),
                     Err(RunMigrationsError::MigrationError(MigrationError::NoMigrationRun)) => {

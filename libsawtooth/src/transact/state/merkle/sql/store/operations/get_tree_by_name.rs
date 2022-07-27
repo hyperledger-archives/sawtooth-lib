@@ -18,7 +18,7 @@
 use diesel::prelude::*;
 
 use crate::error::InternalError;
-use crate::state::merkle::sql::store::schema::merkle_radix_tree;
+use crate::transact::state::merkle::sql::store::schema::merkle_radix_tree;
 
 use super::MerkleRadixOperations;
 
@@ -48,11 +48,11 @@ mod test {
 
     use diesel::dsl::insert_into;
 
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
-    use crate::state::merkle::sql::backend::postgres::test::run_postgres_test;
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
+    use crate::transact::state::merkle::sql::backend::postgres::test::run_postgres_test;
     #[cfg(feature = "sqlite")]
-    use crate::state::merkle::sql::migration;
-    use crate::state::merkle::sql::store::models::NewMerkleRadixTree;
+    use crate::transact::state::merkle::sql::migration;
+    use crate::transact::state::merkle::sql::store::models::NewMerkleRadixTree;
 
     /// This tests that a tree id can be returned from its name.
     #[cfg(feature = "sqlite")]
@@ -80,7 +80,7 @@ mod test {
     }
 
     /// This tests that a tree id can be returned from its name.
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
     #[test]
     fn postgres_get_tree_id_by_name() -> Result<(), Box<dyn std::error::Error>> {
         run_postgres_test(|url| {

@@ -23,18 +23,18 @@ use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Nullable, Text};
 
 use crate::error::InternalError;
-use crate::state::merkle::node::Node;
+use crate::transact::state::merkle::node::Node;
 #[cfg(feature = "sqlite")]
-use crate::state::merkle::sql::store::models::sqlite;
+use crate::transact::state::merkle::sql::store::models::sqlite;
 #[cfg(feature = "postgres")]
-use crate::state::merkle::sql::store::models::{postgres, MerkleRadixLeaf};
-use crate::state::merkle::sql::store::models::{
+use crate::transact::state::merkle::sql::store::models::{postgres, MerkleRadixLeaf};
+use crate::transact::state::merkle::sql::store::models::{
     NewMerkleRadixChangeLogAddition, NewMerkleRadixChangeLogDeletion, NewMerkleRadixLeaf,
 };
-use crate::state::merkle::sql::store::schema::{
+use crate::transact::state::merkle::sql::store::schema::{
     merkle_radix_change_log_addition, merkle_radix_change_log_deletion, merkle_radix_leaf,
 };
-use crate::state::merkle::sql::store::TreeUpdate;
+use crate::transact::state::merkle::sql::store::TreeUpdate;
 
 use super::prepared_stmt::prepare_stmt;
 use super::MerkleRadixOperations;
@@ -45,7 +45,7 @@ struct InsertableNode<'a> {
     pub address: &'a str,
 }
 
-pub(in crate::state::merkle::sql) trait MerkleRadixWriteChangesOperation {
+pub(in crate::transact::state::merkle::sql) trait MerkleRadixWriteChangesOperation {
     fn write_changes(
         &self,
         tree_id: i64,
@@ -375,12 +375,12 @@ mod tests {
     use diesel::dsl::count;
 
     #[cfg(feature = "sqlite")]
-    use crate::state::merkle::sql::migration;
-    use crate::state::merkle::sql::store::models::MerkleRadixLeaf;
+    use crate::transact::state::merkle::sql::migration;
+    use crate::transact::state::merkle::sql::store::models::MerkleRadixLeaf;
     #[cfg(feature = "sqlite")]
-    use crate::state::merkle::sql::store::schema::sqlite_merkle_radix_tree_node;
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
-    use crate::state::merkle::sql::{
+    use crate::transact::state::merkle::sql::store::schema::sqlite_merkle_radix_tree_node;
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
+    use crate::transact::state::merkle::sql::{
         backend::postgres::test::run_postgres_test, store::schema::postgres_merkle_radix_tree_node,
     };
 
@@ -433,7 +433,7 @@ mod tests {
 
     /// This test inserts a single node (that of the initial state root) and verifies that it is
     /// correctly inserted into the node table.
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
     #[test]
     fn postgres_insert_single_node() -> Result<(), Box<dyn std::error::Error>> {
         run_postgres_test(|url| {
@@ -558,7 +558,7 @@ mod tests {
     /// This test inserts a set of nodes where the deepest node references a leaf.  It verifies
     /// that the nodes have been inserted into the node table, and the leave has been inserted into
     /// the leaf table.
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
     #[test]
     fn postgres_write_changes_with_leaf() -> Result<(), Box<dyn std::error::Error>> {
         run_postgres_test(|url| {

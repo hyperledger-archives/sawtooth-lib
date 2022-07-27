@@ -21,9 +21,9 @@ use diesel::{dsl::exists, select};
 
 use crate::error::InternalError;
 #[cfg(feature = "postgres")]
-use crate::state::merkle::sql::store::schema::postgres_merkle_radix_tree_node;
+use crate::transact::state::merkle::sql::store::schema::postgres_merkle_radix_tree_node;
 #[cfg(feature = "sqlite")]
-use crate::state::merkle::sql::store::schema::sqlite_merkle_radix_tree_node;
+use crate::transact::state::merkle::sql::store::schema::sqlite_merkle_radix_tree_node;
 
 use super::MerkleRadixOperations;
 
@@ -63,12 +63,12 @@ mod tests {
 
     use diesel::dsl::insert_into;
 
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
-    use crate::state::merkle::sql::{
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
+    use crate::transact::state::merkle::sql::{
         backend::postgres::test::run_postgres_test, store::models::postgres,
     };
     #[cfg(feature = "sqlite")]
-    use crate::state::merkle::sql::{migration, store::models::sqlite};
+    use crate::transact::state::merkle::sql::{migration, store::models::sqlite};
 
     /// Test that has_node succeeds if the root hash is in the tree table.
     #[cfg(feature = "sqlite")]
@@ -92,7 +92,7 @@ mod tests {
     }
 
     /// Test that has_node succeeds if the root hash is in the tree table.
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
     #[test]
     fn postgres_has_root_from_tree_node() -> Result<(), Box<dyn std::error::Error>> {
         run_postgres_test(|url| {

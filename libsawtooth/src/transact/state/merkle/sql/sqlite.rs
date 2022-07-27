@@ -18,8 +18,8 @@
 use std::collections::HashMap;
 
 use crate::error::{InternalError, InvalidStateError};
-use crate::state::merkle::{node::Node, MerkleRadixLeafReadError, MerkleRadixLeafReader};
-use crate::state::{
+use crate::transact::state::merkle::{node::Node, MerkleRadixLeafReadError, MerkleRadixLeafReader};
+use crate::transact::state::{
     Committer, DryRunCommitter, Prune, Pruner, Read, Reader, StateChange, StateError,
     StatePruneError, StateReadError, StateWriteError, ValueIter, ValueIterResult, Write,
 };
@@ -412,10 +412,10 @@ mod test {
         sqlite,
     };
 
-    use crate::state::merkle::sql::backend;
-    use crate::state::merkle::sql::backend::SqliteBackendBuilder;
-    use crate::state::merkle::sql::migration::MigrationManager;
-    use crate::state::Committer;
+    use crate::transact::state::merkle::sql::backend;
+    use crate::transact::state::merkle::sql::backend::SqliteBackendBuilder;
+    use crate::transact::state::merkle::sql::migration::MigrationManager;
+    use crate::transact::state::Committer;
 
     /// This test creates multiple trees in the same backend/db instance and verifies that values
     /// added to one are not added to the other.

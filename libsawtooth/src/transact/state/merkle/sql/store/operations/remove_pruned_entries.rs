@@ -21,10 +21,10 @@ use diesel::sql_types::BigInt;
 
 use crate::error::InternalError;
 #[cfg(feature = "postgres")]
-use crate::state::merkle::sql::store::schema::postgres_merkle_radix_tree_node;
+use crate::transact::state::merkle::sql::store::schema::postgres_merkle_radix_tree_node;
 #[cfg(feature = "sqlite")]
-use crate::state::merkle::sql::store::schema::sqlite_merkle_radix_tree_node;
-use crate::state::merkle::sql::store::schema::{
+use crate::transact::state::merkle::sql::store::schema::sqlite_merkle_radix_tree_node;
+use crate::transact::state::merkle::sql::store::schema::{
     merkle_radix_change_log_addition, merkle_radix_change_log_deletion, merkle_radix_leaf,
 };
 

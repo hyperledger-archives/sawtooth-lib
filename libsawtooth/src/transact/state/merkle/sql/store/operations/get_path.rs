@@ -24,9 +24,9 @@ use diesel::sql_types::{BigInt, Binary, Nullable, Text};
 use diesel::{pg::types::sql_types::Array, sql_types::SmallInt};
 
 use crate::error::InternalError;
-use crate::state::merkle::node::Node;
+use crate::transact::state::merkle::node::Node;
 #[cfg(feature = "sqlite")]
-use crate::state::merkle::sql::store::models::sqlite;
+use crate::transact::state::merkle::sql::store::models::sqlite;
 
 use super::MerkleRadixOperations;
 
@@ -216,21 +216,21 @@ mod tests {
     #[cfg(feature = "sqlite")]
     use diesel::dsl::select;
 
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
-    use crate::state::merkle::sql::{
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
+    use crate::transact::state::merkle::sql::{
         backend::postgres::test::run_postgres_test,
         store::{models::postgres, schema::postgres_merkle_radix_tree_node},
     };
     #[cfg(feature = "sqlite")]
-    use crate::state::merkle::sql::{
+    use crate::transact::state::merkle::sql::{
         migration,
         store::{models::sqlite, schema::sqlite_merkle_radix_tree_node},
     };
 
-    use crate::state::merkle::sql::store::models::NewMerkleRadixLeaf;
+    use crate::transact::state::merkle::sql::store::models::NewMerkleRadixLeaf;
     #[cfg(feature = "sqlite")]
-    use crate::state::merkle::sql::store::operations::last_insert_rowid;
-    use crate::state::merkle::sql::store::schema::merkle_radix_leaf;
+    use crate::transact::state::merkle::sql::store::operations::last_insert_rowid;
+    use crate::transact::state::merkle::sql::store::schema::merkle_radix_leaf;
 
     /// Test that the get path on a non-existent root returns an empty path.
     #[cfg(feature = "sqlite")]
@@ -248,7 +248,7 @@ mod tests {
     }
 
     /// Test that the get path on a non-existent root returns an empty path.
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
     #[test]
     fn postgres_get_path_empty_tree() -> Result<(), Box<dyn std::error::Error>> {
         run_postgres_test(|url| {
@@ -381,7 +381,7 @@ mod tests {
     /// Test that a single leaf, with intermediate nodes will return the correct path, transformed
     /// into the merkle Node representation. Additionally, verify that partial paths are returned
     /// for addresses that do not have leaves in the tree.
-    #[cfg(feature = "state-merkle-sql-postgres-tests")]
+    #[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
     #[test]
     fn postgres_get_path_single_entry() -> Result<(), Box<dyn std::error::Error>> {
         run_postgres_test(|url| {
