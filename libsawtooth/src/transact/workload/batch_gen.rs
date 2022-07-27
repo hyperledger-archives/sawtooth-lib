@@ -25,11 +25,11 @@ use cylinder::Signer;
 use protobuf::Message;
 
 use crate::error::{InternalError, InvalidStateError};
-use crate::protocol::batch::{Batch, BatchBuilder, BatchPair};
-use crate::protocol::transaction::Transaction;
 use crate::protos::batch::Batch as ProtobufBatch;
 use crate::protos::FromNative;
-use crate::workload::{
+use crate::transact::protocol::batch::{Batch, BatchBuilder, BatchPair};
+use crate::transact::protocol::transaction::Transaction;
+use crate::transact::workload::{
     batch_reader::{protobuf::ProtobufBatchReader, BatchReader},
     transaction_reader::{protobuf::ProtobufTransactionReader, TransactionReader},
 };
@@ -162,10 +162,10 @@ mod tests {
 
     use cylinder::{secp256k1::Secp256k1Context, Context, Signature, Signer};
 
-    use crate::protocol::batch::BatchHeader;
-    use crate::protocol::transaction::{HashMethod, TransactionBuilder};
     use crate::protos::transaction::Transaction as ProtobufTransaction;
     use crate::protos::FromBytes;
+    use crate::transact::protocol::batch::BatchHeader;
+    use crate::transact::protocol::transaction::{HashMethod, TransactionBuilder};
 
     type BatchSource<'a> = ProtobufBatchReader<'a>;
 

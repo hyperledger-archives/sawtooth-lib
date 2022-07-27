@@ -22,8 +22,8 @@ use std::io::Read;
 use protobuf::Message;
 
 use crate::error::InternalError;
-use crate::protocol::transaction::Transaction;
 use crate::protos::FromProto;
+use crate::transact::protocol::transaction::Transaction;
 
 use super::TransactionReader;
 

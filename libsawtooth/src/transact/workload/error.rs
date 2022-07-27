@@ -16,10 +16,10 @@
  * -----------------------------------------------------------------------------
  */
 
-#[cfg(feature = "workload-batch-gen")]
+#[cfg(feature = "transact-workload-batch-gen")]
 use crate::error::{InternalError, InvalidStateError};
 
-#[cfg(feature = "workload-runner")]
+#[cfg(feature = "transact-workload-runner")]
 #[derive(Debug, PartialEq)]
 pub enum WorkloadRunnerError {
     /// Error raised when failing to submit the batch
@@ -33,10 +33,10 @@ pub enum WorkloadRunnerError {
     BatchStatusError(String),
 }
 
-#[cfg(feature = "workload-runner")]
+#[cfg(feature = "transact-workload-runner")]
 impl std::error::Error for WorkloadRunnerError {}
 
-#[cfg(feature = "workload-runner")]
+#[cfg(feature = "transact-workload-runner")]
 impl std::fmt::Display for WorkloadRunnerError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
@@ -60,14 +60,14 @@ impl std::fmt::Display for WorkloadRunnerError {
 }
 
 // Errors that may occur during the generation of batches from a source.
-#[cfg(feature = "workload-batch-gen")]
+#[cfg(feature = "transact-workload-batch-gen")]
 #[derive(Debug)]
 pub enum BatchingError {
     InternalError(InternalError),
     InvalidStateError(InvalidStateError),
 }
 
-#[cfg(feature = "workload-batch-gen")]
+#[cfg(feature = "transact-workload-batch-gen")]
 impl std::fmt::Display for BatchingError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -77,7 +77,7 @@ impl std::fmt::Display for BatchingError {
     }
 }
 
-#[cfg(feature = "workload-batch-gen")]
+#[cfg(feature = "transact-workload-batch-gen")]
 impl std::error::Error for BatchingError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {

@@ -26,6 +26,7 @@ use std::time::Duration;
 use std::{thread, time};
 
 use reqwest::{blocking::Client, header, StatusCode};
+use serde::Deserialize;
 
 use crate::protos::IntoBytes;
 

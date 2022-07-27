@@ -20,7 +20,7 @@
 pub mod protobuf;
 
 use crate::error::InternalError;
-use crate::protocol::transaction::Transaction;
+use crate::transact::protocol::transaction::Transaction;
 
 /// `TransactionReader` provides an API for reading transactions from a source
 pub trait TransactionReader {

@@ -20,7 +20,7 @@
 pub mod protobuf;
 
 use crate::error::InternalError;
-use crate::protocol::batch::BatchPair;
+use crate::transact::protocol::batch::BatchPair;
 
 /// `BatchReader` provides an API for reading batches from a source
 pub trait BatchReader {

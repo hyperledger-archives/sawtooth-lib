@@ -22,8 +22,8 @@ use std::io::Read;
 use protobuf::Message;
 
 use crate::error::InternalError;
-use crate::protocol::batch::BatchPair;
 use crate::protos::FromProto;
+use crate::transact::protocol::batch::BatchPair;
 
 use super::BatchReader;
 

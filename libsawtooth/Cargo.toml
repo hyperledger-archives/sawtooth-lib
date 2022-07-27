@@ -28,6 +28,7 @@ description = """\
 base64 = { version = "0.13", optional = true }
 bzip2 = { version = "0.4", optional = true }
 cbor-codec = { version = "0.7", optional = true }
+chrono = { version = "0.4", optional = true }
 cylinder = "0.2"
 diesel = { version = "1.0", features = ["r2d2", "serde_json"], optional = true }
 diesel_migrations = { version = "1.4", optional = true }
@@ -90,6 +91,8 @@ stable = [
     "transact-state-merkle",
     "transact-state-merkle-sql",
     "transact-workload",
+    "transact-workload-batch-gen",
+    "transact-workload-runner",
     "transaction-receipt-store",
 ]
 
@@ -152,6 +155,12 @@ transact-state-merkle = ["cbor-codec", "log"]
 transact-state-merkle-sql = ["diesel", "diesel_migrations", "lru"]
 transact-state-merkle-sql-postgres-tests = ["postgres", "lazy_static"]
 transact-workload = []
+transact-workload-batch-gen = ["transact-workload"]
+transact-workload-runner = [
+  "chrono",
+  "reqwest",
+  "serde",
+]
 transaction-receipt-store = []
 validator-internals = [
   "cbor-codec",

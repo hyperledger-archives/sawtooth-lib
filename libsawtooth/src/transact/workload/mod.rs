@@ -18,21 +18,21 @@
 
 //! Traits for generating transactions and batches.
 
-#[cfg(feature = "workload-batch-gen")]
+#[cfg(feature = "transact-workload-batch-gen")]
 pub mod batch_gen;
-#[cfg(feature = "workload-batch-gen")]
+#[cfg(feature = "transact-workload-batch-gen")]
 mod batch_reader;
 mod error;
-#[cfg(feature = "workload-runner")]
+#[cfg(feature = "transact-workload-runner")]
 mod runner;
-#[cfg(feature = "workload-batch-gen")]
+#[cfg(feature = "transact-workload-batch-gen")]
 mod transaction_reader;
 
 use crate::error::InvalidStateError;
 use crate::transact::protocol::batch::BatchPair;
 use crate::transact::protocol::transaction::TransactionPair;
-#[cfg(feature = "workload-runner")]
-pub use crate::workload::runner::{HttpRequestCounter, WorkloadRunner};
+#[cfg(feature = "transact-workload-runner")]
+pub use crate::transact::workload::runner::{HttpRequestCounter, WorkloadRunner};
 
 /// `TransactionWorkload` provides an API for generating transactions
 pub trait TransactionWorkload: Send {
