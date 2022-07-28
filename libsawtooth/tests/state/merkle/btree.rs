@@ -14,12 +14,12 @@
 
 //! B-Tree-backed tests for the merkle state implementation.
 
-use transact::{database::btree::BTreeDatabase, state::merkle::INDEXES};
+use sawtooth::transact::{database::btree::BTreeDatabase, state::merkle::INDEXES};
 
 use super::*;
 
 impl AutoCleanPrunedData for MerkleState {
-    fn remove_pruned_entries(&self) -> Result<(), transact::error::InternalError> {
+    fn remove_pruned_entries(&self) -> Result<(), sawtooth::error::InternalError> {
         Ok(())
     }
 }

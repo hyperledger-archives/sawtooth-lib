@@ -16,16 +16,16 @@
 
 use std::error::Error;
 
-use transact::state::merkle::sql::{
+use sawtooth::transact::state::merkle::sql::{
     backend::{run_postgres_test, PostgresBackend, PostgresBackendBuilder},
     SqlMerkleState, SqlMerkleStateBuilder,
 };
-use transact::{database::btree::BTreeDatabase, state::merkle::INDEXES};
+use sawtooth::transact::{database::btree::BTreeDatabase, state::merkle::INDEXES};
 
 use super::*;
 
 impl AutoCleanPrunedData for SqlMerkleState<PostgresBackend> {
-    fn remove_pruned_entries(&self) -> Result<(), transact::error::InternalError> {
+    fn remove_pruned_entries(&self) -> Result<(), sawtooth::error::InternalError> {
         SqlMerkleState::<PostgresBackend>::remove_pruned_entries(&self)
     }
 }

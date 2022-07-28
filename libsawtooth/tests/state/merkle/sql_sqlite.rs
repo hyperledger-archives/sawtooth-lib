@@ -17,19 +17,19 @@
 use std::error::Error;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use transact::state::merkle::sql::{
+use sawtooth::transact::state::merkle::sql::{
     backend::{SqliteBackend, SqliteBackendBuilder},
     migration::MigrationManager,
     SqlMerkleState, SqlMerkleStateBuilder,
 };
-use transact::{database::btree::BTreeDatabase, state::merkle::INDEXES};
+use sawtooth::transact::{database::btree::BTreeDatabase, state::merkle::INDEXES};
 
 use super::*;
 
 static GLOBAL_THREAD_COUNT: AtomicUsize = AtomicUsize::new(1);
 
 impl AutoCleanPrunedData for SqlMerkleState<SqliteBackend> {
-    fn remove_pruned_entries(&self) -> Result<(), transact::error::InternalError> {
+    fn remove_pruned_entries(&self) -> Result<(), sawtooth::error::InternalError> {
         SqlMerkleState::<SqliteBackend>::remove_pruned_entries(&self)
     }
 }

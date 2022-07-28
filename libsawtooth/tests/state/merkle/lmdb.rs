@@ -20,7 +20,7 @@ use std::panic;
 use std::path::Path;
 use std::thread;
 
-use transact::{
+use sawtooth::transact::{
     database::{
         btree::BTreeDatabase,
         lmdb::{LmdbContext, LmdbDatabase},

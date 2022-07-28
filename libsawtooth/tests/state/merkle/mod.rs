@@ -13,11 +13,11 @@
 // limitations under the License.
 
 mod btree;
-#[cfg(feature = "database-lmdb")]
+#[cfg(feature = "transact-database-lmdb")]
 mod lmdb;
-#[cfg(feature = "state-merkle-sql-postgres-tests")]
+#[cfg(feature = "transact-state-merkle-sql-postgres-tests")]
 mod sql_postgres;
-#[cfg(all(feature = "state-merkle-sql", feature = "sqlite"))]
+#[cfg(all(feature = "transact-state-merkle-sql", feature = "sqlite"))]
 mod sql_sqlite;
 
 use std::collections::HashMap;
@@ -27,10 +27,10 @@ use rand::seq::IteratorRandom;
 use rand::thread_rng;
 use sha2::{Digest, Sha512};
 
-use transact::{
+use sawtooth::error::InternalError;
+use sawtooth::protos::merkle::ChangeLogEntry;
+use sawtooth::transact::{
     database::{error::DatabaseError, Database},
-    error::InternalError,
-    protos::merkle::ChangeLogEntry,
     state::{
         merkle::{MerkleRadixLeafReader, MerkleRadixTree, MerkleState, CHANGE_LOG_INDEX},
         Prune, Read, StateChange, StateReadError, Write,
