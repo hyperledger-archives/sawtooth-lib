@@ -19,8 +19,6 @@ mod lmdb;
 mod sql_postgres;
 #[cfg(all(feature = "state-merkle-sql", feature = "sqlite"))]
 mod sql_sqlite;
-#[cfg(feature = "database-sqlite")]
-mod sqlitedb;
 
 use std::collections::HashMap;
 use std::str::from_utf8;
