@@ -130,8 +130,21 @@ test:
     echo "\n\033[92mTest Success\033[0m\n"
 
 docker-test:
-    docker-compose -f docker/compose/run-tests.yaml up \
-        --build \
-        --abort-on-container-exit \
-        --exit-code-from \
-        test-libsawtooth
+    #!/usr/bin/env sh
+    set -e
+
+    trap "docker-compose -f docker/compose/run-tests.yaml down" EXIT
+
+    docker-compose -f docker/compose/run-tests.yaml build
+    docker-compose -f docker/compose/run-tests.yaml run --rm test-libsawtooth \
+      /bin/bash -c "just test" --abort-on-container-exit test-libsawtooth
+
+    docker-compose -f docker/compose/run-tests.yaml up --detach postgres-db
+
+    docker-compose -f docker/compose/run-tests.yaml run --rm test-libsawtooth \
+       /bin/bash -c \
+       "cargo test --manifest-path /project/libsawtooth/libsawtooth/Cargo.toml \
+          --features stable,transact-sawtooth-compat -- transact::sawtooth && \
+        cargo test --manifest-path /project/libsawtooth/libsawtooth/Cargo.toml \
+          --features stable,transact-state-merkle-sql-postgres-tests && \
+        (cd examples/sabre_smallbank && cargo test)"
