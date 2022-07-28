@@ -28,9 +28,9 @@
 //!
 //! ```
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! # use transact::state::merkle::sql::SqlMerkleStateBuilder;
-//! # use transact::state::merkle::sql::migration::MigrationManager;
-//! # use transact::state::merkle::sql::backend::{Backend, SqliteBackendBuilder};
+//! # use sawtooth::transact::state::merkle::sql::SqlMerkleStateBuilder;
+//! # use sawtooth::transact::state::merkle::sql::migration::MigrationManager;
+//! # use sawtooth::transact::state::merkle::sql::backend::{Backend, SqliteBackendBuilder};
 //! let backend = SqliteBackendBuilder::new().with_memory_database().build()?;
 //! # backend.run_migrations()?;
 //!

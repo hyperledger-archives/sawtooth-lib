@@ -19,7 +19,7 @@
 
 use std::error::Error;
 
-use transact::protocol::batch::BatchPair;
+use crate::transact::protocol::batch::BatchPair;
 
 /// Errors that can occur when submitting batches
 #[derive(Debug)]

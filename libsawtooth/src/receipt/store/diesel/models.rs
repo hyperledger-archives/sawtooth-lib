@@ -27,7 +27,6 @@ use diesel::{
     serialize::{self, Output, ToSql},
     sql_types::SmallInt,
 };
-use transact::protocol::receipt::Event;
 
 use crate::error::InternalError;
 use crate::receipt::store::diesel::schema::{
@@ -36,6 +35,7 @@ use crate::receipt::store::diesel::schema::{
     valid_transaction_result_state_change,
 };
 use crate::receipt::store::error::ReceiptStoreError;
+use crate::transact::protocol::receipt::Event;
 
 #[derive(Debug, PartialEq, Associations, Identifiable, Insertable, Queryable, QueryableByName)]
 #[table_name = "transaction_receipt"]

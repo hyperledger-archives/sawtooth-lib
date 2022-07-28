@@ -15,14 +15,14 @@
 //! Block info batch injector
 
 use cylinder::Signer;
-use transact::protocol::{
-    batch::BatchPair,
-    transaction::{HashMethod, TransactionBuilder},
-};
 
 use crate::journal::publisher::BlockPublisherError;
 use crate::protocol::{block::BlockPair, block_info::BlockInfo};
 use crate::protos::IntoBytes;
+use crate::transact::protocol::{
+    batch::BatchPair,
+    transaction::{HashMethod, TransactionBuilder},
+};
 
 use super::BatchInjector;
 

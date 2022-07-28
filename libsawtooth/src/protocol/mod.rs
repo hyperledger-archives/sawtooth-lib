@@ -17,13 +17,13 @@
 
 //! Structs that cover the core protocols of the Sawtooth system.
 
-mod batch;
+#[cfg(feature = "protocol-block")]
 pub mod block;
 pub mod block_info;
+#[cfg(feature = "protocol-genesis")]
 pub mod genesis;
 pub mod identity;
 pub mod setting;
-mod transaction;
 
 use cylinder::SigningError;
 

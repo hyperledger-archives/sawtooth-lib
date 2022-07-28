@@ -23,7 +23,7 @@ mod error;
 #[cfg(feature = "lmdb")]
 pub mod lmdb;
 
-use transact::protocol::receipt::TransactionReceipt;
+use crate::transact::protocol::receipt::TransactionReceipt;
 
 pub use error::ReceiptStoreError;
 

@@ -18,9 +18,9 @@
 //! Provides the remove transaction receipt by index operation for `DieselReceiptStore`
 
 use diesel::sql_types::Text;
-use transact::protocol::receipt::TransactionReceipt;
 
 use crate::error::InvalidStateError;
+use crate::transact::protocol::receipt::TransactionReceipt;
 
 use super::{
     get_txn_receipt_by_index::ReceiptStoreGetTxnReceiptByIndexOperation,

@@ -16,10 +16,6 @@
  */
 
 use log::{error, info, warn};
-use transact::execution::executor::ExecutionTaskSubmitter;
-use transact::protocol::receipt::TransactionResult;
-use transact::scheduler::{BatchExecutionResult, SchedulerError, SchedulerFactory};
-use transact::state::{StateChange, Write};
 
 use std::convert::TryFrom;
 use std::sync::{
@@ -30,6 +26,10 @@ use std::sync::{
 use std::thread;
 use std::time::Duration;
 
+use crate::transact::execution::executor::ExecutionTaskSubmitter;
+use crate::transact::protocol::receipt::TransactionResult;
+use crate::transact::scheduler::{BatchExecutionResult, SchedulerError, SchedulerFactory};
+use crate::transact::state::{StateChange, Write};
 use crate::{
     journal::{
         block_manager::BlockManager,
@@ -834,11 +834,11 @@ mod test {
     use super::*;
 
     use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
-    use transact::protocol::batch::Batch;
 
     use crate::journal::block_store::{BlockStore, BlockStoreError};
     use crate::journal::NULL_BLOCK_IDENTIFIER;
     use crate::protocol::block::{BlockBuilder, BlockPair};
+    use crate::transact::protocol::batch::Batch;
 
     use std::sync::Mutex;
 

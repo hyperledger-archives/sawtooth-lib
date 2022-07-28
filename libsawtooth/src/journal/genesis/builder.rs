@@ -18,14 +18,14 @@
 use std::path::PathBuf;
 
 use cylinder::Signer;
-use transact::execution::executor::ExecutionTaskSubmitter;
-use transact::scheduler::SchedulerFactory;
 
 use crate::journal::block_manager::BlockManager;
 use crate::journal::chain::ChainObserver;
 use crate::journal::{chain::ChainReader, chain_id_manager::ChainIdManager};
 use crate::state::merkle::CborMerkleState;
 use crate::state::state_view_factory::StateViewFactory;
+use crate::transact::execution::executor::ExecutionTaskSubmitter;
+use crate::transact::scheduler::SchedulerFactory;
 
 use super::error::GenesisControllerBuildError;
 use super::GenesisController;

@@ -28,7 +28,7 @@
 //! # Examples
 //!
 //! ```no_run
-//! use transact::contract::archive::{default_scar_path, SmartContractArchive};
+//! use sawtooth::transact::contract::archive::{default_scar_path, SmartContractArchive};
 //!
 //! let archive = SmartContractArchive::from_scar_file("xo", "0.1", &default_scar_path())
 //!     .expect("failed to load scar file");
@@ -89,7 +89,7 @@ impl SmartContractArchive {
     /// can load v1.2.4 with:
     ///
     /// ```no_run
-    /// use transact::contract::archive::SmartContractArchive;
+    /// use sawtooth::transact::contract::archive::SmartContractArchive;
     ///
     /// let archive = SmartContractArchive::from_scar_file(
     ///     "xo",
@@ -103,7 +103,7 @@ impl SmartContractArchive {
     /// To load v1.2.3 explicitly, specify the exact version:
     ///
     /// ```no_run
-    /// use transact::contract::archive::SmartContractArchive;
+    /// use sawtooth::transact::contract::archive::SmartContractArchive;
     ///
     /// let archive = SmartContractArchive::from_scar_file(
     ///     "xo",

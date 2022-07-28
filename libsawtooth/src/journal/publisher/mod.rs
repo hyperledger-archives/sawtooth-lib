@@ -48,15 +48,6 @@ use std::thread;
 
 use cylinder::Signer;
 use log::{debug, error, trace, warn};
-use transact::{
-    execution::executor::ExecutionTaskSubmitter,
-    protocol::{
-        batch::{Batch, BatchPair},
-        receipt::TransactionResult,
-    },
-    scheduler::{BatchExecutionResult, Scheduler, SchedulerError, SchedulerFactory},
-    state::Write as _,
-};
 
 use crate::hashlib::sha256_digest_strs;
 use crate::journal::{
@@ -69,6 +60,15 @@ use crate::protocol::block::{BlockBuilder, BlockPair};
 use crate::state::{
     identity_view::IdentityView, merkle::CborMerkleState, settings_view::SettingsView,
     state_view_factory::StateViewFactory,
+};
+use crate::transact::{
+    execution::executor::ExecutionTaskSubmitter,
+    protocol::{
+        batch::{Batch, BatchPair},
+        receipt::TransactionResult,
+    },
+    scheduler::{BatchExecutionResult, Scheduler, SchedulerError, SchedulerFactory},
+    state::Write as _,
 };
 
 use batch_injector::BatchInjectorFactory;

@@ -20,9 +20,9 @@
 use std::convert::TryFrom;
 
 use diesel::{insert_into, prelude::*};
-use transact::protocol::receipt::{StateChange, TransactionReceipt, TransactionResult};
 
 use crate::error::InternalError;
+use crate::transact::protocol::receipt::{StateChange, TransactionReceipt, TransactionResult};
 
 use super::ReceiptStoreOperations;
 

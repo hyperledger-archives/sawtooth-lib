@@ -23,9 +23,11 @@ use diesel::{
     prelude::*,
     sql_types::{Integer, Text},
 };
-use transact::protocol::receipt::{Event, StateChange, TransactionReceipt, TransactionResult};
 
 use crate::error::InvalidStateError;
+use crate::transact::protocol::receipt::{
+    Event, StateChange, TransactionReceipt, TransactionResult,
+};
 
 use super::ReceiptStoreOperations;
 

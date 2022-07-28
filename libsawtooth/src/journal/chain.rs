@@ -35,9 +35,9 @@ use std::thread;
 use std::time::Duration;
 
 use log::{debug, error, info, warn};
-use transact::protocol::batch::BatchPair;
-use transact::state::Write;
 
+use crate::transact::protocol::batch::BatchPair;
+use crate::transact::state::Write;
 use crate::{
     consensus::notifier::ConsensusNotifier,
     journal::publisher::chain_head_lock::ChainHeadLock,

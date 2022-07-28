@@ -15,9 +15,8 @@
  * ------------------------------------------------------------------------------
  */
 
-use transact::protocol::transaction::Transaction;
-
 use crate::journal::block_manager::BlockManager;
+use crate::transact::protocol::transaction::Transaction;
 
 #[derive(Debug, PartialEq)]
 pub enum ChainCommitStateError {
@@ -133,14 +132,14 @@ mod test {
     use std::collections::HashMap;
 
     use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
-    use transact::protocol::{
-        batch::{Batch, BatchBuilder},
-        transaction::{HashMethod, Transaction, TransactionBuilder},
-    };
 
     use crate::journal::block_store::InMemoryBlockStore;
     use crate::journal::NULL_BLOCK_IDENTIFIER;
     use crate::protocol::block::{BlockBuilder, BlockPair};
+    use crate::transact::protocol::{
+        batch::{Batch, BatchBuilder},
+        transaction::{HashMethod, Transaction, TransactionBuilder},
+    };
 
     /// Creates Chains of blocks that match this diagram
     /// chain4                    B4-4  - B5-4

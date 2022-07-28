@@ -19,12 +19,12 @@
 
 use cylinder::Signer;
 use protobuf::Message;
-use transact::protocol::batch::Batch;
 
 use crate::protos::{
     block::{Block as BlockProto, BlockHeader as BlockHeaderProto},
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
+use crate::transact::protocol::batch::Batch;
 
 use super::ProtocolBuildError;
 
@@ -390,7 +390,8 @@ mod tests {
     use super::*;
 
     use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
-    use transact::protocol::{
+
+    use crate::transact::protocol::{
         batch::BatchBuilder,
         transaction::{HashMethod, TransactionBuilder},
     };

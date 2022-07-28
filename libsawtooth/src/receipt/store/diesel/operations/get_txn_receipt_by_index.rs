@@ -23,9 +23,9 @@ use diesel::{
     prelude::*,
     sql_types::{Integer, Text},
 };
-use transact::protocol::receipt::TransactionReceipt;
 
 use crate::error::InternalError;
+use crate::transact::protocol::receipt::TransactionReceipt;
 
 use super::{
     get_txn_receipt_by_id::ReceiptStoreGetTxnReceiptByIdOperation, ReceiptStoreOperations,

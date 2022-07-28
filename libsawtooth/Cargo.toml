@@ -50,13 +50,13 @@ serde_json = { version = "1", optional = true }
 serde_yaml = { version = "0.8", optional = true }
 sha2 = { version = "0.9", optional = true }
 tar = { version = "0.4", optional = true }
-transact = "0.5"
 uluru = { version = "3", optional = true }
 uuid = { version = "0.8", optional = true, features = ["v4"] }
 wasmi = { version = "0.9", optional = true }
 yaml-rust =  { version = "0.4", optional = true }
 
 [dev-dependencies]
+log =  { version = "0.4", features = ["std"] }
 rand = "0.8"
 rusty-fork = "0.3"
 sawtooth-xo = "0.5"
@@ -68,9 +68,16 @@ protoc-rust = "2.0"
 glob = "0.3"
 
 [features]
-default = []
+default = [
+    "protocol-block",
+    "protocol-genesis",
+]
 
 stable = [
+    # The stable feature extends default:
+    "default",
+
+    # The following features are stable:
     "family-command",
     "family-command-transaction-builder",
     "family-command-workload",
@@ -158,12 +165,24 @@ family-xo = ["transact-handler", "transact-workload"]
 lmdb = ["lmdb-zero", "log"]
 pending-batch-queue = ["validator-internals"]
 postgres = ["diesel/postgres", "diesel_migrations", "log", "store"]
+protocol-block = [
+  "transact-protocol-batch",
+  "transact-protocol-batch-builder",
+  "transact-protocol-transaction",
+  "transact-protocol-transaction-builder",
+]
+protocol-genesis = [
+  "transact-protocol-batch",
+  "transact-protocol-batch-builder",
+  "transact-protocol-transaction",
+  "transact-protocol-transaction-builder",
+]
 publisher = ["artifact-creator"]
 sqlite = ["diesel/sqlite", "diesel_migrations", "log", "serde_json", "store"]
 store = []
 transact = []
 transact-context = ["transact", "uuid"]
-transact-contract = []
+transact-contract = ["transact"]
 transact-contract-address = ["transact-contract"]
 transact-contract-address-key-hash = ["transact-contract-address"]
 transact-contract-address-double-key-hash = ["transact-contract-address"]
@@ -179,12 +198,12 @@ transact-execution = [
   "transact-protocol-transaction",
   "transact-scheduler"
 ]
-transact-handler = ["transact-protocol-transaction"]
-transact-key-value-state = []
+transact-handler = ["transact", "transact-protocol-transaction"]
+transact-key-value-state = ["transact"]
 transact-protocol-batch = ["transact-protocol-transaction"]
 transact-protocol-batch-builder = ["transact-protocol-batch"]
 transact-protocol-sabre = ["transact-protocol-transaction-builder"]
-transact-protocol-transaction = []
+transact-protocol-transaction = ["transact"]
 transact-protocol-transaction-builder = [
   "transact-protocol-transaction",
   "transact-protocol-batch-builder",
@@ -194,12 +213,13 @@ transact-protocol-transaction-builder = [
 transact-sabre-compat = ["transact", "transact-handler", "sabre-sdk"]
 transact-sawtooth-compat = ["transact", "transact-handler", "sawtooth-sdk"]
 transact-scheduler = ["transact-context", "log", "transact-protocol-batch"]
-transact-state-merkle = ["cbor-codec", "log"]
-transact-state-merkle-sql = ["diesel", "diesel_migrations", "lru"]
+transact-state-merkle = ["transact", "cbor-codec", "log"]
+transact-state-merkle-sql = ["transact-state-merkle", "diesel", "diesel_migrations", "lru"]
 transact-state-merkle-sql-postgres-tests = ["postgres", "lazy_static"]
-transact-workload = []
-transact-workload-batch-gen = ["transact-workload"]
+transact-workload = ["transact"]
+transact-workload-batch-gen = ["transact", "transact-workload"]
 transact-workload-runner = [
+  "transact",
   "chrono",
   "reqwest",
   "serde",
@@ -219,6 +239,3 @@ features = [
     "stable",
     "experimental"
 ]
-
-[patch.crates-io]
-transact = { git = "https://github.com/hyperledger/transact" }

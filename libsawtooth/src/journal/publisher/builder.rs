@@ -17,10 +17,10 @@
 use std::sync::{mpsc::channel, Arc, Mutex, RwLock};
 
 use cylinder::Signer;
-use transact::{execution::executor::ExecutionTaskSubmitter, scheduler::SchedulerFactory};
 
 use crate::journal::{block_manager::BlockManager, commit_store::CommitStore};
 use crate::state::{merkle::CborMerkleState, state_view_factory::StateViewFactory};
+use crate::transact::{execution::executor::ExecutionTaskSubmitter, scheduler::SchedulerFactory};
 
 use super::{
     batch_injector::DefaultBatchInjectorFactory, start_publisher_thread, BatchInjectorFactory,

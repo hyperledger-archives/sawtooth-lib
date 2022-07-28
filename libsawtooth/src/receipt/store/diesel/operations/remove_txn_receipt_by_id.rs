@@ -18,7 +18,8 @@
 //! Provides the remove transaction receipt by id operation for `DieselReceiptStore`
 
 use diesel::{delete, prelude::*, sql_types::Text};
-use transact::protocol::receipt::TransactionReceipt;
+
+use crate::transact::protocol::receipt::TransactionReceipt;
 
 use super::{
     get_txn_receipt_by_id::ReceiptStoreGetTxnReceiptByIdOperation, ReceiptStoreOperations,
