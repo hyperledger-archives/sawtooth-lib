@@ -14,24 +14,24 @@
 // limitations under the License.
 
 use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
-use sawtooth_xo::handler::XoTransactionHandler;
-use transact::context::{manager::sync::ContextManager, ContextLifecycle};
-use transact::database::btree::BTreeDatabase;
-use transact::execution::{
+use sawtooth::transact::context::{manager::sync::ContextManager, ContextLifecycle};
+use sawtooth::transact::database::btree::BTreeDatabase;
+use sawtooth::transact::execution::{
     adapter::static_adapter::StaticExecutionAdapter,
     executor::{ExecutionTaskSubmitter, Executor},
 };
-use transact::protocol::receipt::{Event, TransactionResult};
-use transact::protocol::{
+use sawtooth::transact::protocol::receipt::{Event, TransactionResult};
+use sawtooth::transact::protocol::{
     batch::{BatchBuilder, BatchPair},
     receipt::StateChange,
     transaction::{HashMethod, TransactionBuilder},
 };
-use transact::sawtooth::SawtoothToTransactHandlerAdapter;
-use transact::scheduler::{serial::SerialScheduler, BatchExecutionResult, Scheduler};
-use transact::state::merkle::{self, MerkleRadixTree, MerkleState};
-use transact::state::StateChange as ChangeSet;
-use transact::state::Write;
+use sawtooth::transact::sawtooth::SawtoothToTransactHandlerAdapter;
+use sawtooth::transact::scheduler::{serial::SerialScheduler, BatchExecutionResult, Scheduler};
+use sawtooth::transact::state::merkle::{self, MerkleRadixTree, MerkleState};
+use sawtooth::transact::state::StateChange as ChangeSet;
+use sawtooth::transact::state::Write;
+use sawtooth_xo::handler::XoTransactionHandler;
 
 use sha2::{Digest, Sha512};
 use std::io;

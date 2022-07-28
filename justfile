@@ -15,7 +15,11 @@
 set dotenv-load := true
 
 crates := '\
-    libsawtooth
+    libsawtooth \
+    examples/address_generator \
+    examples/sabre_command \
+    examples/sabre_smallbank \
+    examples/simple_xo \
     '
 
 features := '\

@@ -26,11 +26,11 @@ use sabre_sdk::ApplyError as SabreApplyError;
 use sabre_sdk::TpProcessRequest as SabreTpProcessRequest;
 use sabre_sdk::TransactionContext as SabreTransactionContext;
 use sabre_sdk::{execute_entrypoint, WasmPtr};
-use transact::families::command::CommandTransactionHandler;
-use transact::handler::sabre::SabreContext;
-use transact::handler::{ApplyError, TransactionHandler};
-use transact::protocol::transaction::Transaction;
-use transact::protos::transaction::TransactionHeader;
+use sawtooth::families::command::CommandTransactionHandler;
+use sawtooth::protos::transaction::TransactionHeader;
+use sawtooth::transact::handler::sabre::SabreContext;
+use sawtooth::transact::handler::{ApplyError, TransactionHandler};
+use sawtooth::transact::protocol::transaction::Transaction;
 
 fn main() {}
 

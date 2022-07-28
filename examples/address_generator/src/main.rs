@@ -15,7 +15,7 @@
 
 use clap::{App, Arg};
 
-use transact::contract::address::{
+use sawtooth::transact::contract::address::{
     double_key_hash::DoubleKeyHashAddresser, key_hash::KeyHashAddresser,
     triple_key_hash::TripleKeyHashAddresser, Addresser,
 };

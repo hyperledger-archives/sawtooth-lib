@@ -21,12 +21,12 @@ edition = "2018"
 [dependencies]
 clap = "2"
 
-[dependencies.transact]
-path = "../../libtransact"
+[dependencies.sawtooth]
+path = "../../libsawtooth"
 features = [
-    "contract-address-double-key-hash",
-    "contract-address-key-hash",
-    "contract-address-triple-key-hash",
+    "transact-contract-address-double-key-hash",
+    "transact-contract-address-key-hash",
+    "transact-contract-address-triple-key-hash",
 ]
 
 [features]

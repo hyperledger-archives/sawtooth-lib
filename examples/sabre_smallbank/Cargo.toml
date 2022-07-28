@@ -22,10 +22,10 @@ edition = "2018"
 protobuf = "2.19"
 sabre-sdk = "0.7.1"
 
-[dependencies.transact]
-path = "../../libtransact"
+[dependencies.sawtooth]
+path = "../../libsawtooth"
 default-features = false
-features = ["family-smallbank", "sabre-compat"]
+features = ["family-smallbank", "transact-sabre-compat"]
 
 
 [features]
