@@ -22,6 +22,11 @@ crates := '\
     examples/simple_xo \
     '
 
+crates_wasm := '\
+    examples/sabre_command \
+    examples/sabre_smallbank \
+    '
+
 features := '\
     --features=experimental \
     --features=stable \
@@ -52,6 +57,16 @@ build:
         do
             cmd="cargo build --tests --manifest-path=$crate/Cargo.toml $feature"
             echo "\033[1m$cmd\033[0m"
+            $cmd
+        done
+    done
+    for feature in $(echo {{features}})
+    do
+        for crate in $(echo {{crates_wasm}})
+        do
+            cmd="cargo build --tests --target wasm32-unknown-unknown --manifest-path=$crate/Cargo.toml $BUILD_MODE $feature"
+            echo "\033[1m$cmd\033[0m"
+            RUSTFLAGS="-D warnings" $cmd
             $cmd
         done
     done
