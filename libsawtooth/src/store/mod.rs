@@ -13,7 +13,7 @@
 // limitations under the License.
 
 mod error;
-#[cfg(any(feature = "postgres", feature = "sqlite"))]
+#[cfg(feature = "diesel")]
 pub(crate) mod pool;
 
 pub use error::StoreError;
