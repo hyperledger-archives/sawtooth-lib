@@ -17,10 +17,11 @@
 
 use std::collections::HashMap;
 
-use diesel::dsl::{insert_into, max};
+use diesel::dsl::insert_into;
 use diesel::prelude::*;
+use diesel::sql_types::{BigInt, Nullable};
 #[cfg(feature = "sqlite")]
-use diesel::sql_types::{BigInt, Nullable, Text};
+use diesel::{dsl::max, sql_types::Text};
 
 use crate::error::InternalError;
 use crate::transact::state::merkle::node::Node;
