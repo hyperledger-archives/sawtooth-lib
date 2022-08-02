@@ -25,6 +25,7 @@ pub mod genesis;
 pub mod identity;
 pub mod setting;
 
+#[cfg(feature = "cylinder")]
 use cylinder::SigningError;
 
 use crate::protos::ProtoConversionError;
@@ -63,6 +64,7 @@ impl From<ProtoConversionError> for ProtocolBuildError {
     }
 }
 
+#[cfg(feature = "cylinder")]
 impl From<SigningError> for ProtocolBuildError {
     fn from(err: SigningError) -> Self {
         Self::SigningError(format!("{}", err))

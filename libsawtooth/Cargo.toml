@@ -29,7 +29,7 @@ base64 = { version = "0.13", optional = true }
 bzip2 = { version = "0.4", optional = true }
 cbor-codec = { version = "0.7", optional = true }
 chrono = { version = "0.4", optional = true }
-cylinder = "0.2"
+cylinder = { version = "0.2", optional = true }
 diesel = { version = "1.0", features = ["r2d2", "serde_json"], optional = true }
 diesel_migrations = { version = "1.4", optional = true }
 glob = { version = "0.3", optional = true }
@@ -149,7 +149,7 @@ artifact-store = ["artifact"]
 client = []
 client-rest = ["base64", "client", "log", "reqwest", "serde"]
 family-command = ["transact-handler"]
-family-command-transaction-builder = ["family-command", "transact-protocol-transaction-builder"]
+family-command-transaction-builder = ["family-command", "cylinder", "transact-protocol-transaction-builder"]
 family-command-workload = ["family-command", "transact-protocol-sabre", "transact-workload"]
 family-sabre = ["transact-handler", "wasmi"]
 family-smallbank = ["transact-handler", "sha2"]
@@ -201,10 +201,11 @@ transact-execution = [
 transact-handler = ["transact", "transact-protocol-transaction"]
 transact-key-value-state = ["transact"]
 transact-protocol-batch = ["transact-protocol-transaction"]
-transact-protocol-batch-builder = ["transact-protocol-batch"]
-transact-protocol-sabre = ["transact-protocol-transaction-builder"]
+transact-protocol-batch-builder = ["cylinder", "transact-protocol-batch"]
+transact-protocol-sabre = ["cylinder", "transact-protocol-transaction-builder"]
 transact-protocol-transaction = ["transact"]
 transact-protocol-transaction-builder = [
+  "cylinder",
   "transact-protocol-transaction",
   "transact-protocol-batch-builder",
   "rand",
@@ -227,6 +228,7 @@ transact-workload-runner = [
 transaction-receipt-store = []
 validator-internals = [
   "cbor-codec",
+  "cylinder",
   "lmdb-zero",
   "log",
   "metrics",
