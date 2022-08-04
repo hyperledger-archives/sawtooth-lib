@@ -50,21 +50,21 @@ RUN TARGET_ARCH=$(dpkg --print-architecture) \
 
 WORKDIR /build
 
-# Create empty cargo project for transact
-RUN USER=root cargo new --lib libtransact
+# Create empty cargo project for sawtooth
+RUN USER=root cargo new --lib libsawtooth
 
 # Copy over Cargo.toml file
-COPY libtransact/Cargo.toml /build/libtransact/Cargo.toml
-COPY libtransact/build.rs /build/libtransact/build.rs
-COPY libtransact/protos /build/libtransact/protos
+COPY libsawtooth/Cargo.toml /build/libsawtooth/Cargo.toml
+COPY libsawtooth/build.rs /build/libsawtooth/build.rs
+COPY libsawtooth/protos /build/libsawtooth/protos
 
-WORKDIR /build/libtransact
+WORKDIR /build/libsawtooth
 
 # Do a release build to cache dependencies
-RUN cargo build --no-default-features --features sabre-compat,family-command
+RUN cargo build --no-default-features --features transact-sabre-compat,family-command
 
 # Copy over source files
-COPY libtransact/src /build/libtransact/src
+COPY libsawtooth/src /build/libsawtooth/src
 
 WORKDIR /build
 

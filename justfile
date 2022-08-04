@@ -144,6 +144,13 @@ test:
     done
     echo "\n\033[92mTest Success\033[0m\n"
 
+ci-debs:
+    #!/usr/bin/env sh
+    set -e
+    REPO_VERSION=$(VERSION=AUTO_STRICT ./bin/get_version) \
+    docker-compose -f docker-compose-installed.yaml build
+    docker-compose -f docker/compose/copy-debs.yaml up
+
 docker-test:
     #!/usr/bin/env sh
     set -e
