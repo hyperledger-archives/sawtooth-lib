@@ -29,7 +29,7 @@ use crate::transact::protocol::batch::Batch;
 use super::ProtocolBuildError;
 
 /// A Sawtooth block
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Block {
     header: Vec<u8>,
     header_signature: String,
@@ -126,7 +126,7 @@ impl IntoNative<Block> for BlockProto {}
 impl IntoProto<BlockProto> for Block {}
 
 /// A Sawtooth block header
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockHeader {
     block_num: u64,
     previous_block_id: String,
@@ -231,7 +231,7 @@ impl IntoNative<BlockHeader> for BlockHeaderProto {}
 impl IntoProto<BlockHeaderProto> for BlockHeader {}
 
 /// A Sawtooth (block, block header) pair
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockPair {
     block: Block,
     header: BlockHeader,

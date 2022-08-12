@@ -26,7 +26,7 @@ use crate::protos::{
 use crate::transact::protocol::batch::BatchPair;
 
 /// A named set of batches
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenesisData {
     batches: Vec<BatchPair>,
 }
