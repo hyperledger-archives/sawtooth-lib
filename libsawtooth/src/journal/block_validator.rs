@@ -119,7 +119,7 @@ pub trait BlockStatusStore: Clone + Send + Sync {
     fn status(&self, block_id: &str) -> BlockStatus;
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationError {
     BlockValidationFailure(String),
     BlockValidationError(String),
