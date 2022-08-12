@@ -29,7 +29,7 @@ use crate::protos::{
 use super::ProtocolBuildError;
 
 /// Block info data
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockInfo {
     block_num: u64,
     previous_block_id: String,

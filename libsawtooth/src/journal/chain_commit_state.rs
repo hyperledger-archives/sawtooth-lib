@@ -19,7 +19,7 @@ use transact::protocol::transaction::Transaction;
 
 use crate::journal::block_manager::BlockManager;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ChainCommitStateError {
     MissingDependency(String),
     DuplicateTransaction(String),
