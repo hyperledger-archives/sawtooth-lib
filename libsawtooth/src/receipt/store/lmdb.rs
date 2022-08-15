@@ -186,12 +186,12 @@ impl LmdbReceiptStore {
             self.current_db = database;
             Ok(())
         } else {
-            return Err(ReceiptStoreError::InvalidStateError(
+            Err(ReceiptStoreError::InvalidStateError(
                 InvalidStateError::with_message(format!(
                     "database {} does not exist in the receipt store",
                     database
                 )),
-            ));
+            ))
         }
     }
 
