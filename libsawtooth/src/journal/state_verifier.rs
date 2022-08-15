@@ -150,7 +150,7 @@ fn process_blocks(
                     execution_task_submitter,
                     merkle_state,
                     block.block().batches().to_vec(),
-                    &*scheduler_factory,
+                    scheduler_factory,
                     hex::encode(block.header().state_root_hash()),
                 )?
             }
