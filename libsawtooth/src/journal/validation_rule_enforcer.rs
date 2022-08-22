@@ -20,9 +20,9 @@ use std::convert::TryFrom;
 use std::str::FromStr;
 
 use log::{debug, warn};
-use transact::protocol::{batch::Batch, transaction::Transaction};
 
 use crate::state::settings_view::SettingsView;
+use crate::transact::protocol::{batch::Batch, transaction::Transaction};
 
 const BLOCK_VALIDATION_RULES: &str = "sawtooth.validator.block_validation_rules";
 
@@ -391,7 +391,8 @@ mod tests {
     use super::*;
 
     use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
-    use transact::protocol::{
+
+    use crate::transact::protocol::{
         batch::{Batch, BatchBuilder},
         transaction::{HashMethod, TransactionBuilder},
     };

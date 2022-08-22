@@ -1,0 +1,108 @@
+# Copyright 2019-2021 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+FROM ubuntu:jammy
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Install base dependencies
+
+RUN apt-get update \
+ && apt-get install -y \
+ curl \
+ gcc \
+ libssl-dev \
+ libzmq3-dev \
+ pkg-config \
+ unzip
+
+ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
+
+# Install Rust
+RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
+ && chmod +x /usr/bin/rustup-init \
+ && rustup-init -y
+
+RUN rustup update \
+ && rustup target add wasm32-unknown-unknown
+
+# Install protoc
+RUN TARGET_ARCH=$(dpkg --print-architecture) \
+ && if [[ $TARGET_ARCH == "arm64" ]]; then \
+      PROTOC_ARCH="aarch_64"; \
+    elif [[ $TARGET_ARCH == "amd64" ]]; then \
+      PROTOC_ARCH="x86_64"; \
+    fi \
+ && curl -OLsS https://github.com/google/protobuf/releases/download/v3.20.0/protoc-3.20.0-linux-$PROTOC_ARCH.zip \
+ && unzip -o protoc-3.20.0-linux-$PROTOC_ARCH.zip -d /usr/local \
+ && rm protoc-3.20.0-linux-$PROTOC_ARCH.zip
+
+WORKDIR /build
+
+# Create empty cargo project for sawtooth
+RUN USER=root cargo new --lib libsawtooth
+
+# Copy over Cargo.toml file
+COPY libsawtooth/Cargo.toml /build/libsawtooth/Cargo.toml
+COPY libsawtooth/build.rs /build/libsawtooth/build.rs
+COPY libsawtooth/protos /build/libsawtooth/protos
+
+WORKDIR /build/libsawtooth
+
+# Do a release build to cache dependencies
+RUN cargo build --no-default-features --features transact-sabre-compat,family-command
+
+# Copy over source files
+COPY libsawtooth/src /build/libsawtooth/src
+
+WORKDIR /build
+
+# Create empty cargo project for sabre command
+RUN mkdir examples \
+ && USER=root cargo new --bin examples/sabre_command
+
+# Copy over Cargo.toml file
+COPY examples/sabre_command/Cargo.toml /build/examples/sabre_command/Cargo.toml
+
+WORKDIR /build/examples/sabre_command
+
+# Do a release build to cache dependencies
+RUN cargo build --target wasm32-unknown-unknown --release
+
+# Remove the auto-generated .rs files and the built files
+RUN rm target/wasm32-unknown-unknown/release/sabre-command* \
+    target/wasm32-unknown-unknown/release/deps/sabre_command*
+
+# Copy over source files
+COPY examples/sabre_command/src /build/examples/sabre_command/src
+
+# Update version in Cargo.toml
+ARG REPO_VERSION
+RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
+
+# Build the contract
+RUN cargo build --target wasm32-unknown-unknown --release
+
+# Copy the packaging directory
+COPY examples/sabre_command/packaging/scar/* \
+     /build/examples/sabre_command/packaging/scar/
+
+# Copy the contract to the packaging directory
+RUN cp target/wasm32-unknown-unknown/release/sabre-command.wasm \
+    packaging/scar
+
+WORKDIR /build/examples/sabre_command/packaging/scar
+
+# Create .scar file
+RUN tar -jcvf /tmp/command_${REPO_VERSION}.scar .

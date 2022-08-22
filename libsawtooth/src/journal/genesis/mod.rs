@@ -25,10 +25,6 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 
 use cylinder::Signer;
 use log::{debug, error, info};
-use transact::execution::executor::ExecutionTaskSubmitter;
-use transact::protocol::receipt::TransactionResult;
-use transact::scheduler::{BatchExecutionResult, SchedulerError, SchedulerFactory};
-use transact::state::{StateChange, Write};
 
 use crate::journal::block_manager::BlockManager;
 use crate::journal::chain::ChainObserver;
@@ -39,6 +35,10 @@ use crate::protos::FromBytes;
 use crate::state::merkle::CborMerkleState;
 use crate::state::settings_view::SettingsView;
 use crate::state::state_view_factory::StateViewFactory;
+use crate::transact::execution::executor::ExecutionTaskSubmitter;
+use crate::transact::protocol::receipt::TransactionResult;
+use crate::transact::scheduler::{BatchExecutionResult, SchedulerError, SchedulerFactory};
+use crate::transact::state::{StateChange, Write};
 
 use super::{chain::ChainReader, chain_id_manager::ChainIdManager, NULL_BLOCK_IDENTIFIER};
 

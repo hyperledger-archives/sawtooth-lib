@@ -18,14 +18,14 @@ use std::error::Error;
 
 use cylinder::SigningError;
 use hex::FromHexError;
-use transact::{
-    database::DatabaseError, execution::executor::ExecutorError, scheduler::SchedulerError,
-    state::StateWriteError,
-};
 
 use crate::permissions::IdentityError;
 use crate::protocol::ProtocolBuildError;
 use crate::state::{error::StateDatabaseError, settings_view::SettingsViewError};
+use crate::transact::{
+    database::DatabaseError, execution::executor::ExecutorError, scheduler::SchedulerError,
+    state::StateWriteError,
+};
 
 /// Errors that can occur in the block publisher
 #[derive(Debug)]

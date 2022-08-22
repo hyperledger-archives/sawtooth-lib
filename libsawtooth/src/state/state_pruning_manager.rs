@@ -18,8 +18,9 @@ use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 
 use log::{debug, error, info};
-use transact::database::lmdb::LmdbDatabase;
-use transact::state::merkle::MerkleRadixTree;
+
+use crate::transact::database::lmdb::LmdbDatabase;
+use crate::transact::state::merkle::MerkleRadixTree;
 
 /// The StatePruneManager manages a collection of state root hashes that will be
 /// prune from the MerkleRadixTree at intervals.  Pruning will occur by decimating

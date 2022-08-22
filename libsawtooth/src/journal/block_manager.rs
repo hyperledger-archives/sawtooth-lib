@@ -29,7 +29,7 @@ use crate::journal::block_store::{
 use crate::journal::NULL_BLOCK_IDENTIFIER;
 use crate::protocol::block::BlockPair;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum BlockManagerError {
     MissingPredecessor(String),
     MissingPredecessorInBranch(String),

@@ -15,7 +15,16 @@
 set dotenv-load := true
 
 crates := '\
-    libsawtooth
+    libsawtooth \
+    examples/address_generator \
+    examples/sabre_command \
+    examples/sabre_smallbank \
+    examples/simple_xo \
+    '
+
+crates_wasm := '\
+    examples/sabre_command \
+    examples/sabre_smallbank \
     '
 
 features := '\
@@ -48,6 +57,16 @@ build:
         do
             cmd="cargo build --tests --manifest-path=$crate/Cargo.toml $feature"
             echo "\033[1m$cmd\033[0m"
+            $cmd
+        done
+    done
+    for feature in $(echo {{features}})
+    do
+        for crate in $(echo {{crates_wasm}})
+        do
+            cmd="cargo build --tests --target wasm32-unknown-unknown --manifest-path=$crate/Cargo.toml $BUILD_MODE $feature"
+            echo "\033[1m$cmd\033[0m"
+            RUSTFLAGS="-D warnings" $cmd
             $cmd
         done
     done
@@ -125,9 +144,29 @@ test:
     done
     echo "\n\033[92mTest Success\033[0m\n"
 
+ci-debs:
+    #!/usr/bin/env sh
+    set -e
+    REPO_VERSION=$(VERSION=AUTO_STRICT ./bin/get_version) \
+    docker-compose -f docker-compose-installed.yaml build
+    docker-compose -f docker/compose/copy-debs.yaml up
+
 docker-test:
-    docker-compose -f docker/compose/run-tests.yaml up \
-        --build \
-        --abort-on-container-exit \
-        --exit-code-from \
-        test-libsawtooth
+    #!/usr/bin/env sh
+    set -e
+
+    trap "docker-compose -f docker/compose/run-tests.yaml down" EXIT
+
+    docker-compose -f docker/compose/run-tests.yaml build
+    docker-compose -f docker/compose/run-tests.yaml run --rm test-libsawtooth \
+      /bin/bash -c "just test" --abort-on-container-exit test-libsawtooth
+
+    docker-compose -f docker/compose/run-tests.yaml up --detach postgres-db
+
+    docker-compose -f docker/compose/run-tests.yaml run --rm test-libsawtooth \
+       /bin/bash -c \
+       "cargo test --manifest-path /project/libsawtooth/libsawtooth/Cargo.toml \
+          --features stable,transact-sawtooth-compat -- transact::sawtooth && \
+        cargo test --manifest-path /project/libsawtooth/libsawtooth/Cargo.toml \
+          --features stable,transact-state-merkle-sql-postgres-tests && \
+        (cd examples/sabre_smallbank && cargo test)"

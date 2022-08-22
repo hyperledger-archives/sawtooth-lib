@@ -18,7 +18,7 @@
 use std::collections::{HashSet, VecDeque};
 use std::slice::Iter;
 
-use transact::protocol::batch::BatchPair;
+use crate::transact::protocol::batch::BatchPair;
 
 /// The default number of most-recently-published blocks to use when computing the limit of the
 /// pending batches pool

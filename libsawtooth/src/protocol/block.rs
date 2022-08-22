@@ -19,17 +19,17 @@
 
 use cylinder::Signer;
 use protobuf::Message;
-use transact::protocol::batch::Batch;
 
 use crate::protos::{
     block::{Block as BlockProto, BlockHeader as BlockHeaderProto},
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
+use crate::transact::protocol::batch::Batch;
 
 use super::ProtocolBuildError;
 
 /// A Sawtooth block
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Block {
     header: Vec<u8>,
     header_signature: String,
@@ -126,7 +126,7 @@ impl IntoNative<Block> for BlockProto {}
 impl IntoProto<BlockProto> for Block {}
 
 /// A Sawtooth block header
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockHeader {
     block_num: u64,
     previous_block_id: String,
@@ -231,7 +231,7 @@ impl IntoNative<BlockHeader> for BlockHeaderProto {}
 impl IntoProto<BlockHeaderProto> for BlockHeader {}
 
 /// A Sawtooth (block, block header) pair
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockPair {
     block: Block,
     header: BlockHeader,
@@ -390,7 +390,8 @@ mod tests {
     use super::*;
 
     use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
-    use transact::protocol::{
+
+    use crate::transact::protocol::{
         batch::BatchBuilder,
         transaction::{HashMethod, TransactionBuilder},
     };

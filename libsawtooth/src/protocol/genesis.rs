@@ -18,15 +18,15 @@
 //! Genesis protocol
 
 use protobuf::Message;
-use transact::protocol::batch::BatchPair;
 
 use crate::protos::{
     batch::Batch as BatchProto, genesis::GenesisData as GenesisDataProto, FromBytes, FromNative,
     FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
+use crate::transact::protocol::batch::BatchPair;
 
 /// A named set of batches
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenesisData {
     batches: Vec<BatchPair>,
 }

@@ -16,7 +16,7 @@
 
 use std::collections::{HashSet, VecDeque};
 
-use transact::protocol::batch::BatchPair;
+use crate::transact::protocol::batch::BatchPair;
 
 /// The default number of most-recently-published blocks to use when computing the upper bound of
 /// the pending batch queue
@@ -261,7 +261,8 @@ mod tests {
 
     use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
     use metrics::{GaugeValue, Key, Recorder};
-    use transact::protocol::{
+
+    use crate::transact::protocol::{
         batch::BatchBuilder,
         transaction::{HashMethod, TransactionBuilder},
     };

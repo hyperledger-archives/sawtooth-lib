@@ -20,9 +20,9 @@
 //! signatories.
 
 use log::debug;
-use transact::protocol::{batch::BatchPair, transaction::Transaction};
 
 use crate::protocol::identity::{Permission, Policy};
+use crate::transact::protocol::{batch::BatchPair, transaction::Transaction};
 
 use super::error::IdentityError;
 use super::IdentitySource;
@@ -208,12 +208,12 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use cylinder::{secp256k1::Secp256k1Context, Context, Signer};
-    use transact::protocol::{
+
+    use crate::protocol::identity::{PolicyBuilder, Role, RoleBuilder};
+    use crate::transact::protocol::{
         batch::BatchBuilder,
         transaction::{HashMethod, TransactionBuilder},
     };
-
-    use crate::protocol::identity::{PolicyBuilder, Role, RoleBuilder};
 
     #[test]
     /// Test that if no roles are set and no default policy is set,

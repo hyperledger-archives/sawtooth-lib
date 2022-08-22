@@ -14,9 +14,20 @@
 
 FROM rust:latest
 
-RUN apt-get update \
- && apt-get install -y \
-    curl
+RUN apt-get update && \
+    apt-get install -y -q --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    curl \
+    unzip \
+    libpq-dev \
+    libssl-dev \
+    pkg-config \
+    libzmq3-dev \
+    libsqlite3-dev \
+    sqlite3 \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip \
  && unzip protoc-3.5.1-linux-x86_64.zip -d protoc3 \
@@ -30,4 +41,4 @@ ENV PATH=$PATH:/protoc3/bin \
 
 RUN rustup component add rustfmt clippy
 
-WORKDIR /project/cylinder
+WORKDIR /project/libsawtooth

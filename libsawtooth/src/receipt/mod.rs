@@ -23,13 +23,12 @@ pub mod store;
 
 use std::convert::TryFrom;
 
-use transact::protocol::receipt::{
+use crate::protos::events::{Event, Event_Attribute};
+use crate::protos::transaction_receipt::{StateChange, StateChange_Type, TransactionReceipt};
+use crate::transact::protocol::receipt::{
     StateChange as TransactStateChange, TransactionReceipt as TransactTransactionReceipt,
     TransactionResult,
 };
-
-use crate::protos::events::{Event, Event_Attribute};
-use crate::protos::transaction_receipt::{StateChange, StateChange_Type, TransactionReceipt};
 
 impl From<TransactStateChange> for StateChange {
     fn from(change: TransactStateChange) -> Self {

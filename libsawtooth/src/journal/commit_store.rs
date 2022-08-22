@@ -16,11 +16,6 @@
  */
 
 use log::error;
-use transact::database::error::DatabaseError;
-use transact::database::lmdb::LmdbDatabase;
-use transact::database::lmdb::LmdbDatabaseWriter;
-use transact::database::{DatabaseReader, DatabaseWriter};
-use transact::protocol::{batch::Batch, transaction::Transaction};
 
 use crate::journal::block_store::{
     BatchIndex, BlockStore, BlockStoreError, IndexedBlockStore, TransactionIndex,
@@ -28,6 +23,11 @@ use crate::journal::block_store::{
 use crate::journal::chain::{ChainReadError, ChainReader};
 use crate::protocol::block::BlockPair;
 use crate::protos::{FromBytes, IntoBytes};
+use crate::transact::database::error::DatabaseError;
+use crate::transact::database::lmdb::LmdbDatabase;
+use crate::transact::database::lmdb::LmdbDatabaseWriter;
+use crate::transact::database::{DatabaseReader, DatabaseWriter};
+use crate::transact::protocol::{batch::Batch, transaction::Transaction};
 
 /// Contains all committed blocks for the current chain
 #[derive(Clone)]

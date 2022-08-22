@@ -21,7 +21,7 @@ mod error;
 
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 
-use transact::protocol::batch::BatchPair;
+use crate::transact::protocol::batch::BatchPair;
 
 use super::BlockPublisherMessage;
 

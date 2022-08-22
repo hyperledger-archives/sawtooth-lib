@@ -24,6 +24,19 @@ extern crate diesel_migrations;
 #[macro_use]
 extern crate metrics;
 
+#[cfg(feature = "log")]
+#[macro_use]
+extern crate log;
+
+// #[macro_use]` on the `sabre-sdk` enables the sabre log macros, this however cannot be
+// enabled at the same time as the `log` crate's macros due to linker conflicts
+#[cfg(all(feature = "transact-sabre-compat", feature = "log"))]
+compile_error!("Incompatible features enabled: 'sabre-compat' and 'log'");
+
+#[cfg(all(feature = "transact-sabre-compat", feature = "family-smallbank"))]
+#[macro_use]
+extern crate sabre_sdk;
+
 #[cfg(feature = "artifact")]
 pub mod artifact;
 #[cfg(feature = "client")]
@@ -31,6 +44,7 @@ pub mod client;
 #[cfg(feature = "validator-internals")]
 pub mod consensus;
 pub mod error;
+pub mod families;
 #[cfg(feature = "validator-internals")]
 pub mod hashlib;
 #[cfg(feature = "validator-internals")]
@@ -50,3 +64,5 @@ pub mod scheduler;
 pub mod state;
 #[cfg(feature = "store")]
 pub(crate) mod store;
+#[cfg(feature = "transact")]
+pub mod transact;

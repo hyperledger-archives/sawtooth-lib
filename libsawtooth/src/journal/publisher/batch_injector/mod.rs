@@ -17,7 +17,7 @@
 pub mod block_info;
 mod default_factory;
 
-use transact::protocol::batch::BatchPair;
+use crate::transact::protocol::batch::BatchPair;
 
 use crate::protocol::block::BlockPair;
 

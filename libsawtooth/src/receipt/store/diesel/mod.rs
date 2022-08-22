@@ -30,10 +30,10 @@ pub mod schema;
 use std::sync::{Arc, RwLock};
 
 use diesel::r2d2::{ConnectionManager, Pool};
-use transact::protocol::receipt::TransactionReceipt;
 
 use crate::receipt::store::{error::ReceiptStoreError, ReceiptIter, ReceiptStore};
 use crate::store::pool::ConnectionPool;
+use crate::transact::protocol::receipt::TransactionReceipt;
 
 use operations::add_txn_receipts::ReceiptStoreAddTxnReceiptsOperation as _;
 use operations::count_txn_receipts::ReceiptStoreCountTxnReceiptsOperation as _;
@@ -235,9 +235,8 @@ impl ReceiptStore for DieselReceiptStore<diesel::pg::PgConnection> {
 pub mod tests {
     use super::*;
 
-    use transact::protocol::receipt::{Event, StateChange, TransactionResult};
-
     use crate::migrations::run_sqlite_migrations;
+    use crate::transact::protocol::receipt::{Event, StateChange, TransactionResult};
 
     use diesel::{
         r2d2::{ConnectionManager, Pool},

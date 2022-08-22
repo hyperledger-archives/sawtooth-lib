@@ -20,9 +20,11 @@
 use std::collections::HashMap;
 
 use diesel::{prelude::*, sql_types::Text};
-use transact::protocol::receipt::{Event, StateChange, TransactionReceipt, TransactionResult};
 
 use crate::error::InvalidStateError;
+use crate::transact::protocol::receipt::{
+    Event, StateChange, TransactionReceipt, TransactionResult,
+};
 
 use super::ReceiptStoreOperations;
 

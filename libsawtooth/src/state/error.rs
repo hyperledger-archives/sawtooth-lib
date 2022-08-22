@@ -20,10 +20,10 @@ use std::fmt;
 use cbor::decoder::DecodeError;
 use cbor::encoder::EncodeError;
 use protobuf::ProtobufError;
-use transact::database::error::DatabaseError;
-use transact::state::merkle::StateDatabaseError as TransactStateDatabaseError;
 
 use crate::error::InternalError;
+use crate::transact::database::error::DatabaseError;
+use crate::transact::state::merkle::StateDatabaseError as TransactStateDatabaseError;
 
 #[derive(Debug)]
 pub enum StateDatabaseError {

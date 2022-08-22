@@ -17,14 +17,15 @@
 
 //! Structs that cover the core protocols of the Sawtooth system.
 
-mod batch;
+#[cfg(feature = "protocol-block")]
 pub mod block;
 pub mod block_info;
+#[cfg(feature = "protocol-genesis")]
 pub mod genesis;
 pub mod identity;
 pub mod setting;
-mod transaction;
 
+#[cfg(feature = "cylinder")]
 use cylinder::SigningError;
 
 use crate::protos::ProtoConversionError;
@@ -63,6 +64,7 @@ impl From<ProtoConversionError> for ProtocolBuildError {
     }
 }
 
+#[cfg(feature = "cylinder")]
 impl From<SigningError> for ProtocolBuildError {
     fn from(err: SigningError) -> Self {
         Self::SigningError(format!("{}", err))

@@ -14,12 +14,12 @@
  * limitations under the License.
  * ------------------------------------------------------------------------------
  */
-use transact::database::lmdb::LmdbDatabase;
-use transact::state::merkle::MerkleRadixTree;
 
 use crate::state::error::StateDatabaseError;
 use crate::state::merkle::DecodedMerkleStateReader;
 use crate::state::StateReader;
+use crate::transact::database::lmdb::LmdbDatabase;
+use crate::transact::state::merkle::MerkleRadixTree;
 
 /// The StateViewFactory produces StateViews for a particular merkle root.
 ///

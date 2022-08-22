@@ -26,36 +26,84 @@ description = """\
 
 [dependencies]
 base64 = { version = "0.13", optional = true }
+bzip2 = { version = "0.4", optional = true }
 cbor-codec = { version = "0.7", optional = true }
-cylinder = "0.2"
+chrono = { version = "0.4", optional = true }
+cylinder = { version = "0.2", optional = true }
 diesel = { version = "1.0", features = ["r2d2", "serde_json"], optional = true }
 diesel_migrations = { version = "1.4", optional = true }
+glob = { version = "0.3", optional = true }
 hex = "0.4"
+lazy_static = { version = "1.4.0", optional = true }
 log = { version = "0.4", optional = true }
+lru = { version = "0.7", optional = true }
 lmdb-zero = { version = "0.4", optional = true }
 metrics = { version = "0.17", features = ["std"], optional = true }
 protobuf = "2.23"
+rand = { version = "0.8", optional = true }
 reqwest = { version = "0.11", optional = true, features = ["blocking", "json"] }
+sabre-sdk = { version ="0.7.1", optional = true }
+sawtooth-sdk = { version = "0.5", optional = true }
+semver = { version = "1", optional = true }
 serde = { version = "1.0", optional = true, features = ["derive"] }
+serde_json = { version = "1", optional = true }
+serde_yaml = { version = "0.8", optional = true }
 sha2 = { version = "0.9", optional = true }
-transact = "0.5"
+tar = { version = "0.4", optional = true }
 uluru = { version = "3", optional = true }
+uuid = { version = "0.8", optional = true, features = ["v4"] }
+wasmi = { version = "0.9", optional = true }
+yaml-rust =  { version = "0.4", optional = true }
 
 [dev-dependencies]
+log =  { version = "0.4", features = ["std"] }
 rand = "0.8"
+rusty-fork = "0.3"
+sawtooth-xo = "0.5"
+serial_test = "0.5"
+tempdir = "0.3"
 
 [build-dependencies]
 protoc-rust = "2.0"
 glob = "0.3"
 
 [features]
-default = []
+default = [
+    "protocol-block",
+    "protocol-genesis",
+]
 
 stable = [
+    # The stable feature extends default:
+    "default",
+
+    # The following features are stable:
+    "family-command",
+    "family-command-transaction-builder",
+    "family-command-workload",
+    "family-sabre",
+    "family-smallbank",
     "lmdb",
     "postgres",
     "sqlite",
     "store",
+    "transact",
+    "transact-context",
+    "transact-contract-archive",
+    "transact-database-lmdb",
+    "transact-execution",
+    "transact-handler",
+    "transact-protocol-batch",
+    "transact-protocol-batch-builder",
+    "transact-protocol-sabre",
+    "transact-protocol-transaction",
+    "transact-protocol-transaction-builder",
+    "transact-scheduler",
+    "transact-state-merkle",
+    "transact-state-merkle-sql",
+    "transact-workload",
+    "transact-workload-batch-gen",
+    "transact-workload-runner",
     "transaction-receipt-store",
 ]
 
@@ -68,9 +116,31 @@ experimental = [
     "artifact-store",
     "client",
     "client-rest",
+    "family-smallbank-workload",
+    "family-xo",
     "pending-batch-queue",
     "publisher",
+    "transact-contract",
+    "transact-contract-address",
+    "transact-contract-address-double-key-hash",
+    "transact-contract-address-key-hash",
+    "transact-contract-address-triple-key-hash",
+    "transact-contract-context",
+    "transact-contract-context-key-value",
+    "transact-key-value-state",
     "validator-internals",
+]
+
+# stable features in support of wasm
+wasm = [
+    # The following features are stable:
+    "transact-sabre-compat",
+]
+
+wasm-experimental = [
+    # The experimental feature extends stable:
+    "wasm",
+    # The following features are experimental:
 ]
 
 artifact = []
@@ -78,15 +148,87 @@ artifact-creator = ["artifact"]
 artifact-store = ["artifact"]
 client = []
 client-rest = ["base64", "client", "log", "reqwest", "serde"]
+family-command = ["transact-handler"]
+family-command-transaction-builder = ["family-command", "cylinder", "transact-protocol-transaction-builder"]
+family-command-workload = ["family-command", "transact-protocol-sabre", "transact-workload"]
+family-sabre = ["transact-handler", "wasmi"]
+family-smallbank = ["transact-handler", "sha2"]
+family-smallbank-workload = [
+  "family-smallbank",
+  "transact-protocol-sabre",
+  "rand",
+  "yaml-rust",
+  "transact-workload",
+  "transact-workload-runner"
+]
+family-xo = ["transact-handler", "transact-workload"]
 lmdb = ["lmdb-zero", "log"]
 pending-batch-queue = ["validator-internals"]
 postgres = ["diesel/postgres", "diesel_migrations", "log", "store"]
+protocol-block = [
+  "transact-protocol-batch",
+  "transact-protocol-batch-builder",
+  "transact-protocol-transaction",
+  "transact-protocol-transaction-builder",
+]
+protocol-genesis = [
+  "transact-protocol-batch",
+  "transact-protocol-batch-builder",
+  "transact-protocol-transaction",
+  "transact-protocol-transaction-builder",
+]
 publisher = ["artifact-creator"]
-sqlite = ["diesel/sqlite", "diesel_migrations", "log", "store"]
+sqlite = ["diesel/sqlite", "diesel_migrations", "log", "serde_json", "store"]
 store = []
+transact = []
+transact-context = ["transact", "uuid"]
+transact-contract = ["transact"]
+transact-contract-address = ["transact-contract"]
+transact-contract-address-key-hash = ["transact-contract-address"]
+transact-contract-address-double-key-hash = ["transact-contract-address"]
+transact-contract-address-triple-key-hash = ["transact-contract-address"]
+transact-contract-archive = ["bzip2", "transact-contract", "glob", "semver", "serde", "serde_yaml", "tar"]
+transact-contract-context = ["transact-contract", "transact-contract-address"]
+transact-contract-context-key-value = ["transact-contract-context", "transact-key-value-state"]
+transact-database-lmdb = ["transact", "lmdb-zero"]
+transact-execution = [
+  "transact-context",
+  "transact-handler",
+  "log",
+  "transact-protocol-transaction",
+  "transact-scheduler"
+]
+transact-handler = ["transact", "transact-protocol-transaction"]
+transact-key-value-state = ["transact"]
+transact-protocol-batch = ["transact-protocol-transaction"]
+transact-protocol-batch-builder = ["cylinder", "transact-protocol-batch"]
+transact-protocol-sabre = ["cylinder", "transact-protocol-transaction-builder"]
+transact-protocol-transaction = ["transact"]
+transact-protocol-transaction-builder = [
+  "cylinder",
+  "transact-protocol-transaction",
+  "transact-protocol-batch-builder",
+  "rand",
+  "sha2",
+]
+transact-sabre-compat = ["transact", "transact-handler", "sabre-sdk"]
+transact-sawtooth-compat = ["transact", "transact-handler", "sawtooth-sdk"]
+transact-scheduler = ["transact-context", "log", "transact-protocol-batch"]
+transact-state-merkle = ["transact", "cbor-codec", "log"]
+transact-state-merkle-sql = ["transact-state-merkle", "diesel", "diesel_migrations", "lru"]
+transact-state-merkle-sql-postgres-tests = ["postgres", "lazy_static"]
+transact-workload = ["transact"]
+transact-workload-batch-gen = ["transact", "transact-workload"]
+transact-workload-runner = [
+  "transact",
+  "chrono",
+  "reqwest",
+  "serde",
+]
 transaction-receipt-store = []
 validator-internals = [
   "cbor-codec",
+  "cylinder",
   "lmdb-zero",
   "log",
   "metrics",
@@ -99,6 +241,3 @@ features = [
     "stable",
     "experimental"
 ]
-
-[patch.crates-io]
-transact = { git = "https://github.com/hyperledger/transact" }

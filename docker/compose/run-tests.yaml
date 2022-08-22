@@ -25,3 +25,14 @@ services:
       - ../../:/project/libsawtooth
     working_dir: /project/libsawtooth
     command: just test
+    environment:
+        TEST_MODE: --verbose --release
+        STATE_MERKLE_SQL_POSTGRES_TEST_URL: postgres://postgres:test@postgres-db:5432/transact
+
+  postgres-db:
+    image: postgres
+    expose:
+      - 5432
+    environment:
+      POSTGRES_DB: transact
+      POSTGRES_PASSWORD: test

@@ -17,9 +17,8 @@
 
 use std::sync::{Arc, RwLock, RwLockWriteGuard};
 
-use transact::protocol::batch::BatchPair;
-
 use crate::protocol::block::BlockPair;
+use crate::transact::protocol::batch::BatchPair;
 
 use super::{batch_pool::PendingBatchesPool, BlockPublisher};
 

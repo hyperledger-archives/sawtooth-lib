@@ -17,5 +17,14 @@
 /.idea/
 *.sublime*
 
+/build
 /libsawtooth/target/
 /libsawtooth/Cargo.lock
+/examples/address_generator/Cargo.lock
+/examples/address_generator/target/
+/examples/sabre_command/Cargo.lock
+/examples/sabre_command/target/
+/examples/sabre_smallbank/Cargo.lock
+/examples/sabre_smallbank/target/
+/examples/simple_xo/Cargo.lock
+/examples/simple_xo/target/

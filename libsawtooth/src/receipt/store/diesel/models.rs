@@ -27,7 +27,6 @@ use diesel::{
     serialize::{self, Output, ToSql},
     sql_types::SmallInt,
 };
-use transact::protocol::receipt::Event;
 
 use crate::error::InternalError;
 use crate::receipt::store::diesel::schema::{
@@ -36,8 +35,11 @@ use crate::receipt::store::diesel::schema::{
     valid_transaction_result_state_change,
 };
 use crate::receipt::store::error::ReceiptStoreError;
+use crate::transact::protocol::receipt::Event;
 
-#[derive(Debug, PartialEq, Associations, Identifiable, Insertable, Queryable, QueryableByName)]
+#[derive(
+    Debug, PartialEq, Eq, Associations, Identifiable, Insertable, Queryable, QueryableByName,
+)]
 #[table_name = "transaction_receipt"]
 #[primary_key(transaction_id)]
 pub struct TransactionReceiptModel {
@@ -46,7 +48,9 @@ pub struct TransactionReceiptModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Associations, Identifiable, Insertable, Queryable, QueryableByName)]
+#[derive(
+    Debug, PartialEq, Eq, Associations, Identifiable, Insertable, Queryable, QueryableByName,
+)]
 #[table_name = "invalid_transaction_result"]
 #[belongs_to(TransactionReceiptModel, foreign_key = "transaction_id")]
 #[primary_key(transaction_id)]
@@ -56,7 +60,9 @@ pub struct InvalidTransactionResultModel {
     pub error_data: Vec<u8>,
 }
 
-#[derive(Debug, PartialEq, Associations, Identifiable, Insertable, Queryable, QueryableByName)]
+#[derive(
+    Debug, PartialEq, Eq, Associations, Identifiable, Insertable, Queryable, QueryableByName,
+)]
 #[table_name = "valid_transaction_result_data"]
 #[belongs_to(TransactionReceiptModel, foreign_key = "transaction_id")]
 #[primary_key(id)]
@@ -67,7 +73,7 @@ pub struct ValidTransactionResultDataModel {
     pub position: i32,
 }
 
-#[derive(AsChangeset, Insertable, PartialEq, Debug)]
+#[derive(AsChangeset, Insertable, PartialEq, Eq, Debug)]
 #[table_name = "valid_transaction_result_data"]
 pub struct NewValidTransactionResultDataModel {
     pub transaction_id: String,
@@ -75,7 +81,9 @@ pub struct NewValidTransactionResultDataModel {
     pub position: i32,
 }
 
-#[derive(Debug, PartialEq, Associations, Identifiable, Insertable, Queryable, QueryableByName)]
+#[derive(
+    Debug, PartialEq, Eq, Associations, Identifiable, Insertable, Queryable, QueryableByName,
+)]
 #[table_name = "valid_transaction_result_event"]
 #[belongs_to(TransactionReceiptModel, foreign_key = "transaction_id")]
 #[primary_key(event_id)]
@@ -87,7 +95,7 @@ pub struct ValidTransactionResultEventModel {
     pub position: i32,
 }
 
-#[derive(AsChangeset, Insertable, PartialEq, Debug)]
+#[derive(AsChangeset, Insertable, PartialEq, Eq, Debug)]
 #[table_name = "valid_transaction_result_event"]
 pub struct NewValidTransactionResultEventModel {
     pub transaction_id: String,
@@ -96,7 +104,9 @@ pub struct NewValidTransactionResultEventModel {
     pub position: i32,
 }
 
-#[derive(Debug, PartialEq, Associations, Identifiable, Insertable, Queryable, QueryableByName)]
+#[derive(
+    Debug, PartialEq, Eq, Associations, Identifiable, Insertable, Queryable, QueryableByName,
+)]
 #[table_name = "valid_transaction_result_event_attribute"]
 #[belongs_to(TransactionReceiptModel, foreign_key = "transaction_id")]
 #[primary_key(transaction_id, event_id, key)]
@@ -136,7 +146,9 @@ impl ValidTransactionResultEventAttributeModel {
     }
 }
 
-#[derive(Debug, PartialEq, Associations, Identifiable, Insertable, Queryable, QueryableByName)]
+#[derive(
+    Debug, PartialEq, Eq, Associations, Identifiable, Insertable, Queryable, QueryableByName,
+)]
 #[table_name = "valid_transaction_result_state_change"]
 #[belongs_to(TransactionReceiptModel, foreign_key = "transaction_id")]
 #[primary_key(id)]
@@ -149,7 +161,7 @@ pub struct ValidTransactionResultStateChangeModel {
     pub position: i32,
 }
 
-#[derive(Insertable, PartialEq, Debug)]
+#[derive(Insertable, PartialEq, Eq, Debug)]
 #[table_name = "valid_transaction_result_state_change"]
 pub struct NewValidTransactionResultStateChangeModel {
     pub transaction_id: String,
@@ -160,7 +172,7 @@ pub struct NewValidTransactionResultStateChangeModel {
 }
 
 #[repr(i16)]
-#[derive(Debug, Copy, Clone, PartialEq, FromSqlRow)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, FromSqlRow)]
 pub enum StateChangeTypeModel {
     Set = 1,
     Delete = 2,

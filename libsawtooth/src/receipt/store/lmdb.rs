@@ -26,13 +26,11 @@ use std::sync::Arc;
 use lmdb_zero as lmdb;
 use lmdb_zero::error::LmdbResultExt;
 use log::error;
-use transact::{
-    protocol::receipt::TransactionReceipt,
-    protos::{FromBytes, IntoBytes},
-};
 
 use crate::error::{InternalError, InvalidStateError};
+use crate::protos::{FromBytes, IntoBytes};
 use crate::receipt::store::{ReceiptIter, ReceiptStore, ReceiptStoreError};
+use crate::transact::protocol::receipt::TransactionReceipt;
 
 // 32-bit architectures
 #[cfg(any(target_arch = "x86", target_arch = "arm"))]
@@ -188,12 +186,12 @@ impl LmdbReceiptStore {
             self.current_db = database;
             Ok(())
         } else {
-            return Err(ReceiptStoreError::InvalidStateError(
+            Err(ReceiptStoreError::InvalidStateError(
                 InvalidStateError::with_message(format!(
                     "database {} does not exist in the receipt store",
                     database
                 )),
-            ));
+            ))
         }
     }
 
@@ -738,7 +736,8 @@ impl Iterator for LmdbReceiptStoreIter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use transact::protocol::receipt::{Event, StateChange, TransactionResult};
+
+    use crate::transact::protocol::receipt::{Event, StateChange, TransactionResult};
 
     /// Verify that a new `LmdbReceiptStore` can be created with a single LMDB instance
     ///
