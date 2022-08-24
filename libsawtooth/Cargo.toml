@@ -225,7 +225,7 @@ transact-workload-runner = [
   "reqwest",
   "serde",
 ]
-transaction-receipt-store = []
+transaction-receipt-store = ["transact"]
 validator-internals = [
   "cbor-codec",
   "cylinder",
