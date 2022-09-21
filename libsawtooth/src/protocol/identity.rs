@@ -30,7 +30,7 @@ use crate::protos::{
 use super::ProtocolBuildError;
 
 /// A named set of [`Permissions`](enum.Permission.html)
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Policy {
     name: String,
     permissions: Vec<Permission>,
@@ -156,7 +156,7 @@ impl IntoNative<Vec<Policy>> for PolicyList {}
 impl IntoProto<PolicyList> for Vec<Policy> {}
 
 /// Represents a permitted or denied public key
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Permission {
     PermitKey(String),
     DenyKey(String),
@@ -257,7 +257,7 @@ impl PolicyBuilder {
 }
 
 /// A link between a set of activities and a [`Policy`](struct.Policy.html)
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Role {
     name: String,
     policy_name: String,
