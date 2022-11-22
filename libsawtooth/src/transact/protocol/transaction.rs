@@ -605,7 +605,7 @@ mod tests {
         let payload_hash = match pair.header().payload_hash_method() {
             HashMethod::Sha512 => {
                 let mut hasher = Sha512::new();
-                hasher.update(&pair.transaction().payload());
+                hasher.update(pair.transaction().payload());
                 hasher.finalize().to_vec()
             }
         };

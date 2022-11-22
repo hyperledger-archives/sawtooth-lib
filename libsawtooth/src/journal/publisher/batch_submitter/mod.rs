@@ -51,7 +51,7 @@ impl BatchSubmitter {
     }
 
     /// Checks if the batch pool is full
-    pub fn is_batch_pool_full(&mut self) -> Result<bool, BatchSubmitterError> {
+    pub fn is_batch_pool_full(&mut self) -> Result<bool, Box<BatchSubmitterError>> {
         self.check_backpressure()?;
         Ok(self.pool_full)
     }
@@ -68,7 +68,11 @@ impl BatchSubmitter {
     /// * Returns a `PoolFull` error containing the submitted batch when the pool is full; if
     ///   `force`, this error will not be returned.
     /// * Returns a `PoolShutdown` error if the publisher is no longer receiving batches
-    pub fn submit(&mut self, batch: BatchPair, force: bool) -> Result<(), BatchSubmitterError> {
+    pub fn submit(
+        &mut self,
+        batch: BatchPair,
+        force: bool,
+    ) -> Result<(), Box<BatchSubmitterError>> {
         self.check_backpressure()?;
 
         if self.pool_full && !force {
@@ -80,7 +84,7 @@ impl BatchSubmitter {
         }
     }
 
-    fn check_backpressure(&mut self) -> Result<(), BatchSubmitterError> {
+    fn check_backpressure(&mut self) -> Result<(), Box<BatchSubmitterError>> {
         match self.backpressure_receiver.try_recv() {
             Ok(BackpressureMessage::PoolFull) => self.pool_full = true,
             Ok(BackpressureMessage::PoolUnblocked) => self.pool_full = false,

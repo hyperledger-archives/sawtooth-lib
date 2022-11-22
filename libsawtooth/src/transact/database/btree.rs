@@ -511,32 +511,32 @@ mod tests {
     use crate::transact::database::Database;
 
     /// Asserts that there are COUNT many objects in DB.
-    fn assert_database_count<'a>(count: usize, reader: &'a dyn DatabaseReader) {
+    fn assert_database_count(count: usize, reader: &dyn DatabaseReader) {
         assert_eq!(reader.count().unwrap(), count,);
     }
 
     /// Asserts that there are are COUNT many objects in DB's INDEX.
-    fn assert_index_count<'a>(index: &str, count: usize, reader: &'a dyn DatabaseReader) {
+    fn assert_index_count(index: &str, count: usize, reader: &dyn DatabaseReader) {
         assert_eq!(reader.index_count(index).unwrap(), count,);
     }
 
     /// Asserts that KEY is associated with VAL in DB.
-    fn assert_key_value<'a>(key: u8, val: u8, reader: &'a dyn DatabaseReader) {
+    fn assert_key_value(key: u8, val: u8, reader: &dyn DatabaseReader) {
         assert_eq!(reader.get(&[key]).unwrap(), Some(vec![val]));
     }
 
     /// Asserts that KEY is associated with VAL in DB's INDEX.
-    fn assert_index_key_value<'a>(index: &str, key: u8, val: u8, reader: &'a dyn DatabaseReader) {
+    fn assert_index_key_value(index: &str, key: u8, val: u8, reader: &dyn DatabaseReader) {
         assert_eq!(reader.index_get(index, &[key]).unwrap().unwrap(), [val],);
     }
 
     /// Asserts that KEY is not in DB.
-    fn assert_not_in_database<'a>(key: u8, reader: &'a dyn DatabaseReader) {
+    fn assert_not_in_database(key: u8, reader: &dyn DatabaseReader) {
         assert!(reader.get(&[key]).unwrap().is_none());
     }
 
     /// Asserts that KEY is not in DB's INDEX.
-    fn assert_not_in_index<'a>(index: &str, key: u8, reader: &'a dyn DatabaseReader) {
+    fn assert_not_in_index(index: &str, key: u8, reader: &dyn DatabaseReader) {
         assert!(reader.index_get(index, &[key]).unwrap().is_none());
     }
 

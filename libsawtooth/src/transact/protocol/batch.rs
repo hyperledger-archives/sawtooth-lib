@@ -507,7 +507,7 @@ mod tests {
             ],
             pair.batch().transactions()
         );
-        assert_eq!(true, pair.batch().trace());
+        assert!(pair.batch().trace());
     }
 
     #[cfg(feature = "transact-protocol-batch-builder")]
@@ -622,7 +622,7 @@ mod tests {
             ],
             batch.transactions()
         );
-        assert_eq!(true, batch.trace());
+        assert!(batch.trace());
     }
 
     #[cfg(feature = "sawtooth-compat")]

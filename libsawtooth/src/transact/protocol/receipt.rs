@@ -1096,7 +1096,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let event_bytes = original.clone().into_bytes().unwrap();
+        let event_bytes = original.into_bytes().unwrap();
         let event = Event::from_bytes(&event_bytes).unwrap();
         check_event(event);
     }

@@ -129,7 +129,7 @@ impl PendingBatchQueue {
         &mut self,
         batch: BatchPair,
         force: bool,
-    ) -> Result<(), PendingBatchQueueAppendError> {
+    ) -> Result<(), Box<PendingBatchQueueAppendError>> {
         if !force && self.is_full() {
             Err(PendingBatchQueueAppendError::QueueFull(batch))
         } else if self.contains(batch.batch().header_signature()) {
