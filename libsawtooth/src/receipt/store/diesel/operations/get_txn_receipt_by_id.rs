@@ -193,7 +193,7 @@ where
                         // Sort the event models and their attributes by position and convert
                         // them to `Events`
                         let mut sorted_events: Vec<ValidTransactionResultEventModel> =
-                            events.into_iter().map(|(_, event)| event).collect();
+                            events.into_values().collect();
                         sorted_events.sort_by_key(|event| event.position);
                         let event_vec = sorted_events
                             .into_iter()

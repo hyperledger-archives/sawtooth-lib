@@ -131,9 +131,11 @@ impl PendingBatchQueue {
         force: bool,
     ) -> Result<(), PendingBatchQueueAppendError> {
         if !force && self.is_full() {
-            Err(PendingBatchQueueAppendError::QueueFull(batch))
+            Err(PendingBatchQueueAppendError::QueueFull(Box::new(batch)))
         } else if self.contains(batch.batch().header_signature()) {
-            Err(PendingBatchQueueAppendError::DuplicateBatch(batch))
+            Err(PendingBatchQueueAppendError::DuplicateBatch(Box::new(
+                batch,
+            )))
         } else {
             self.ids.insert(batch.batch().header_signature().into());
             self.batches.push_back(batch);
@@ -202,8 +204,8 @@ impl PendingBatchQueue {
 /// Errors that may occur when pushing a batch to the queue
 #[derive(Debug)]
 pub enum PendingBatchQueueAppendError {
-    DuplicateBatch(BatchPair),
-    QueueFull(BatchPair),
+    DuplicateBatch(Box<BatchPair>),
+    QueueFull(Box<BatchPair>),
 }
 
 impl std::error::Error for PendingBatchQueueAppendError {}
@@ -414,7 +416,8 @@ mod tests {
             .expect("Failed to add batch");
 
         match q.push_back(batch.clone(), false) {
-            Err(PendingBatchQueueAppendError::DuplicateBatch(err_batch)) if err_batch == batch => {}
+            Err(PendingBatchQueueAppendError::DuplicateBatch(err_batch)) if *err_batch == batch => {
+            }
             res => panic!(
                 "Expected PendingBatchQueueAppendError::DuplicateBatch({:?}), got: {:?}",
                 batch, res
@@ -435,7 +438,7 @@ mod tests {
 
         let batch = batch(&*new_signer(), 0);
         match q.push_back(batch.clone(), false) {
-            Err(PendingBatchQueueAppendError::QueueFull(err_batch)) if err_batch == batch => {}
+            Err(PendingBatchQueueAppendError::QueueFull(err_batch)) if *err_batch == batch => {}
             res => panic!(
                 "Expected PendingBatchQueueAppendError::QueueFull({:?}), got: {:?}",
                 batch, res

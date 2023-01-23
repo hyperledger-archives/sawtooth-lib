@@ -45,7 +45,7 @@ impl Connection for SqliteConnection {
     type ConnectionType = sqlite::SqliteConnection;
 
     fn as_inner(&self) -> &Self::ConnectionType {
-        &*self.0
+        &self.0
     }
 }
 
