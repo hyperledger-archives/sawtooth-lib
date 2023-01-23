@@ -155,7 +155,7 @@ impl<B: Backend> SqlMerkleState<B> {
     pub fn initial_state_root_hash(&self) -> Result<String, InternalError> {
         let (hash, _) = encode_and_hash(Node::default())?;
 
-        Ok(hex::encode(&hash))
+        Ok(hex::encode(hash))
     }
 }
 
@@ -322,7 +322,7 @@ where
                 .expect("Path map keys are out of sink");
             let (hash_key, _) = encode_and_hash(node.clone())
                 .map_err(|e| StateWriteError::StorageError(Box::new(e)))?;
-            key_hash_hex = hex::encode(&hash_key);
+            key_hash_hex = hex::encode(hash_key);
 
             if !path.is_empty() {
                 let (parent_address, path_branch) = parent_and_branch(&path);

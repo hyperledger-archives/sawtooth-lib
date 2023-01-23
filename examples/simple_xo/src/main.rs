@@ -215,7 +215,7 @@ fn create_executor(context_manager: &ContextManager) -> Executor {
 fn create_batch(signer: &dyn Signer, game_name: &str, payload: &str) -> BatchPair {
     let mut sha = Sha512::default();
     sha.update(game_name);
-    let game_address = "5b7349".to_owned() + &hex::encode(&sha.finalize())[..64];
+    let game_address = "5b7349".to_owned() + &hex::encode(sha.finalize())[..64];
     let txn_pair = TransactionBuilder::new()
         .with_family_name("xo".to_string())
         .with_family_version("1.0".to_string())

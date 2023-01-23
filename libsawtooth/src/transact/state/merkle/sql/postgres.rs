@@ -96,7 +96,7 @@ where
 
     let (initial_state_root_hash, _) = encode_and_hash(Node::default())?;
     let tree_id: i64 = if builder.create_tree {
-        store.get_or_create_tree(&tree_name, &hex::encode(&initial_state_root_hash))?
+        store.get_or_create_tree(&tree_name, &hex::encode(initial_state_root_hash))?
     } else {
         store.get_tree_id_by_name(&tree_name)?.ok_or_else(|| {
             InvalidStateError::with_message("must provide the name of an existing tree".into())

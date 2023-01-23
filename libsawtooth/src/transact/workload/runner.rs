@@ -649,7 +649,7 @@ fn submit_batch(
     batch_bytes: Vec<u8>,
 ) -> Result<String, WorkloadRunnerError> {
     Client::new()
-        .post(&format!("{}/batches", target))
+        .post(format!("{}/batches", target))
         .header(header::CONTENT_TYPE, "octet-stream")
         .header("Authorization", auth)
         .body(batch_bytes)
