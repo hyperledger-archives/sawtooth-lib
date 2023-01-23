@@ -90,11 +90,7 @@ where
         &self,
         key: &K,
     ) -> Result<Option<HashMap<String, ValueType>>, ContractContextError> {
-        Ok(self
-            .get_state_entries(vec![key])?
-            .into_iter()
-            .map(|(_, val)| val)
-            .next())
+        Ok(self.get_state_entries(vec![key])?.into_values().next())
     }
 
     /// Attempts to unset the data in state at the address calculated from the provided natural key.
