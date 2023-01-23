@@ -35,7 +35,7 @@ impl Connection for PostgresConnection {
     type ConnectionType = diesel::pg::PgConnection;
 
     fn as_inner(&self) -> &Self::ConnectionType {
-        &*self.0
+        &self.0
     }
 }
 
