@@ -25,7 +25,7 @@ use crate::transact::protocol::batch::BatchPair;
 #[derive(Debug)]
 pub enum BatchSubmitterError {
     /// The pending batches pool is full; the batch could not be submitted.
-    PoolFull(BatchPair),
+    PoolFull(Box<BatchPair>),
     /// The pending batches pool has shutdown; no more batches can be submitted.
     PoolShutdown,
 }

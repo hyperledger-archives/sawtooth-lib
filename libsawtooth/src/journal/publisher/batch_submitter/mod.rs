@@ -72,7 +72,7 @@ impl BatchSubmitter {
         self.check_backpressure()?;
 
         if self.pool_full && !force {
-            Err(BatchSubmitterError::PoolFull(batch))
+            Err(BatchSubmitterError::PoolFull(Box::new(batch)))
         } else {
             self.batch_sender
                 .send(batch.into())
