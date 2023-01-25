@@ -1,5 +1,12 @@
 # Release Notes
 
+## Changes in libsawtooth 0.8.0
+
+### Highlights
+
+- Include Transact as part of libsawtooth, under crate::transact.
+- Update various dependencies.
+
 ## Changes in libsawtooth 0.7.0
 
 ### Highlights
