@@ -22,11 +22,23 @@ jobs:
       - name: Display envvars
         run: env
 
+      - name: Print rustc version
+        run: rustc --version
+
+      - name: Install apt packages
+        run: sudo apt install -y libzmq3-dev
+
       - name: Install Just
         run: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | sudo bash -s -- --to /usr/local/bin
 
+      - name: Install protoc
+        run: |
+          curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip
+          unzip protoc-3.5.1-linux-x86_64.zip -d protoc3
+          rm protoc-3.5.1-linux-x86_64.zip
+
       - name: Lint libsawtooth
-        run: just docker-lint
+        run: PATH=PATH:$(pwd)/protoc3/bin just lint
 
   test_libsawtooth:
     runs-on: ubuntu-latest
@@ -36,8 +48,17 @@ jobs:
       - name: Display envvars
         run: env
 
+      - name: Print rustc version
+        run: rustc --version
+
       - name: Install Just
         run: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | sudo bash -s -- --to /usr/local/bin
 
+      - name: Install protoc
+        run: |
+          curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip
+          unzip protoc-3.5.1-linux-x86_64.zip -d protoc3
+          rm protoc-3.5.1-linux-x86_64.zip
+
       - name: Test libsawtooth
-        run: just docker-test
+        run: PATH=$PATH:$(pwd)/protoc3/bin just test
