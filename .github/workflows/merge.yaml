@@ -38,7 +38,7 @@ jobs:
           rm protoc-3.5.1-linux-x86_64.zip
 
       - name: Lint libsawtooth
-        run: PATH=PATH:$(pwd)/protoc3/bin just lint
+        run: PATH=$PATH:$(pwd)/protoc3/bin just lint
 
   test_libsawtooth:
     runs-on: ubuntu-latest
