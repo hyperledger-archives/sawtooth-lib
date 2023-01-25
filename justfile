@@ -170,3 +170,22 @@ docker-test:
         cargo test --manifest-path /project/libsawtooth/libsawtooth/Cargo.toml \
           --features stable,transact-state-merkle-sql-postgres-tests && \
         (cd examples/sabre_smallbank && cargo test)"
+
+version-check:
+    #!/usr/bin/env sh
+
+    set -e
+
+    version=$(cat VERSION)
+
+    sawtooth_version=$(cargo metadata --manifest-path=libsawtooth/Cargo.toml \
+        --format-version 1 --no-deps \
+        | jq '.packages[] | select(.name == "sawtooth") | .version' \
+        | sed -e 's/"//g')
+
+    if [ "$version" != "$sawtooth_version" ]; then
+        echo "expected $version but found $sawtooth_version in libsawtooth/Cargo.toml"
+        exit 1
+    fi
+
+    echo "Version OK: $version"
