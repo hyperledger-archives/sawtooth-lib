@@ -50,13 +50,13 @@ jobs:
         run: just version-check
 
       - name: Lint
-        run: PATH=PATH:$(pwd)/protoc3/bin just lint
+        run: PATH=$PATH:$(pwd)/protoc3/bin just lint
 
       - name: Build
-        run: PATH=PATH:$(pwd)/protoc3/bin just build
+        run: PATH=$PATH:$(pwd)/protoc3/bin just build
 
       - name: Run tests
-        run: PATH=PATH:$(pwd)/protoc3/bin just test
+        run: PATH=$PATH:$(pwd)/protoc3/bin just test
 
   publish_to_crates:
     needs: build
