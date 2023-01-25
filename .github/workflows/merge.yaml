@@ -7,7 +7,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  slack-channel: 'alerts'
 
 concurrency:
   group: "${{ github.ref }}-${{ github.workflow }}"
@@ -29,15 +28,6 @@ jobs:
       - name: Lint libsawtooth
         run: just docker-lint
 
-      - name: Notify Slack of Failure
-        if: failure()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          fields: repo,message,author,job
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
   test_libsawtooth:
     runs-on: ubuntu-latest
     steps:
@@ -51,12 +41,3 @@ jobs:
 
       - name: Test libsawtooth
         run: just docker-test
-
-      - name: Notify Slack of Failure
-        if: failure()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          fields: repo,message,author,job
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
