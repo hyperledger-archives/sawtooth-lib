@@ -25,6 +25,9 @@ jobs:
       - name: Print rustc version
         run: rustc --version
 
+      - name: Install wasm32-unknown-unknown
+        run: rustup target add wasm32-unknown-unknown
+
       - name: Install apt packages
         run: sudo apt install -y libzmq3-dev
 
@@ -39,6 +42,9 @@ jobs:
 
       - name: Lint libsawtooth
         run: PATH=$PATH:$(pwd)/protoc3/bin just lint
+
+      - name: Build libsawtooth
+        run: PATH=$PATH:$(pwd)/protoc3/bin just build
 
   test_libsawtooth:
     runs-on: ubuntu-latest
