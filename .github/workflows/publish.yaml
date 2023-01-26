@@ -34,6 +34,9 @@ jobs:
       - name: Print rustc version
         run: rustc --version
 
+      - name: Install wasm32-unknown-unknown
+        run: rustup target add wasm32-unknown-unknown
+
       - name: Install apt packages
         run: sudo apt install -y libzmq3-dev
 
