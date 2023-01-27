@@ -88,4 +88,4 @@ jobs:
           rm protoc-3.5.1-linux-x86_64.zip
 
       - name: Publish release to crates
-        run: CARGO_REGISTRY_TOKEN=${{ secrets.CARGO_TOKEN }} cargo publish --manifest-path=libsawtooth/Cargo.toml
+        run: PATH=$PATH:$(pwd)/protoc3/bin CARGO_REGISTRY_TOKEN=${{ secrets.CARGO_TOKEN }} cargo publish --manifest-path=libsawtooth/Cargo.toml
