@@ -476,7 +476,7 @@ impl MerkleRadixTree {
         // We expect this to be hex, since we generated it
         let root_hash_bytes = ::hex::decode(&self.root_hash).expect("Improper hex");
 
-        for &(ref key, ref value) in batch {
+        for (key, value) in batch {
             match db_writer.put(::hex::encode(key).as_bytes(), value) {
                 Ok(_) => continue,
                 Err(DatabaseError::DuplicateEntry) => {
@@ -499,7 +499,7 @@ impl MerkleRadixTree {
             parent: root_hash_bytes.clone(),
             additions: batch
                 .iter()
-                .map(|&(ref hash, _)| hash.clone())
+                .map(|(hash, _)| hash.clone())
                 .collect::<Vec<Vec<u8>>>(),
             successors: vec![],
         };
