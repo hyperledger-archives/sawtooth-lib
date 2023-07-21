@@ -4,13 +4,10 @@
 | Name | GitHub |
 | --- | --- |
 | Andi Gunderson | agunde406 |
-| Anne Chenette | chenette |
 | Cian Montgomery | cianx |
 | Dan Middleton | dcmiddle |
-| Darian Plumb | dplumb94 |
 | Isabel Tomb | isabeltomb |
 | James Mitchell | jsmitchell |
-| Logan Seeley | ltseeley |
 | Peter Schwarz | peterschwarz |
 | Richard Berg | rberg2 |
 | Ryan Beck-Buysse | rbuysse |
@@ -20,7 +17,10 @@
 | Name | GitHub |
 | --- | --- |
 | Adam Ludvik | aludvik |
+| Anne Chenette | chenette |
 | Boyd Johnson | boydjohnson |
+| Darian Plumb | dplumb94 |
 | Jamie Jason | jjason |
+| Logan Seeley | ltseeley |
 | Nick Drozd | nick-drozd |
 | Zac Delventhal | delventhalz |
