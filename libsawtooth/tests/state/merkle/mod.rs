@@ -333,7 +333,7 @@ where
             key: key_hash.to_string(),
             value: "2.0".as_bytes().to_vec(),
         });
-        values.insert(key_hash.clone().to_string(), "2.0".to_string());
+        values.insert(key_hash.to_string(), "2.0".to_string());
     }
 
     // The first item below(e55420...89b9) shares a common prefix
@@ -449,10 +449,10 @@ fn test_merkle_trie_update_same_address_space_with_no_children<M>(
     // Perform some updates on the lower keys
     for &(_, ref key_hash) in key_hash_to_be_inserted.iter() {
         state_changes.push(StateChange::Set {
-            key: key_hash.clone().to_string(),
+            key: key_hash.to_string(),
             value: "2.0".as_bytes().to_vec(),
         });
-        values.insert(key_hash.clone().to_string(), "2.0".to_string());
+        values.insert(key_hash.to_string(), "2.0".to_string());
     }
 
     // The first item below(e55420...89b9) shares a common prefix
