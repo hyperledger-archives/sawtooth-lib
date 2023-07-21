@@ -459,7 +459,7 @@ impl BlockPublisher {
     ///   * The summary of the batches
     fn complete_candidate_block(
         &self,
-        mut candidate_block: &mut CandidateBlock,
+        candidate_block: &mut CandidateBlock,
     ) -> Result<(), BlockPublisherError> {
         // Check if candidate block is already completed
         if candidate_block.summary.is_some() {
