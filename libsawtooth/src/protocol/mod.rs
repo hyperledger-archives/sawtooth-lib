@@ -17,13 +17,24 @@
 
 //! Structs that cover the core protocols of the Sawtooth system.
 
+#[cfg(feature = "transact-protocol-batch")]
+pub mod batch;
 #[cfg(feature = "protocol-block")]
 pub mod block;
 pub mod block_info;
+pub mod command;
 #[cfg(feature = "protocol-genesis")]
 pub mod genesis;
 pub mod identity;
+#[cfg(feature = "transact-key-value-state")]
+pub mod key_value_state;
+#[cfg(feature = "transact")]
+pub mod receipt;
+#[cfg(any(feature = "transact-protocol-sabre", feature = "family-sabre"))]
+pub mod sabre;
 pub mod setting;
+#[cfg(feature = "transact-protocol-transaction")]
+pub mod transaction;
 
 #[cfg(feature = "cylinder")]
 use cylinder::SigningError;
