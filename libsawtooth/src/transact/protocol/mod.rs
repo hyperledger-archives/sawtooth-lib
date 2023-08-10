@@ -21,12 +21,12 @@
 //! scheduled and executed.  The resuls of execution are stored in transaction receipts.
 
 #[cfg(feature = "transact-protocol-batch")]
-pub mod batch;
-pub mod command;
+pub use crate::protocol::batch;
+pub use crate::protocol::command;
 #[cfg(feature = "transact-key-value-state")]
-pub mod key_value_state;
-pub mod receipt;
+pub use crate::protocol::key_value_state;
+pub use crate::protocol::receipt;
 #[cfg(any(feature = "transact-protocol-sabre", feature = "family-sabre"))]
-pub mod sabre;
+pub use crate::protocol::sabre;
 #[cfg(feature = "transact-protocol-transaction")]
-pub mod transaction;
+pub use crate::protocol::transaction;
