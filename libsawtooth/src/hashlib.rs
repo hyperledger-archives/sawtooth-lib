@@ -27,7 +27,7 @@ pub fn sha256_digest_strs(strs: &[String]) -> Vec<u8> {
         hasher.update(item.as_bytes());
     }
     let mut bytes = Vec::new();
-    bytes.extend(hasher.finalize().into_iter());
+    bytes.extend(hasher.finalize());
     bytes
 }
 
