@@ -324,7 +324,7 @@ impl CommitStore {
                     .batches()
                     .iter()
                     .find(|batch| {
-                        !batch
+                        batch
                             .transactions()
                             .iter()
                             .any(|txn| txn.header_signature() == transaction_id)
